@@ -201,6 +201,9 @@ void tst_languageChange::retranslatability_data()
 
 void tst_languageChange::retranslatability()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo strings still fluctuating, skipping.", SkipAll);
+#endif
     QFETCH( int, dialogType);
     QFETCH( TranslationSet, expected);
 
