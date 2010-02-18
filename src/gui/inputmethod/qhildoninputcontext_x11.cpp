@@ -79,15 +79,16 @@
 
 extern bool qt_sendSpontaneousEvent(QObject*, QEvent*); //qapplication_x11.cpp
 
-#define HIM_DEBUG
+#ifdef QT_BUILD_INTERNAL
+#  define HIM_DEBUG
+#endif
 
+#ifdef HIM_DEBUG
 static inline bool qHimDebugEnabled()
 {
     static const bool debug = !qgetenv("QT_HIM_DEBUG").isEmpty();
     return debug;
 }
-
-#ifdef HIM_DEBUG
 #  define qHimDebug  if (!qHimDebugEnabled()) {} else qDebug
 #else
 #  define qHimDebug  while (false) qDebug
