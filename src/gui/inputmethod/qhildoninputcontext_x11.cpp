@@ -520,6 +520,8 @@ void QHildonInputContext::updateInputMethodHints()
         if (qobject_cast<QTextEdit *>(realFocus) || qobject_cast<QPlainTextEdit *>(realFocus))
             inputMode |= HILDON_GTK_INPUT_MODE_MULTILINE;
 
+        sendHildonCommand(HILDON_IM_SETCLIENT, realFocus);
+
         qHimDebug("Mapped hint: 0x%x to mode: 0x%x", int(hints), int(inputMode));
     } else {
         inputMode = 0;
