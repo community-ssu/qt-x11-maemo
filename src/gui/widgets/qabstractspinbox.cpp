@@ -1248,10 +1248,16 @@ void QAbstractSpinBox::contextMenuEvent(QContextMenuEvent *event)
 #else
     Q_D(QAbstractSpinBox);
 
+#ifndef Q_WS_MAEMO_5
     d->reset();
+#endif
     QPointer<QMenu> menu = d->edit->createStandardContextMenu();
     if (!menu)
         return;
+
+#ifdef Q_WS_MAEMO_5
+    d->reset();
+#endif
 
     QAction *selAll = new QAction(tr("&Select All"), menu);
     menu->insertAction(d->edit->d_func()->selectAllAction,
