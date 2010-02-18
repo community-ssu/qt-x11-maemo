@@ -96,7 +96,7 @@ static inline bool qHimDebugEnabled()
 static const char *debugNameForCommunicationId(HildonIMCommunication id)
 {
 #ifdef HIM_DEBUG
-    static const char * const mapping[] = {
+    static const char *const mapping[] = {
         "HILDON_IM_CONTEXT_HANDLE_ENTER",
         "HILDON_IM_CONTEXT_HANDLE_TAB",
         "HILDON_IM_CONTEXT_HANDLE_BACKSPACE",
@@ -117,11 +117,17 @@ static const char *debugNameForCommunicationId(HildonIMCommunication id)
         "HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL",
         "HILDON_IM_CONTEXT_WIDGET_CHANGED",
         "HILDON_IM_CONTEXT_OPTION_CHANGED",
-        "HILDON_IM_CONTEXT_CLEAR_STICKY",
         "HILDON_IM_CONTEXT_ENTER_ON_FOCUS",
         "HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT",
-        "HILDON_IM_CONTEXT_NO_SPACE_AFTER_COMMIT"
+        "HILDON_IM_CONTEXT_NO_SPACE_AFTER_COMMIT",
+        "HILDON_IM_CONTEXT_SHIFT_LOCKED",
+        "HILDON_IM_CONTEXT_SHIFT_UNLOCKED",
+        "HILDON_IM_CONTEXT_LEVEL_LOCKED",
+        "HILDON_IM_CONTEXT_LEVEL_UNLOCKED",
+        "HILDON_IM_CONTEXT_SHIFT_UNSTICKY",
+        "HILDON_IM_CONTEXT_LEVEL_UNSTICKY"
     };
+
     if (unsigned(id) < (sizeof(mapping) / sizeof(mapping[0]))) {
         return mapping[id];
     } else {
@@ -1022,11 +1028,11 @@ bool QHildonInputContext::x11FilterEvent(QWidget *keywidget, XEvent *event)
         case HILDON_IM_CONTEXT_REQUEST_SURROUNDING:
             sendSurrounding(false);
             return true;
+        case HILDON_IM_CONTEXT_LEVEL_UNSTICKY:
+            mask &= ~(HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK);
+            return true;
         case HILDON_IM_CONTEXT_SHIFT_UNSTICKY:
-            mask &= ~(HILDON_IM_SHIFT_STICKY_MASK |
-                      HILDON_IM_SHIFT_LOCK_MASK |
-                      HILDON_IM_LEVEL_STICKY_MASK |
-                      HILDON_IM_LEVEL_LOCK_MASK);
+            mask &= ~(HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK);
             return true;
         case HILDON_IM_CONTEXT_CANCEL_PREEDIT:
             cancelPreedit();
