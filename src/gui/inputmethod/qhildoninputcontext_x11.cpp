@@ -1049,6 +1049,10 @@ bool QHildonInputContext::x11FilterEvent(QWidget *keywidget, XEvent *event)
 
         case HILDON_IM_CONTEXT_WIDGET_CHANGED:
         case HILDON_IM_CONTEXT_ENTER_ON_FOCUS:
+        case HILDON_IM_CONTEXT_SHIFT_LOCKED:
+        case HILDON_IM_CONTEXT_SHIFT_UNLOCKED:
+        case HILDON_IM_CONTEXT_LEVEL_LOCKED:
+        case HILDON_IM_CONTEXT_LEVEL_UNLOCKED:
             // ignore
             return true;
 
