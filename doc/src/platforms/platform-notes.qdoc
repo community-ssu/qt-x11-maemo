@@ -578,6 +578,9 @@
     the Qt::WA_Maemo5ShowProgressIndicator widget attribute on any top-level
     widget or dialog. If blocking the UI is required, QProgressDialog can be used.
 
+    \o The Qt::WA_TranslucentBackground window attribute does not work with the
+    current Maemo 5 compositing window manager.
+
     \endlist
 
     \section2 UI style guides
