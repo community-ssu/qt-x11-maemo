@@ -579,7 +579,9 @@
     widget or dialog. If blocking the UI is required, QProgressDialog can be used.
 
     \o The Qt::WA_TranslucentBackground window attribute does not work with the
-    current Maemo 5 compositing window manager.
+    current Maemo 5 compositing window manager. All transparent areas are filled
+    with black. An exception are homescreen widgets, whose semi-transparent areas
+    are correctly composited with the home screen.
 
     \endlist
 
