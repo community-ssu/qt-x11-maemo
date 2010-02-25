@@ -648,17 +648,17 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     // 3 Sticky and locking keys initialization
     if (event->type() == QEvent::KeyRelease)
     {
-        if (qtkeycode == Qt::Key_Shift )
-        {
-            setMaskState(&mask,
-                         HILDON_IM_SHIFT_LOCK_MASK,
-                         HILDON_IM_SHIFT_STICKY_MASK,
-                         lastQtkeycode == Qt::Key_Shift);
-        }else if (qtkeycode == LEVEL_KEY){
+        if (qtkeycode == LEVEL_KEY){
             setMaskState(&mask,
                          HILDON_IM_LEVEL_LOCK_MASK,
                          HILDON_IM_LEVEL_STICKY_MASK,
                          lastQtkeycode == LEVEL_KEY);
+        }
+        else if (qtkeycode == Qt::Key_Shift ){
+            setMaskState(&mask,
+                         HILDON_IM_SHIFT_LOCK_MASK,
+                         HILDON_IM_SHIFT_STICKY_MASK,
+                         lastQtkeycode == Qt::Key_Shift);
         }
     }
 
@@ -703,6 +703,12 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
             commitString = string;
         }
     }
+    //6. Shift lock or holding the shift down forces uppercase, ignoring autocap
+    else if ((mask & (HILDON_IM_SHIFT_LOCK_MASK | HILDON_IM_SHIFT_STICKY_MASK )) ||
+        (state & STATE_SHIFT_MASK)){
+        commitString = translateKeycodeAndState(keycode, STATE_SHIFT_MASK, keysym);
+    }
+
     /* Hardware keyboard autocapitalization  */
     if (autoUpper && inputMode & HILDON_GTK_INPUT_MODE_AUTOCAP)
     {
@@ -732,41 +738,6 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
             commitString = QString(currentChar); //sent to the widget
         }
     }
-
-    //6. Shift lock or holding the shift down forces uppercase, ignoring autocap
-    if (mask & HILDON_IM_SHIFT_LOCK_MASK || state & STATE_SHIFT_MASK)
-    {
-        KeySym lower = NoSymbol;
-        KeySym upper = NoSymbol;
-        XConvertCase(keysym, &lower, &upper);
-        QString tempStr = QKeyMapperPrivate::maemo5TranslateKeySym(upper);
-        if (!tempStr.isEmpty())
-            commitString = tempStr.at(0);
-    }else if (mask & HILDON_IM_SHIFT_STICKY_MASK){
-        KeySym lower = NoSymbol;
-        KeySym upper = NoSymbol;
-        QString tempStr = QKeyMapperPrivate::maemo5TranslateKeySym(keysym);
-        QChar currentChar;
-        if (!tempStr.isEmpty()){
-          currentChar = tempStr.at(0);
-
-            /* Simulate shift key being held down in sticky state for non-printables  */
-            if ( currentChar.isPrint() ){
-                /*  For printable characters sticky shift negates the case,
-                 *  including any autocapitalization changes
-                 */
-                if ( currentChar.isUpper() ){
-                    currentChar = currentChar.toLower();
-                    lower = lower;
-                }else{
-                    currentChar = currentChar.toUpper();
-                    upper = upper;
-                }
-                commitString = QString(currentChar); //sent to the widget
-            }
-        }
-    }
-
     //F. word completion manipulation (for fremantle)
     if (event->type() == QEvent::KeyPress &&
         lastCommitMode == HILDON_IM_COMMIT_PREEDIT &&
