@@ -299,7 +299,7 @@ void tst_Selftests::runSubTest()
 
 void tst_Selftests::initTestCase()
 {
-#if !defined(Q_OS_UNIX) || defined(Q_WS_MAC)
+#if !defined(Q_OS_UNIX) || defined(Q_WS_MAC) || defined(Q_WS_MAEMO_5)
     m_checkXMLBlacklist.append("crashes"); // This test crashes (XML valid on Unix only)
 #endif
     m_checkXMLBlacklist.append("waitwithoutgui"); // This test is not a QTestLib test.
