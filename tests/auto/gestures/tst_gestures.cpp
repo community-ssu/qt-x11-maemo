@@ -845,6 +845,9 @@ int GestureItem::InstanceCount = 0;
 
 void tst_Gestures::graphicsItemGesture()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("On Maemo 5 we don't support any gestures", SkipAll);
+#endif
     QGraphicsScene scene;
     QGraphicsView view(&scene);
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
@@ -855,6 +858,7 @@ void tst_Gestures::graphicsItemGesture()
 
     view.show();
     QTest::qWaitForWindowShown(&view);
+    QTest::qWait(500);
     view.ensureVisible(scene.sceneRect());
 
     view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
@@ -966,6 +970,10 @@ void tst_Gestures::graphicsItemTreeGesture()
 
 void tst_Gestures::explicitGraphicsObjectTarget()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("On Maemo 5 we don't support any gestures", SkipAll);
+#endif
+
     QGraphicsScene scene;
     QGraphicsView view(&scene);
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
@@ -1491,6 +1499,10 @@ void tst_Gestures::autoCancelGestures()
 
 void tst_Gestures::autoCancelGestures2()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("On Maemo 5 we don't support any gestures", SkipAll);
+#endif
+
     class MockItem : public GestureItem {
       public:
         MockItem(const char *name) : GestureItem(name) { }
