@@ -315,9 +315,9 @@ FxGridItem *QDeclarativeGridViewPrivate::createItem(int modelIndex)
     if (QDeclarativeItem *item = model->item(modelIndex, false)) {
         listItem = new FxGridItem(item, q);
         listItem->index = modelIndex;
+        listItem->item->setZValue(1);
         // complete
         model->completeItem();
-        listItem->item->setZValue(1);
         listItem->item->setParent(q->viewport());
         unrequestedItems.remove(listItem->item);
     }
@@ -675,6 +675,7 @@ void QDeclarativeGridViewPrivate::updateCurrent(int modelIndex)
 
 /*!
     \qmlclass GridView QDeclarativeGridView
+    \since 4.7
     \inherits Flickable
     \brief The GridView item provides a grid view of items provided by a model.
 

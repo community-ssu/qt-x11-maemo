@@ -71,7 +71,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \qmlclass Animation QDeclarativeAbstractAnimation
-  \since 4.7
+    \since 4.7
     \brief The Animation element is the base of all QML animations.
 
     The Animation element cannot be used directly in a QML file.  It exists
@@ -515,7 +515,7 @@ void QDeclarativeAbstractAnimation::timelineComplete()
 
 /*!
     \qmlclass PauseAnimation QDeclarativePauseAnimation
-  \since 4.7
+    \since 4.7
     \inherits Animation
     \brief The PauseAnimation element provides a pause for an animation.
 
@@ -552,7 +552,7 @@ void QDeclarativePauseAnimationPrivate::init()
 {
     Q_Q(QDeclarativePauseAnimation);
     pa = new QPauseAnimation;
-    QDeclarativeGraphics_setParent_noEvent(pa, q);
+    QDeclarative_setParent_noEvent(pa, q);
 }
 
 /*!
@@ -589,7 +589,7 @@ QAbstractAnimation *QDeclarativePauseAnimation::qtAnimation()
 
 /*!
     \qmlclass ColorAnimation QDeclarativeColorAnimation
-  \since 4.7
+    \since 4.7
     \inherits PropertyAnimation
     \brief The ColorAnimation element allows you to animate color changes.
 
@@ -653,7 +653,7 @@ void QDeclarativeColorAnimation::setTo(const QColor &t)
 
 /*!
     \qmlclass ScriptAction QDeclarativeScriptAction
-  \since 4.7
+    \since 4.7
     \inherits Animation
     \brief The ScriptAction element allows scripts to be run during an animation.
 
@@ -677,7 +677,7 @@ void QDeclarativeScriptActionPrivate::init()
 {
     Q_Q(QDeclarativeScriptAction);
     rsa = new QActionAnimation(&proxy);
-    QDeclarativeGraphics_setParent_noEvent(rsa, q);
+    QDeclarative_setParent_noEvent(rsa, q);
 }
 
 /*!
@@ -759,7 +759,7 @@ QAbstractAnimation *QDeclarativeScriptAction::qtAnimation()
 
 /*!
     \qmlclass PropertyAction QDeclarativePropertyAction
-  \since 4.7
+    \since 4.7
     \inherits Animation
     \brief The PropertyAction element allows immediate property changes during animation.
 
@@ -795,7 +795,7 @@ void QDeclarativePropertyActionPrivate::init()
 {
     Q_Q(QDeclarativePropertyAction);
     spa = new QActionAnimation;
-    QDeclarativeGraphics_setParent_noEvent(spa, q);
+    QDeclarative_setParent_noEvent(spa, q);
 }
 
 /*!
@@ -1008,7 +1008,7 @@ void QDeclarativePropertyAction::transition(QDeclarativeStateActions &actions,
 
 /*!
     \qmlclass ParentAction QDeclarativeParentAction
-  \since 4.7
+    \since 4.7
     \inherits Animation
     \brief The ParentAction element allows parent changes during animation.
 
@@ -1056,7 +1056,7 @@ void QDeclarativeParentActionPrivate::init()
 {
     Q_Q(QDeclarativeParentAction);
     cpa = new QActionAnimation;
-    QDeclarativeGraphics_setParent_noEvent(cpa, q);
+    QDeclarative_setParent_noEvent(cpa, q);
 }
 
 /*!
@@ -1212,7 +1212,7 @@ void QDeclarativeParentAction::transition(QDeclarativeStateActions &actions,
 
 /*!
     \qmlclass NumberAnimation QDeclarativeNumberAnimation
-  \since 4.7
+    \since 4.7
     \inherits PropertyAnimation
     \brief The NumberAnimation element allows you to animate changes in properties of type qreal.
 
@@ -1276,7 +1276,7 @@ void QDeclarativeNumberAnimation::setTo(qreal t)
 
 /*!
     \qmlclass Vector3dAnimation QDeclarativeVector3dAnimation
-  \since 4.7
+    \since 4.7
     \inherits PropertyAnimation
     \brief The Vector3dAnimation element allows you to animate changes in properties of type QVector3d.
 */
@@ -1335,6 +1335,7 @@ void QDeclarativeVector3dAnimation::setTo(QVector3D t)
 
 /*!
     \qmlclass RotationAnimation QDeclarativeRotationAnimation
+    \since 4.7
     \inherits PropertyAnimation
     \brief The RotationAnimation element allows you to animate rotations.
 
@@ -1549,7 +1550,7 @@ QDeclarativeListProperty<QDeclarativeAbstractAnimation> QDeclarativeAnimationGro
 
 /*!
     \qmlclass SequentialAnimation QDeclarativeSequentialAnimation
-  \since 4.7
+    \since 4.7
     \inherits Animation
     \brief The SequentialAnimation element allows you to run animations sequentially.
 
@@ -1610,7 +1611,7 @@ void QDeclarativeSequentialAnimation::transition(QDeclarativeStateActions &actio
 
 /*!
     \qmlclass ParallelAnimation QDeclarativeParallelAnimation
-  \since 4.7
+    \since 4.7
     \inherits Animation
     \brief The ParallelAnimation element allows you to run animations in parallel.
 
@@ -1719,7 +1720,7 @@ void QDeclarativePropertyAnimationPrivate::convertVariant(QVariant &variant, int
 
 /*!
     \qmlclass PropertyAnimation QDeclarativePropertyAnimation
-  \since 4.7
+    \since 4.7
     \inherits Animation
     \brief The PropertyAnimation element allows you to animate property changes.
 
@@ -1797,7 +1798,7 @@ void QDeclarativePropertyAnimationPrivate::init()
 {
     Q_Q(QDeclarativePropertyAnimation);
     va = new QDeclarativeTimeLineValueAnimator;
-    QDeclarativeGraphics_setParent_noEvent(va, q);
+    QDeclarative_setParent_noEvent(va, q);
 }
 
 /*!
@@ -2375,7 +2376,7 @@ QDeclarativeParentAnimation::QDeclarativeParentAnimation(QObject *parent)
 {
     Q_D(QDeclarativeParentAnimation);
     d->topLevelGroup = new QSequentialAnimationGroup;
-    QDeclarativeGraphics_setParent_noEvent(d->topLevelGroup, this);
+    QDeclarative_setParent_noEvent(d->topLevelGroup, this);
 
     d->startAction = new QActionAnimation;
     d->topLevelGroup->addAnimation(d->startAction);
