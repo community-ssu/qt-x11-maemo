@@ -156,6 +156,206 @@ QT_BEGIN_NAMESPACE
     \sa QScrollArea
 */
 
+#ifdef Q_WS_MAEMO_5
+#include "qabstractkineticscroller.h"
+#include "qabstractitemview.h"
+#include "qgraphicsview.h"
+#include "qgraphicsitem.h"
+
+extern bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
+
+class QAbstractScrollAreaKineticScroller : public QObject, public QAbstractKineticScroller {
+    Q_OBJECT
+public:
+    QAbstractScrollAreaKineticScroller()
+        : QObject(), QAbstractKineticScroller(), area(0), ignoreEvents(false)
+    { }
+
+    void setWidget(QAbstractScrollArea *widget)
+    {
+        if (area)
+            area->viewport()->removeEventFilter(this);
+        reset();
+        area = widget;
+        setParent(area);
+        if (area)
+            area->viewport()->installEventFilter(this);
+    }
+
+protected:
+    bool eventFilter(QObject *o, QEvent *e)
+    {
+        bool res = false;
+        bool isMouseEvent = false;
+
+        if (area && (o == area->viewport()) && !ignoreEvents && area->isEnabled() && isEnabled()) {
+            switch (e->type()) {
+            case QEvent::MouseButtonPress:
+                // re-install the event filter so that we get the mouse release before all other filters.
+                // this is an evil hack, but hard to work around without prioritized event filters.
+                area->viewport()->removeEventFilter(this);
+                area->viewport()->installEventFilter(this);
+            case QEvent::MouseMove:
+            case QEvent::MouseButtonRelease:
+            case QEvent::MouseButtonDblClick: {
+                isMouseEvent = true;
+                res = handleMouseEvent(static_cast<QMouseEvent *>(e));
+                break;
+            }
+            case QEvent::ChildAdded:
+            case QEvent::ChildRemoved: {
+                QChildEvent *ce = static_cast<QChildEvent *>(e);
+                if (ce->child()->isWidgetType())
+                    static_cast<QWidget *>(ce->child())->setAttribute(Qt::WA_TransparentForMouseEvents, ce->added());
+                break;
+            }
+            default:
+                break;
+            }
+        }
+
+        res |= QObject::eventFilter(o, e);
+
+        // all child widgets get the WA_TransparentForMouseEvents attribute, so
+        // we have to find the "real" widget to forward this event to...
+        if (!res && isMouseEvent) {
+            QMouseEvent *me = static_cast<QMouseEvent *>(e);
+            if (QWidget *childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), me->globalPos())) {
+                QMouseEvent cme(me->type(), childWidget->mapFromGlobal(me->globalPos()),
+                                me->globalPos(), me->button(), me->buttons(), me->modifiers());
+                sendEvent(childWidget, &cme);
+                res = cme.isAccepted();
+            }
+        }
+        return res;
+    }
+
+    void cancelLeftMouseButtonPress(const QPoint &globalPressPos)
+    {
+        if (QWidget *childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), globalPressPos)) {
+            // simulate a mouse-move and mouse-release far, far away
+            QPoint faraway(-1000, -1000);
+            QMouseEvent cmem(QEvent::MouseMove, faraway, childWidget->mapToGlobal(faraway),
+                             Qt::LeftButton, QApplication::mouseButtons() | Qt::LeftButton,
+                             QApplication::keyboardModifiers());
+            sendEvent(childWidget, &cmem);
+
+            QMouseEvent cmer(QEvent::MouseButtonRelease, faraway, childWidget->mapToGlobal(faraway),
+                             Qt::LeftButton, QApplication::mouseButtons() & ~Qt::LeftButton,
+                             QApplication::keyboardModifiers());
+            sendEvent(childWidget, &cmer);
+        }
+    }
+
+    void stateChanged(State oldState)
+    {
+        // hack to remove the current selection as soon as we start to scroll
+        if (QAbstractItemView *view = qobject_cast<QAbstractItemView *>(area)) {
+            State newState = state();
+
+            if (newState == MousePressed)
+                oldSelection = view->selectionModel()->selection();
+            else if (oldState == MousePressed && newState == Pushing)
+                view->selectionModel()->select(oldSelection, QItemSelectionModel::ClearAndSelect);
+        }
+    }
+
+    bool canStartScrollingAt(const QPoint &globalPos) const
+    {
+        // don't start scrolling when a drag mode has been set.
+        // don't start scrolling on a movable item.
+        if (QGraphicsView *view = qobject_cast<QGraphicsView *>(area)) {
+            if (view->dragMode() != QGraphicsView::NoDrag)
+                return false;
+
+            QGraphicsItem *childItem = view->itemAt(view->viewport()->mapFromGlobal(globalPos));
+
+            if (childItem && (childItem->flags() & QGraphicsItem::ItemIsMovable))
+                return false;
+        }
+        // don't start scrolling on a QSlider
+        if (qobject_cast<QSlider *>(mouseTransparentChildAtGlobalPos(area->viewport(), globalPos))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    QSize viewportSize() const
+    {
+        return area ? area->viewport()->size() : QSize();
+    }
+
+    QPoint maximumScrollPosition() const
+    {
+        QPoint p;
+        if (area) {
+            if (QAbstractSlider *s = area->horizontalScrollBar())
+                p.setX(s->maximum());
+            if (QAbstractSlider *s = area->verticalScrollBar())
+                p.setY(s->maximum());
+        }
+        return p;
+    }
+
+    QPoint scrollPosition() const
+    {
+        QPoint p;
+        if (area) {
+            if (QAbstractSlider *s = area->horizontalScrollBar())
+                p.setX(s->value());
+            if (QAbstractSlider *s = area->verticalScrollBar())
+                p.setY(s->value());
+        }
+        return p;
+    }
+
+    void setScrollPosition(const QPoint &p, const QPoint &overShoot)
+    {
+        if (area) {
+            if (QAbstractSlider *s = area->horizontalScrollBar())
+                s->setValue(p.x());
+            if (QAbstractSlider *s = area->verticalScrollBar())
+                s->setValue(p.y());
+
+            QPoint delta = overShoot - lastOverShoot;
+            if (!delta.isNull())
+                area->viewport()->move(area->viewport()->pos() + delta);
+            lastOverShoot = overShoot;
+        }
+    }
+
+private:
+    static QWidget *mouseTransparentChildAtGlobalPos(QWidget *parent, const QPoint &gp)
+    {
+        foreach (QWidget *w, parent->findChildren<QWidget *>()) {
+            if (w && !w->isWindow() && w->isVisible() && (w->rect().contains(w->mapFromGlobal(gp)))) {
+                if (QWidget *t = mouseTransparentChildAtGlobalPos(w, gp))
+                    return t;
+                else
+                    return w;
+            }
+        }
+        return 0;
+    }
+
+    void sendEvent(QWidget *w, QEvent *e)
+    {
+        ignoreEvents = true;
+        qt_sendSpontaneousEvent(w, e);
+        ignoreEvents = false;
+    }
+
+private:
+    QAbstractScrollArea *area;
+    QItemSelection oldSelection;
+    bool ignoreEvents;
+    QPoint lastOverShoot;
+};
+
+#endif // Q_WS_MAEMO_5
+
+
 QAbstractScrollAreaPrivate::QAbstractScrollAreaPrivate()
     :hbar(0), vbar(0), vbarpolicy(Qt::ScrollBarAsNeeded), hbarpolicy(Qt::ScrollBarAsNeeded),
      viewport(0), cornerWidget(0), left(0), top(0), right(0), bottom(0),
@@ -296,6 +496,12 @@ void QAbstractScrollAreaPrivate::init()
     layoutChildren();
 #ifndef Q_WS_MAC
     viewport->grabGesture(Qt::PanGesture);
+#endif
+#ifdef Q_WS_MAEMO_5
+    QAbstractKineticScroller *ks = new QAbstractScrollAreaKineticScroller();
+    ks->setEnabled(false);
+    static_cast<QAbstractScrollAreaKineticScroller *>(ks)->setWidget(q);
+    q->setProperty("kineticScroller", QVariant::fromValue(ks));
 #endif
 }
 
@@ -538,6 +744,12 @@ void QAbstractScrollArea::setViewport(QWidget *widget)
 {
     Q_D(QAbstractScrollArea);
     if (widget != d->viewport) {
+#ifdef Q_WS_MAEMO_5
+        QAbstractKineticScroller *scroller = property("kineticScroller").value<QAbstractKineticScroller *>();
+        if (scroller)
+            static_cast<QAbstractScrollAreaKineticScroller *>(scroller)->setWidget(0);
+#endif
+
         QWidget *oldViewport = d->viewport;
         if (!widget)
             widget = new QWidget;
@@ -553,6 +765,11 @@ void QAbstractScrollArea::setViewport(QWidget *widget)
             d->viewport->show();
         QMetaObject::invokeMethod(this, "setupViewport", Q_ARG(QWidget *, widget));
         delete oldViewport;
+
+#ifdef Q_WS_MAEMO_5
+        if (scroller)
+            static_cast<QAbstractScrollAreaKineticScroller *>(scroller)->setWidget(this);
+#endif
     }
 }
 
@@ -1388,5 +1605,8 @@ QT_END_NAMESPACE
 
 #include "moc_qabstractscrollarea.cpp"
 #include "moc_qabstractscrollarea_p.cpp"
+#ifdef Q_WS_MAEMO_5
+#include "qabstractscrollarea.moc"
+#endif
 
 #endif // QT_NO_SCROLLAREA

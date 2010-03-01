@@ -56,6 +56,7 @@
 #include "qvalidator.h"
 #include "qevent.h"
 #include "qdialog_p.h"
+#include "qdesktopwidget.h"
 
 QT_USE_NAMESPACE
 
@@ -230,11 +231,28 @@ void QInputDialogPrivate::ensureLayout()
     QObject::connect(buttonBox, SIGNAL(accepted()), q, SLOT(accept()));
     QObject::connect(buttonBox, SIGNAL(rejected()), q, SLOT(reject()));
 
-    mainLayout = new QVBoxLayout(q);
+    mainLayout = new QVBoxLayout();
     mainLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
     mainLayout->addWidget(label);
     mainLayout->addWidget(inputWidget);
+#ifdef Q_WS_MAEMO_5
+    buttonBox->setOrientation(Qt::Vertical);
+
+    if (QApplication::desktop()->screenGeometry().width() < QApplication::desktop()->screenGeometry().height()) {
+        // portrait
+        mainLayout->addWidget(buttonBox);
+        q->setLayout(mainLayout);
+    } else {
+        // landscape
+        QBoxLayout *boxLayout = new QHBoxLayout();
+        boxLayout->addLayout(mainLayout);
+        boxLayout->addWidget(buttonBox);
+        q->setLayout(boxLayout);
+    }
+#else
     mainLayout->addWidget(buttonBox);
+    q->setLayout(mainLayout);
+#endif
     ensureEnabledConnection(qobject_cast<QAbstractSpinBox *>(inputWidget));
     inputWidget->show();
 }

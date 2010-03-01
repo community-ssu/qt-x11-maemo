@@ -542,10 +542,15 @@ void QLineEdit::setEchoMode(EchoMode mode)
     if (mode == (EchoMode)d->control->echoMode())
         return;
     Qt::InputMethodHints imHints = inputMethodHints();
-    if (mode == Password) {
+    if (mode == Password || mode == NoEcho) {
         imHints |= Qt::ImhHiddenText;
     } else {
         imHints &= ~Qt::ImhHiddenText;
+    }
+    if (mode != Normal) {
+        imHints |= (Qt::ImhNoAutoUppercase | Qt::ImhNoPredictiveText);
+    } else {
+        imHints &= ~(Qt::ImhNoAutoUppercase | Qt::ImhNoPredictiveText);
     }
     setInputMethodHints(imHints);
     d->control->setEchoMode(mode);
@@ -2039,6 +2044,8 @@ void QLineEdit::dropEvent(QDropEvent* e)
 void QLineEdit::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu *menu = createStandardContextMenu();
+    if (!menu)
+        return;
     menu->setAttribute(Qt::WA_DeleteOnClose);
     menu->popup(event->globalPos());
 }
@@ -2055,6 +2062,9 @@ void QLineEdit::contextMenuEvent(QContextMenuEvent *event)
 
 QMenu *QLineEdit::createStandardContextMenu()
 {
+#ifdef Q_WS_MAEMO_5
+    return 0;
+#else
     Q_D(QLineEdit);
     QMenu *popup = new QMenu(this);
     popup->setObjectName(QLatin1String("qt_edit_menu"));
@@ -2125,6 +2135,7 @@ QMenu *QLineEdit::createStandardContextMenu()
         popup->addMenu(ctrlCharacterMenu);
     }
     return popup;
+#endif // !Q_WS_MAEMO_5
 }
 #endif // QT_NO_CONTEXTMENU
 

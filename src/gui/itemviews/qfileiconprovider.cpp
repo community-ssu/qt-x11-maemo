@@ -392,7 +392,8 @@ QIcon QFileIconProvider::icon(const QFileInfo &info) const
         return platformIcon;
 
 #if defined(Q_WS_X11) && !defined(QT_NO_STYLE_GTK)
-    if (X11->desktopEnvironment == DE_GNOME) {
+    if ((X11->desktopEnvironment == DE_GNOME) ||
+        (X11->desktopEnvironment == DE_MAEMO5)) {
         QIcon gtkIcon = QGtkStylePrivate::getFilesystemIcon(info);
         if (!gtkIcon.isNull())
             return gtkIcon;

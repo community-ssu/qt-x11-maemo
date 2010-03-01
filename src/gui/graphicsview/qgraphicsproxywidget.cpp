@@ -1326,12 +1326,13 @@ void QGraphicsProxyWidget::focusInEvent(QFocusEvent *event)
             focusChild->setFocus(event->reason());
         break;
     default:
+        // note: the widget has not received the mouse down event at this time so focusWidget() is not updated yet!
 	if (d->widget && d->widget->focusWidget()) {
 	    d->widget->focusWidget()->setFocus(event->reason());
-	    return;
         }
         break;
     }
+    d->updateProxyInputMethodAcceptanceFromWidget();
 }
 
 /*!

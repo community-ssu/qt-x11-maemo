@@ -284,11 +284,20 @@ void tst_QMessageBox::escapeButton()
     msgBox.setEscapeButton(QMessageBox::Ok);
     QVERIFY(msgBox.escapeButton() == 0);
 
+
     QMessageBox msgBox2;
     msgBox2.addButton(QMessageBox::Yes);
     msgBox2.addButton(QMessageBox::No);
+#ifdef Q_WS_MAEMO_5
+    keyToSend = Qt::Key_Y;
+    QTimer::singleShot(2000,this,SLOT(sendKey()));
+    exec(&msgBox2);
+    QVERIFY(msgBox2.clickedButton() == msgBox2.button(QMessageBox::Yes));
+    
+#else
     exec(&msgBox2);
     QVERIFY(msgBox2.clickedButton() == msgBox2.button(QMessageBox::No)); // auto detected (one No button only)
+#endif
 
     QPushButton *rejectButton = new QPushButton;
     msgBox2.addButton(rejectButton, QMessageBox::RejectRole);
@@ -296,8 +305,16 @@ void tst_QMessageBox::escapeButton()
     QVERIFY(msgBox2.clickedButton() == rejectButton); // auto detected (one reject button only)
 
     msgBox2.addButton(new QPushButton, QMessageBox::RejectRole);
+#ifdef Q_WS_MAEMO_5
+    keyToSend = Qt::Key_Y;
+    QTimer::singleShot(2000,this,SLOT(sendKey()));
+    exec(&msgBox2);
+    QVERIFY(msgBox2.clickedButton() == msgBox2.button(QMessageBox::Yes));
+    
+#else
     exec(&msgBox2);
     QVERIFY(msgBox2.clickedButton() == msgBox2.button(QMessageBox::No)); // auto detected (one No button only)
+#endif
 }
 
 void tst_QMessageBox::statics()
@@ -394,10 +411,11 @@ void tst_QMessageBox::staticSourceCompat()
 #if defined(Q_WS_MAC) && !defined(QT_NO_STYLE_MAC)
     if (qobject_cast<QMacStyle *>(qApp->style()))
         expectedButton = int(QMessageBox::No);
-#elif !defined(QT_NO_STYLE_CLEANLOOKS)
+#elif !defined(QT_NO_STYLE_CLEANLOOKS) && !defined(Q_WS_MAEMO_5)
     if (qobject_cast<QCleanlooksStyle *>(qApp->style()))
         expectedButton = int(QMessageBox::No);
 #endif
+
     QCOMPARE(ret, expectedButton);
 
     keyToSend = Qt::Key_Enter;
@@ -474,7 +492,7 @@ void tst_QMessageBox::staticBinaryCompat()
 #if defined(Q_WS_MAC) && !defined(QT_NO_STYLE_MAC)
     if (qobject_cast<QMacStyle *>(qApp->style()))
         expectedButton = int(Old_No);
-#elif !defined(QT_NO_STYLE_CLEANLOOKS)
+#elif !defined(QT_NO_STYLE_CLEANLOOKS) && !defined(Q_WS_MAEMO_5)
     if (qobject_cast<QCleanlooksStyle *>(qApp->style()))
         expectedButton = int(Old_No);
 #endif

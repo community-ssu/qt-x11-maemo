@@ -725,6 +725,7 @@ If you are using pre-built binaries, follow the instructions given in the
     \o \l{Qt for Windows CE Requirements}
     \o \l{Qt for Windows Requirements}
     \o \l{Qt for X11 Requirements}
+    \o \l{Qt for Maemo 5 Requirements}
     \endlist
 */
 
@@ -1068,4 +1069,78 @@ If you are using pre-built binaries, follow the instructions given in the
     to get more information about how to setup the development environment.
 
     \sa {Known Issues in %VERSION%}
+*/
+
+/*!
+    \page requirements-maemo5.html
+    \title Qt for Maemo 5 Requirements
+    \ingroup installation
+    \brief Setting up the Maemo 5 environment for Qt.
+    \previouspage General Qt Requirements
+
+    Qt for Maemo 5 requires the official Scratchbox-based SDK. It can be downloaded
+    from \l{http://www.forum.nokia.com/Tools_Docs_and_Code/Tools/Platforms/Maemo/}.
+
+    We recommend that you take a look at the Wiki found here:
+    \l{http://wiki.maemo.org/Documentation/Maemo5_Final_Installation}.
+
+    The official Maemo 5 SDK contains the Qt binaries and tools required for development.
+    Make sure the "libqt4-dev" package is installed for both the x86 and ARM targets within
+    Scratchbox.
+
+    Running Qt applications on a real device requires the Qt 4 packages to be installed
+    on your device. The Debian-based installation system will automatically fetch
+    the required Qt libraries. See \l{The Maemo 5 Platform - Introduction to Qt} for
+    more information about packaging Qt applications.
+*/
+
+/*! 
+    \page install-Maemo5-binary.html
+    \title Installing Qt on the Maemo 5 Platform from a Binary Package
+    \ingroup qtmaemo5
+    \ingroup installation
+    \brief How to install Qt on the Maemo 5 platform from a binary package.
+
+    Qt is shipped as part of the Maemo 5 SDK. See the \l{Qt for Maemo 5 Requirements}
+    document for details about installing the Maemo 5 SDK.
+
+    Once the SDK is up and running, install the \c libqt4-dev package to get the Qt libraries,
+    headers and build tools.
+
+    To install the Qt for Maemo 5 examples, install the \c libqt4-examples package.
+
+    For more information about building and running Qt programs on Maemo 5,
+    see \l{The Maemo 5 Platform - Introduction to Qt}.
+
+    We hope you will enjoy using Qt.
+*/
+
+/*! 
+    \page install-Maemo5.html
+    \title Installing Qt on the Maemo 5 Platform from Source
+    \ingroup qtmaemo5
+    \brief How to install Qt on the Maemo 5 platform from source.
+
+    \note Qt for Maemo 5 is available as binary packages. See 
+    \l{Installing Qt on the Maemo 5 Platform from a Binary Package} for instructions
+    on how to install it.
+
+    Since memory on the device is restricted, Qt for Maemo 5 applications should use the
+    installed Qt instead of shipping their own Qt version. These instructions are intended
+    for users that wish to test and experiment with own Qt builds.
+
+    Building Qt for Maemo 5 is only supported in the official Scratchbox-based SDK. See
+    \l{Qt for Maemo 5 Requirements} for more information.
+
+    To build Qt for Maemo 5, follow the \l{Installing Qt on X11 Platforms} documentation.
+    To enable Maemo 5 support, the additional \c -maemo5 configure switch is required.
+
+    Example configure line for building on the x86 target: \c{./configure -maemo5}
+
+    Due to Scratchbox providing both desktop OpenGL and OpenGL ES 2, OpenGL ES 2 needs to be
+    explicitly enabled for ARM builds if required.
+
+    Example configure line for the ARM target: \c{./configure -maemo5 -opengl es2}
+
+    We hope you will enjoy using Qt.
 */

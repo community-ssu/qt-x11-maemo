@@ -768,7 +768,7 @@ void tst_QDockWidget::task169808_setFloating()
         QSize sizeHint() const
         {
             const QRect& deskRect = qApp->desktop()->availableGeometry();
-            return QSize(qMin(300, deskRect.width()), 300);
+            return QSize(qMin(300, deskRect.width()), 280);//Height should be not larger than 280 for Maemo5
         }
 
         QSize minimumSizeHint() const
@@ -832,13 +832,14 @@ void tst_QDockWidget::task237438_setFloatingCrash()
 
 void tst_QDockWidget::task248604_infiniteResize()
 {
-    QDockWidget d;
+    QWidget topLevel;
+    QDockWidget d(&topLevel);
     QTabWidget *t = new QTabWidget;
     t->addTab(new QWidget, "Foo");
     d.setWidget(t);
     d.setContentsMargins(2, 2, 2, 2);
     d.setMinimumSize(320, 240);
-    d.show();
+    topLevel.show();
     QTest::qWait(400);
     QCOMPARE(d.size(), QSize(320, 240));
 }

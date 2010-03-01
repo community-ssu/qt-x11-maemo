@@ -1250,6 +1250,8 @@ void QAbstractSpinBox::contextMenuEvent(QContextMenuEvent *event)
 
     d->reset();
     QPointer<QMenu> menu = d->edit->createStandardContextMenu();
+    if (!menu)
+        return;
 
     QAction *selAll = new QAction(tr("&Select All"), menu);
     menu->insertAction(d->edit->d_func()->selectAllAction,

@@ -614,6 +614,10 @@ void tst_QPushButton::sizeHint_data()
 
 void tst_QPushButton::sizeHint()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo5 window manager.", SkipAll);
+#endif
+
     QFETCH(QString, stylename);
 
     QStyle *style = QStyleFactory::create(stylename);

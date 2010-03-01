@@ -194,6 +194,7 @@ private slots:
     void QTBUG7833_sectionClicked();
 
 protected:
+    QWidget *topLevel;
     QHeaderView *view;
     QStandardItemModel *model;
 };
@@ -343,7 +344,8 @@ void tst_QHeaderView::cleanupTestCase()
 
 void tst_QHeaderView::init()
 {
-    view = new QHeaderView(Qt::Vertical);
+    topLevel = new QWidget();
+    view = new QHeaderView(Qt::Vertical,topLevel);
     // Some initial value tests before a model is added
     QCOMPARE(view->length(), 0);
     QVERIFY(view->sizeHint() == QSize(0,0));
@@ -371,7 +373,8 @@ void tst_QHeaderView::init()
     QSignalSpy spy(view, SIGNAL(sectionCountChanged(int, int)));
     view->setModel(model);
     QCOMPARE(spy.count(), 1);
-    view->show();
+    view->resize(200,200);
+    topLevel->show();
 }
 
 void tst_QHeaderView::cleanup()
@@ -506,7 +509,7 @@ void tst_QHeaderView::stretch()
     view->resize(viewSize);
     view->setStretchLastSection(true);
     QCOMPARE(view->stretchLastSection(), true);
-    view->show();
+    topLevel->show();
     QCOMPARE(view->width(), viewSize.width());
     QCOMPARE(view->visualIndexAt(view->viewport()->height() - 5), 3);
 
@@ -558,7 +561,7 @@ void tst_QHeaderView::sectionSize()
     QFETCH(int, lastVisibleSectionSize);
     QFETCH(int, persistentSectionSize);
 
-#ifdef Q_OS_WINCE
+#if defined( Q_OS_WINCE ) || defined( Q_WS_MAEMO_5 )
     // We test on a device with doubled pixels. Therefore we need to specify
     // different boundaries.
     initialDefaultSize = qMax(view->minimumSectionSize(), 30);
@@ -633,12 +636,15 @@ void tst_QHeaderView::visualIndexAt_data()
     QTest::addColumn<QList<int> >("visual");
 
     QList<int> coordinateList;
-#ifndef Q_OS_WINCE
-    coordinateList << -1 << 0 << 31 << 91 << 99999;
-#else
+#ifdef Q_WS_MAEMO_5
+    // Maemo 5 displayes the sections larger, so you get different boundaries.
+    coordinateList << -1 << 0 << 35 << 105 << 99999;
+#elif defined(Q_OS_WINCE)
     // We test on a device with doubled pixels. Therefore we need to specify
     // different boundaries.
     coordinateList << -1 << 0 << 33 << 97 << 99999;
+#else
+    coordinateList << -1 << 0 << 31 << 91 << 99999;
 #endif
 
     QTest::newRow("no hidden, no moved sections")
@@ -672,13 +678,15 @@ void tst_QHeaderView::visualIndexAt()
     QFETCH(QList<int>, visual);
 
     view->setStretchLastSection(true);
-    view->show();
+    topLevel->show();
 
     for (int i = 0; i < hidden.count(); ++i)
         view->setSectionHidden(hidden.at(i), true);
 
     for (int j = 0; j < from.count(); ++j)
         view->moveSection(from.at(j), to.at(j));
+
+    QTest::qWait(100);
 
     for (int k = 0; k < coordinate.count(); ++k)
         QCOMPARE(view->visualIndexAt(coordinate.at(k)), visual.at(k));
@@ -694,7 +702,7 @@ void tst_QHeaderView::length()
     view->setFont(font);
 #endif
     view->setStretchLastSection(true);
-    view->show();
+    topLevel->show();
 
     //minimumSectionSize should be the size of the last section of the widget is not tall enough
     int length = view->minimumSectionSize();
@@ -706,7 +714,7 @@ void tst_QHeaderView::length()
     QCOMPARE(length, view->length());
 
     view->setStretchLastSection(false);
-    view->show();
+    topLevel->show();
 
     QVERIFY(length != view->length());
 
@@ -757,7 +765,7 @@ void tst_QHeaderView::logicalIndexAt()
     QCOMPARE(view->logicalIndexAt(0), 0);
     QCOMPARE(view->logicalIndexAt(1), 0);
 
-    view->show();
+    topLevel->show();
     view->setStretchLastSection(true);
     // First item
     QCOMPARE(view->logicalIndexAt(0), 0);
@@ -1060,7 +1068,7 @@ void  tst_QHeaderView::resizeWithResizeModes()
         view->resizeSection(i, sections.at(i));
         view->setResizeMode(i, (QHeaderView::ResizeMode)modes.at(i));
     }
-    view->show();
+    topLevel->show();
     view->resize(size, size);
     for (int j = 0; j < expected.count(); ++j)
         QCOMPARE(view->sectionSize(j), expected.at(j));
@@ -1158,7 +1166,7 @@ void tst_QHeaderView::resizeSection()
 
     view->resize(400, 400);
 
-    view->show();
+    topLevel->show();
     view->setMovable(true);
     view->setStretchLastSection(false);
 

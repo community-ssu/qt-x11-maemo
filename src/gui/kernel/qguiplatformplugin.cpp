@@ -179,6 +179,9 @@ QString QGuiPlatformPlugin::styleName()
     case DE_CDE:
         stylename = QLatin1String("cde");
         break;
+    case DE_MAEMO5:
+        stylename = QLatin1String("maemo5");
+        break;
     default:
         // Don't do anything
         break;

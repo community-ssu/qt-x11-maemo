@@ -653,7 +653,7 @@ void tst_QMdiArea::changeWindowTitle()
 #else
     widget->setWindowState(Qt::WindowMaximized);
 #endif
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QTRY_COMPARE( mw->windowTitle(), QString::fromLatin1("%1 - [%2]").arg(mwc).arg(wc) );
 #endif
 
@@ -663,7 +663,7 @@ void tst_QMdiArea::changeWindowTitle()
     qApp->processEvents();
     QTest::qWaitForWindowShown(mw);
 
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QTRY_COMPARE( mw->windowTitle(), QString::fromLatin1("%1 - [%2]").arg(mwc).arg(wc) );
 #endif
 
@@ -681,7 +681,7 @@ void tst_QMdiArea::changeWindowTitle()
     widget->setWindowState(Qt::WindowMaximized);
 #endif
     qApp->processEvents();
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QTRY_COMPARE( mw->windowTitle(), QString::fromLatin1("%1 - [%2]").arg(mwc).arg(wc) );
     widget->setWindowTitle( wc2 );
     QCOMPARE( mw->windowTitle(), QString::fromLatin1("%1 - [%2]").arg(mwc).arg(wc2) );
@@ -699,7 +699,7 @@ void tst_QMdiArea::changeWindowTitle()
 #endif
 
     qApp->processEvents();
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QCOMPARE( mw->windowTitle(), QString::fromLatin1("%1 - [%2]").arg(mwc2).arg(wc2) );
 #endif
 #ifdef USE_SHOW
@@ -708,7 +708,7 @@ void tst_QMdiArea::changeWindowTitle()
     widget->setWindowState(Qt::WindowNoState);
 #endif
     qApp->processEvents();
-#if defined(Q_WS_MAC) || defined(Q_OS_WINCE)
+#if defined(Q_WS_MAC) || defined(Q_OS_WINCE) || defined(Q_WS_MAEMO_5)
     QCOMPARE(mw->windowTitle(), mwc);
 #else
     QCOMPARE( mw->windowTitle(), mwc2 );
@@ -720,7 +720,7 @@ void tst_QMdiArea::changeWindowTitle()
     widget->setWindowState(Qt::WindowMaximized);
 #endif
     qApp->processEvents();
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QCOMPARE( mw->windowTitle(), QString::fromLatin1("%1 - [%2]").arg(mwc2).arg(wc2) );
 #endif
 
@@ -769,7 +769,7 @@ void tst_QMdiArea::changeModified()
     QCOMPARE( mw->isWindowModified(), false);
     QCOMPARE( widget->isWindowModified(), true);
     widget->setWindowState(Qt::WindowMaximized);
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QCOMPARE( mw->isWindowModified(), true);
 #endif
     QCOMPARE( widget->isWindowModified(), true);
@@ -779,7 +779,7 @@ void tst_QMdiArea::changeModified()
     QCOMPARE( widget->isWindowModified(), true);
 
     widget->setWindowState(Qt::WindowMaximized);
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QCOMPARE( mw->isWindowModified(), true);
 #endif
     QCOMPARE( widget->isWindowModified(), true);
@@ -789,7 +789,7 @@ void tst_QMdiArea::changeModified()
     QCOMPARE( widget->isWindowModified(), false);
 
     widget->setWindowModified(true);
-#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QCOMPARE( mw->isWindowModified(), true);
 #endif
     QCOMPARE( widget->isWindowModified(), true);
@@ -1594,6 +1594,7 @@ void tst_QMdiArea::tileSubWindows()
 {
     QMdiArea workspace;
     workspace.resize(600,480);
+    workspace.setWindowFlags(workspace.windowFlags() | Qt::X11BypassWindowManagerHint);
     workspace.show();
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&workspace);
@@ -1746,9 +1747,10 @@ void tst_QMdiArea::tileSubWindows()
         frameWidth = workspace.style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
     const int spacing = 2 * frameWidth + 2;
     const QSize expectedViewportSize(3 * minSize.width() + spacing, 3 * minSize.height() + spacing);
-#ifdef Q_OS_WINCE
+#if defined(Q_OS_WINCE) || defined(Q_WS_MAEMO_5)
     QSKIP("Not fixed yet! See task 197453", SkipAll);
 #endif
+    QTest::qWait(5000);
     QTRY_COMPARE(workspace.viewport()->rect().size(), expectedViewportSize);
 
     // Not enough space for all sub-windows to be visible -> provide scroll bars.
@@ -1848,8 +1850,9 @@ void tst_QMdiArea::resizeMaximizedChildWindows()
     QFETCH(int, increment);
     QFETCH(int, windowCount);
 
-    QMdiArea workspace;
-    workspace.show();
+    QWidget topLevel;
+    QMdiArea workspace(&topLevel);
+    topLevel.show();
 #if defined(Q_WS_X11)
     qt_x11_wait_for_window_manager(&workspace);
 #endif
@@ -2034,7 +2037,7 @@ void tst_QMdiArea::delayedPlacement()
 
 void tst_QMdiArea::iconGeometryInMenuBar()
 {
-#if !defined (Q_WS_MAC) && !defined(Q_OS_WINCE)
+#if !defined (Q_WS_MAC) && !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QMainWindow mainWindow;
     QMenuBar *menuBar = mainWindow.menuBar();
     QMdiArea *mdiArea = new QMdiArea;

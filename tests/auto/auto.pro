@@ -10,8 +10,14 @@ TEMPLATE = subdirs
            linguist \
            maketestselftest \
            moc \
+           rcc \
            uic \
            guiapplauncher \
+           qhelpcontentmodel \
+           qhelpenginecore \
+           qhelpgenerator \
+           qhelpindexmodel \
+           qhelpprojectdata
            #atwrapper \     # These tests need significant updating,
            #uiloader \      # they have hardcoded machine names etc.
 
@@ -181,11 +187,6 @@ SUBDIRS += \
            qguivariant \
            qhash \
            qheaderview \
-           qhelpcontentmodel \
-           qhelpenginecore \
-           qhelpgenerator \
-           qhelpindexmodel \
-           qhelpprojectdata \
            qhostaddress \
            qhostinfo \
            qhttp \
@@ -476,7 +477,6 @@ SUBDIRS += \
            qtokenautomaton \
            qtouchevent \
            qwidget_window \
-           rcc \
            windowsmobile
 
 contains(QT_CONFIG,opengl):SUBDIRS += qgl qglbuffer qgl_threads

@@ -972,13 +972,14 @@ QString QIcon::themeName()
 */
 QIcon QIcon::fromTheme(const QString &name, const QIcon &fallback)
 {
+    QIconCache *iconCache = qtIconCache();
     QIcon icon;
 
-    if (qtIconCache()->contains(name)) {
-        icon = *qtIconCache()->object(name);
+    if (iconCache->contains(name)) {
+        icon = *iconCache->object(name);
     } else {
         QIcon *cachedIcon  = new QIcon(new QIconLoaderEngine(name));
-        qtIconCache()->insert(name, cachedIcon);
+        iconCache->insert(name, cachedIcon);
         icon = *cachedIcon;
     }
 

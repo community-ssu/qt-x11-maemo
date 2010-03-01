@@ -140,11 +140,20 @@ extern "C" {
 #  include <errno.h>
 #endif
 
+#if defined(Q_WS_MAEMO_5)
+#  include <private/qmenu_maemo5_p.h>
+#  include <QMenuBar>
+#  include <QWidgetAction>
+
+#endif
+
 #if _POSIX_VERSION+0 < 200112L && !defined(Q_OS_BSD4)
 # define QT_NO_UNSETENV
 #endif
 
 QT_BEGIN_NAMESPACE
+
+extern bool qt_sendSpontaneousEvent(QObject*,QEvent*);
 
 //#define X_NOT_BROKEN
 #ifdef X_NOT_BROKEN
@@ -270,6 +279,8 @@ static const char * x11_atomnames = {
 
     "_NET_SYSTEM_TRAY_VISUAL\0"
 
+    "_NET_ACTIVE_WINDOW\0"
+
     // Property formats
     "COMPOUND_TEXT\0"
     "TEXT\0"
@@ -307,6 +318,38 @@ static const char * x11_atomnames = {
 
     // Xkb
     "_XKB_RULES_NAMES\0"
+
+#ifdef Q_WS_MAEMO_5
+    // Hildon Desktop (WM)
+    "_HILDON_WM_WINDOW_TYPE_APP_MENU\0"
+    "_HILDON_WM_WINDOW_TYPE_HOME_APPLET\0"
+    "_HILDON_WM_WINDOW_MENU_INDICATOR\0"
+    "_HILDON_WM_WINDOW_PROGRESS_INDICATOR\0"
+    "_HILDON_NON_COMPOSITED_WINDOW\0"
+    "_HILDON_PORTRAIT_MODE_REQUEST\0"
+    "_HILDON_PORTRAIT_MODE_SUPPORT\0"
+    "_HILDON_STACKABLE_WINDOW\0"
+    "_HILDON_APPLET_ID\0"
+    "_HILDON_ZOOM_KEY_ATOM\0"
+    "_HILDON_NOTIFICATION_TYPE\0"
+    "_NET_WM_CONTEXT_CUSTOM\0"
+    "_MB_GRAB_TRANSFER\0"
+
+    // Hildon Input Method
+    "_HILDON_IM_WINDOW\0"                    // find the global im window
+    "_HILDON_IM_ACTIVATE\0"                  // activate the input method
+    "_HILDON_IM_SURROUNDING\0"               // send surrounding
+    "_HILDON_IM_SURROUNDING_CONTENT\0"       // send surrounding header
+    "_HILDON_IM_KEY_EVENT\0"                 // send key event to im
+    "_HILDON_IM_INSERT_UTF8\0"               // input method wants to insert data
+    "_HILDON_IM_COM\0"                       // input method wants to communicate with us
+    "_HILDON_IM_CLIPBOARD_COPIED\0"          //### NOT USED YET
+    "_HILDON_IM_CLIPBOARD_SELECTION_QUERY\0" //### NOT USED YET
+    "_HILDON_IM_CLIPBOARD_SELECTION_REPLY\0" // tell im whether we have a selection or not
+    "_HILDON_IM_INPUT_MODE\0"
+    "_HILDON_IM_PREEDIT_COMMITTED\0"
+    "_HILDON_IM_PREEDIT_COMMITTED_CONTENT\0"
+#endif
 
     // XEMBED
     "_XEMBED\0"
@@ -522,6 +565,11 @@ static Bool qt_xfixes_scanner(Display*, XEvent *event, XPointer arg)
 
 #endif // QT_NO_XFIXES
 
+/*
+ *  This class is used to access some protected values inside each QWidget.
+ *  Warning: this class is never instantiated. Instead widgets are casted to QETWidgets.
+ *  So don't try to add instance variables here.
+ */
 class QETWidget : public QWidget                // event translator widget
 {
 public:
@@ -580,7 +628,50 @@ public:
         d_func()->topData()->waitingForMapNotify = 1;
         XMapWindow(X11->display, internalWinId());
     }
+
 };
+
+
+#if defined(Q_WS_MAEMO_5)
+/*
+ *  Class to handle long tap events on Maemo 5.
+ *  Long taps are converted into right click and context menu events.
+ */
+class QLongTapTimerHandler : public QObject
+{
+public:
+    QLongTapTimerHandler(QObject *parent)
+        : QObject(parent), timerId(0)
+    { }
+
+    void start( QETWidget* w )
+    {
+        lastWidget = w;
+        timerId = startTimer(LONG_TAP_TIME_INTERVAL);
+    }
+
+    void stop()
+    {
+        if (timerId)
+            killTimer(timerId);
+        timerId = 0;
+    }
+
+    enum { LONG_TAP_TIME_INTERVAL = 1100 };
+    enum { LONG_TAP_MAX_DIST = 15 };
+
+    int timerId;
+    QPointer<QETWidget> lastWidget;
+
+protected:
+     void timerEvent(QTimerEvent *event);
+
+};
+
+// singleton
+static QLongTapTimerHandler *longTapHandler = 0;
+
+#endif
 
 
 void QApplicationPrivate::createEventDispatcher()
@@ -939,9 +1030,13 @@ bool QApplicationPrivate::x11_apply_settings()
                        QApplication::doubleClickInterval()).toInt();
     QApplication::setDoubleClickInterval(num);
 
+#if defined(Q_WS_MAEMO_5)
+    num = 0;
+#else
     num =
         settings.value(QLatin1String("cursorFlashTime"),
                        QApplication::cursorFlashTime()).toInt();
+#endif
     QApplication::setCursorFlashTime(num);
 
 #ifndef QT_NO_WHEELEVENT
@@ -1027,8 +1122,13 @@ bool QApplicationPrivate::x11_apply_settings()
     if (inputMethods.size() > 2 && inputMethods.contains(QLatin1String("imsw-multi"))) {
         X11->default_im = QLatin1String("imsw-multi");
     } else {
+#ifndef Q_WS_MAEMO_5
         X11->default_im = settings.value(QLatin1String("DefaultInputMethod"),
                                          QLatin1String("xim")).toString();
+#else
+        X11->default_im = settings.value(QLatin1String("DefaultInputMethod"),
+                                         QLatin1String("hildon")).toString();
+#endif
     }
 
     settings.endGroup(); // Qt
@@ -1645,7 +1745,11 @@ void qt_init(QApplicationPrivate *priv, int,
 
     X11->motifdnd_active = false;
 
+#ifndef Q_WS_MAEMO_5
     X11->default_im = QLatin1String("imsw-multi");
+#else
+    X11->default_im = QLatin1String("hildon");
+#endif
     priv->inputContext = 0;
 
     // colormap control
@@ -2223,6 +2327,9 @@ void qt_init(QApplicationPrivate *priv, int,
         uchar *data = 0;
         int rc;
 
+#ifdef Q_WS_MAEMO_5
+        X11->desktopEnvironment = DE_MAEMO5;
+#else
         do {
             if (!qgetenv("KDE_FULL_SESSION").isEmpty()) {
                 X11->desktopEnvironment = DE_KDE;
@@ -2274,6 +2381,7 @@ void qt_init(QApplicationPrivate *priv, int,
                 break;
             }
         } while(0);
+#endif
 
         if (data)
             XFree((char *)data);
@@ -2284,6 +2392,11 @@ void qt_init(QApplicationPrivate *priv, int,
             QApplication::setAttribute(Qt::AA_DontShowIconsInMenus, !menusHaveIcons);
         }
 #endif
+#if defined(Q_WS_MAEMO_5)
+        if (X11->desktopEnvironment == DE_MAEMO5)
+            QApplication::setAttribute(Qt::AA_DontShowIconsInMenus, true);
+#endif
+
         qt_set_input_encoding();
 
         qt_set_x11_resources(appFont, appFGCol, appBGCol, appBTNCol);
@@ -3021,6 +3134,16 @@ int QApplication::x11ClientMessage(QWidget* w, XEvent* event, bool passive_only)
                 if ((ulong) event->xclient.data.l[1] > X11->time)
                     X11->time = event->xclient.data.l[1];
                 QWidget *amw = activeModalWidget();
+#ifdef Q_WS_MAEMO_5
+                if (amw) {
+                    // see also QWidgetPrivate::create_sys() in qwidget_x11.cpp
+                    // (this hack prevents Maemo5 information boxes from getting the focus)
+                    if (XWMHints *wm_hints = XGetWMHints(X11->display, amw->window()->internalWinId())) {
+                        if ((wm_hints->flags & InputHint) && !wm_hints->input)
+                            amw = 0;
+                    }
+                }
+#endif
                 if (amw && !QApplicationPrivate::tryModalHelper(widget, 0)) {
                     QWidget *p = amw->parentWidget();
                     while (p && p != widget)
@@ -3029,6 +3152,15 @@ int QApplication::x11ClientMessage(QWidget* w, XEvent* event, bool passive_only)
                         amw->raise(); // help broken window managers
                     amw->activateWindow();
                 }
+#ifdef Q_WS_MAEMO_5
+                // according to the ICCCM, the XSetInputFocus() should be optional for non-modal windows
+                // see also <http://mail.gnome.org/archives/wm-spec-list/2007-March/msg00001.html>
+                // seems like the Maemo5 WM is broken in that regard and always needs an explicit
+                // XSetInputFocus() call with the time parameter set to the WM_TAKE_FOCUS message's time.
+                else if (w) {
+                    XSetInputFocus(X11->display, w->internalWinId(), XRevertToParent, event->xclient.data.l[1]);
+                }
+#endif
 #ifndef QT_NO_WHATSTHIS
             } else if (a == ATOM(_NET_WM_CONTEXT_HELP)) {
                 QWhatsThis::enterWhatsThisMode();
@@ -3069,10 +3201,26 @@ int QApplication::x11ClientMessage(QWidget* w, XEvent* event, bool passive_only)
             X11->xdndHandleDrop(widget, event, passive_only);
         } else if (event->xclient.message_type == ATOM(XdndFinished)) {
             X11->xdndHandleFinished(widget, event, passive_only);
+#ifdef Q_WS_MAEMO_5
+        } else if (event->xclient.message_type == ATOM(_MB_GRAB_TRANSFER)) {
+            if (passive_only || !QApplicationPrivate::active_window)
+                return 0;
+
+            QApplicationPrivate::maemo5ShowApplicationMenu();
+#endif
         } else {
             if (passive_only) return 0;
             // All other are interactions
         }
+#ifdef Q_WS_MAEMO_5
+    } else if (event->xclient.message_type == ATOM(_HILDON_IM_INSERT_UTF8)
+            || event->xclient.message_type == ATOM(_HILDON_IM_COM)
+            || event->xclient.message_type == ATOM(_HILDON_IM_SURROUNDING)
+            || event->xclient.message_type == ATOM(_HILDON_IM_SURROUNDING_CONTENT)) {
+        QInputContext *qic = w->inputContext();
+        if (qic && qic->x11FilterEvent(w, event))
+            return 0;
+#endif
     } else {
         X11->motifdndHandle(widget, event, passive_only);
     }
@@ -3199,6 +3347,10 @@ int QApplication::x11ProcessEvent(XEvent* event)
 	    // input methods. don't eliminate anything.
 	    QKeyEventEx keyevent(type, code, modifiers, text, false, qMax(qMax(count, 1), text.length()),
                                  event->xkey.keycode, keySym, event->xkey.state);
+#ifdef Q_WS_MAEMO_5
+            // note - this is only on for Maemo 5 since it is strictly required there.
+            keyevent.spont = 1;
+#endif
 	    if(qic && qic->filterEvent(&keyevent))
 		return true;
 	}
@@ -3208,6 +3360,15 @@ int QApplication::x11ProcessEvent(XEvent* event)
             if (XFilterEvent(event, XNone))
                 return true;
         }
+
+#if defined(Q_WS_MAEMO_5)
+    if (event->type == XKeyPress) {
+        if (event->xkey.keycode == 70 && event->xkey.state == 0) { // F4
+            QApplicationPrivate::maemo5ShowApplicationMenu();
+            return true;
+        }
+    }
+#endif
 
     if (qt_x11EventFilter(event))                // send through app filter
         return 1;
@@ -4041,6 +4202,48 @@ Qt::KeyboardModifiers QX11Data::translateModifiers(int s)
     return ret;
 }
 
+#ifdef Q_WS_MAEMO_5
+/*! \internal
+ *  This timer is used to detect the long press on Maemo devices which is mapped to a right mouse click
+ *  just as S60 is doing it.
+ */
+void QLongTapTimerHandler::timerEvent(QTimerEvent *event)
+{
+    if (event->timerId() == timerId) {
+        killTimer(timerId);
+        timerId = 0;
+
+        if (lastWidget.isNull())
+            return;
+
+        const QPoint globalMousePressPos(mouseGlobalXPos,mouseGlobalYPos);
+        const QPoint globalPos= QCursor::pos();
+
+        // Exits if the cursor is not in the surrounding area
+        // of the press event
+        const QPoint deltaPos = globalMousePressPos - globalPos;
+        if ( qAbs(deltaPos.x()) >= LONG_TAP_MAX_DIST ||
+                qAbs(deltaPos.y()) >= LONG_TAP_MAX_DIST){
+            return;
+        }
+
+        // Gets the Widget under the mouse and the relative cursor position
+        QPoint pos = lastWidget->mapFromGlobal(globalMousePressPos);
+        QWidget* w = lastWidget->childAt(pos);
+        if (!w) {
+            w = lastWidget;
+            pos= w->mapFromGlobal(globalMousePressPos);
+        }
+
+#if !defined(QT_NO_CONTEXTMENU)
+        QContextMenuEvent contextMenuEvent(QContextMenuEvent::Mouse, pos, globalPos, Qt::NoModifier);
+        qt_sendSpontaneousEvent(w, &contextMenuEvent);
+#endif
+    }
+}
+
+#endif // Q_WS_MAEMO_5
+
 bool QETWidget::translateMouseEvent(const XEvent *event)
 {
     if (!isWindow() && testAttribute(Qt::WA_NativeWindow))
@@ -4194,13 +4397,23 @@ bool QETWidget::translateMouseEvent(const XEvent *event)
                 mouseButtonPressed == button &&
                 (long)event->xbutton.time -(long)mouseButtonPressTime
                 < QApplication::doubleClickInterval() &&
+#if defined(Q_WS_MAEMO_5)
+                qAbs(event->xbutton.x - mouseXPos) < 20 && // increased double click range for Maemo
+                qAbs(event->xbutton.y - mouseYPos) < 20) {
+#else
                 qAbs(event->xbutton.x - mouseXPos) < 5 &&
                 qAbs(event->xbutton.y - mouseYPos) < 5) {
+#endif
                 type = QEvent::MouseButtonDblClick;
                 mouseButtonPressTime -= 2000;        // no double-click next time
             } else {
                 type = QEvent::MouseButtonPress;
                 mouseButtonPressTime = event->xbutton.time;
+#if defined(Q_WS_MAEMO_5)
+                if (!longTapHandler)
+                    longTapHandler = new QLongTapTimerHandler(qApp);
+                longTapHandler->start(this);
+#endif
             }
             mouseButtonPressed = button;        // save event params for
             mouseXPos = event->xbutton.x;                // future double click tests
@@ -4208,6 +4421,10 @@ bool QETWidget::translateMouseEvent(const XEvent *event)
             mouseGlobalXPos = globalPos.x();
             mouseGlobalYPos = globalPos.y();
         } else {                                // mouse button released
+#if defined(Q_WS_MAEMO_5)
+            if (longTapHandler)
+                longTapHandler->stop();
+#endif
             buttons &= ~button;
 #if defined(Q_OS_IRIX) && !defined(QT_NO_TABLET)
             QTabletDeviceDataList *tablets = qt_tablet_devices();
@@ -6094,5 +6311,44 @@ void QApplicationPrivate::cleanupMultitouch_sys()
 { }
 
 #endif // QT_RX71_MULTITOUCH
+
+#if defined(Q_WS_MAEMO_5)
+
+void QApplicationPrivate::maemo5ShowApplicationMenu()
+{
+    // We need to keep the app menu pointer alive, since a widget action
+    // could have triggered a modal dialog.
+    // This is a last minute fix for PR1.2
+    // In the long run, we really want to cache the app menus (and not
+    // re-create them on each invocation).  In order to do this,
+    // QMaemo5ApplicationMenu needs to handle action add/remove/change
+    // events, which it doesn't do right now.
+    static QList<QPointer<QMaemo5ApplicationMenu> > cache;
+
+    if (QWidget *w = qApp->activeWindow()) {
+        if (QMenuBar *menubar = w->findChild<QMenuBar *>()) {
+            QMutableListIterator<QPointer<QMaemo5ApplicationMenu> > it(cache);
+            while (it.hasNext()) {
+                QPointer<QMaemo5ApplicationMenu> val = it.next();
+                if (val.isNull()) { // cleanup
+                    it.remove();
+                } else if (val->parentWidget() == menubar->window()) {
+                    it.remove();
+                    delete val.data();
+                }
+            }
+            QPointer<QMaemo5ApplicationMenu> appmenu = new QMaemo5ApplicationMenu(menubar);
+            cache.append(appmenu);
+
+            if (!appmenu->isEmpty()) {
+                appmenu->exec();
+                if (appmenu && appmenu->selectedAction())
+                    appmenu->selectedAction()->trigger();
+            }
+        }
+    }
+}
+
+#endif // Q_WS_MAEMO_5
 
 QT_END_NAMESPACE

@@ -1272,13 +1272,18 @@ QLocale QSystemLocale::fallbackLocale() const
 /*!
     \internal
 */
-QVariant QSystemLocale::query(QueryType type, QVariant /* in */) const
+QVariant QSystemLocale::query(QueryType type, QVariant in) const
 {
     if (type == MeasurementSystem) {
         return QVariant(unixGetSystemMeasurementSystem());
-    } else {
-        return QVariant();
     }
+#ifdef Q_WS_MAEMO_5
+    extern QVariant querySystemLocale_maemo5(QSystemLocale::QueryType type, const QVariant &in);
+    return querySystemLocale_maemo5(type, in);
+#else
+    Q_UNUSED(in);
+    return QVariant();
+#endif
 }
 
 #elif !defined(Q_OS_SYMBIAN)

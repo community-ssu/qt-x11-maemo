@@ -291,6 +291,10 @@
 #include <QtNetwork/qhostaddress.h>
 #include <QtNetwork/qhostinfo.h>
 
+#ifdef Q_WS_MAEMO_5
+#include <maemo/qmaemointernetconnectivity.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 /*
@@ -1686,6 +1690,11 @@ void QSslSocket::connectToHostImplementation(const QString &hostName, quint16 po
 #endif
         d->createPlainSocket(openMode);
     }
+
+#ifdef Q_WS_MAEMO_5
+    QMaemoInternetConnectivity::connectionRequest();
+#endif
+
 #ifndef QT_NO_NETWORKPROXY
     d->plainSocket->setProxy(proxy());
 #endif

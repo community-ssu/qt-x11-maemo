@@ -3171,11 +3171,11 @@ void QGraphicsScene::setForegroundBrush(const QBrush &brush)
 */
 QVariant QGraphicsScene::inputMethodQuery(Qt::InputMethodQuery query) const
 {
-    Q_D(const QGraphicsScene);
-    if (!d->focusItem || !(d->focusItem->flags() & QGraphicsItem::ItemAcceptsInputMethod))
+    QGraphicsItem *item = focusItem();
+    if (!item || !(item->flags() & QGraphicsItem::ItemAcceptsInputMethod))
         return QVariant();
-    const QTransform matrix = d->focusItem->sceneTransform();
-    QVariant value = d->focusItem->inputMethodQuery(query);
+    const QTransform matrix = item->sceneTransform();
+    QVariant value = item->inputMethodQuery(query);
     if (value.type() == QVariant::RectF)
         value = matrix.mapRect(value.toRectF());
     else if (value.type() == QVariant::PointF)
@@ -4162,8 +4162,9 @@ void QGraphicsScene::wheelEvent(QGraphicsSceneWheelEvent *wheelEvent)
 void QGraphicsScene::inputMethodEvent(QInputMethodEvent *event)
 {
     Q_D(QGraphicsScene);
-    if (d->focusItem && (d->focusItem->flags() & QGraphicsItem::ItemAcceptsInputMethod))
-        d->sendEvent(d->focusItem, event);
+    QGraphicsItem *item = focusItem();
+    if (item && (item->flags() & QGraphicsItem::ItemAcceptsInputMethod))
+        d->sendEvent(item, event);
 }
 
 /*!

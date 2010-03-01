@@ -437,6 +437,9 @@ void tst_QDateTime::setTime_t()
 
 void tst_QDateTime::toString_enumformat()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo5 has no year in the ShortDate",SkipAll);
+#endif
     QDateTime dt1(QDate(1995, 5, 20), QTime(12, 34, 56));
 
 
@@ -1320,6 +1323,10 @@ void tst_QDateTime::fromString()
 
     QLocale def;
     QLocale::setDefault(QLocale(QLocale::French, QLocale::France));
+
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo5 has no year in the ShortDate",SkipAll);
+#endif
 
     QCOMPARE(QDateTime::fromString(dt2.toString(Qt::DefaultLocaleShortDate), Qt::DefaultLocaleShortDate), dt2);
     QCOMPARE(QDateTime::fromString(dt2.toString(Qt::SystemLocaleShortDate), Qt::SystemLocaleShortDate), dt2);

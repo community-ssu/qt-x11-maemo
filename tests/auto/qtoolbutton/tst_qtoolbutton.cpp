@@ -231,7 +231,11 @@ void tst_QToolButton::task176137_autoRepeatOfAction()
 
 void tst_QToolButton::sendMouseClick()
 {
+#ifdef Q_WS_MAEMO_5
+    QTest::mouseClick(w, Qt::LeftButton, 0, QPoint(17,17)); //Maemo 5 Menus boarder are bigger
+#else
     QTest::mouseClick(w, Qt::LeftButton, 0, QPoint(7,7));
+#endif
 }
 
 QTEST_MAIN(tst_QToolButton)

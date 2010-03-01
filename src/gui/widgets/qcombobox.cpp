@@ -73,6 +73,11 @@
 #include <QMacStyle>
 #include <private/qt_cocoa_helpers_mac_p.h>
 #endif
+#ifdef Q_WS_MAEMO_5
+#  include <QAbstractKineticScroller>
+#  include <QGraphicsProxyWidget>
+#  include <libintl.h>
+#endif
 #ifndef QT_NO_EFFECTS
 # include <private/qeffects_p.h>
 #endif
@@ -386,6 +391,13 @@ void QComboBoxPrivateContainer::leaveEvent(QEvent *)
 #endif
 }
 
+#ifdef Q_WS_MAEMO_5
+void QComboBoxPrivateContainer::closeEvent(QCloseEvent *)
+{
+    combo->hidePopup();
+}
+#endif
+
 QComboBoxPrivateContainer::QComboBoxPrivateContainer(QAbstractItemView *itemView, QComboBox *parent)
     : QFrame(parent, Qt::Popup), combo(parent), view(0), top(0), bottom(0)
 {
@@ -645,6 +657,7 @@ bool QComboBoxPrivateContainer::eventFilter(QObject *o, QEvent *e)
             break;
         }
     break;
+#ifndef Q_WS_MAEMO_5 // prevent popup from closing much too fast with touchscreen
     case QEvent::MouseMove:
         if (isVisible()) {
             QMouseEvent *m = static_cast<QMouseEvent *>(e);
@@ -659,6 +672,7 @@ bool QComboBoxPrivateContainer::eventFilter(QObject *o, QEvent *e)
             }
         }
         break;
+#endif
     case QEvent::MouseButtonRelease: {
         QMouseEvent *m = static_cast<QMouseEvent *>(e);
         if (isVisible() && view->rect().contains(m->pos()) && view->currentIndex().isValid()
@@ -2458,6 +2472,42 @@ void QComboBox::showPopup()
     if (needHorizontalScrollBar) {
         listRect.adjust(0, 0, 0, sb->height());
     }
+#ifdef Q_WS_MAEMO_5
+    bool editable = isEditable();
+
+    container->setAttribute(Qt::WA_X11NetWmWindowTypeCombo, editable);
+    container->setWindowFlags((windowFlags() & ~Qt::WindowType_Mask) | (editable ? Qt::Popup : Qt::Dialog));
+
+    view()->setSizePolicy(editable ? QSizePolicy::Ignored : QSizePolicy::Expanding,
+                          editable ? QSizePolicy::Ignored : QSizePolicy::Expanding);
+
+    if (editable) {
+        container->layout()->setContentsMargins(4, 4, 4, 4);
+        container->setLineWidth(1);
+    }
+    if (!editable) {
+        // we need to break out of the QGV in order to display a "real" dialog
+        if (QGraphicsProxyWidget *proxy = container->graphicsProxyWidget()) {
+            if (proxy->scene()) {
+                QList<QGraphicsView *> views = proxy->scene()->views();
+                if (!views.isEmpty()) {
+                    proxy->setWidget(0);
+                    container->setParent(views.first(), Qt::BypassGraphicsProxyWidget | container->windowFlags());
+                }
+            }
+        }
+        view()->setMinimumHeight(350); // 5 rows, each 70pix high - and yes this is evil
+        container->layout()->setContentsMargins(16, 0, 16, 8); // standard Hildon dialog margins
+        container->setLineWidth(0);
+        // we try to get the standard list title the web browser is using
+        // otherwise we would get the binary name as window title
+        const char *title = ::dgettext("osso-browser-ui", "weba_ti_texlist_single");
+        if (qstrcmp(title, "weba_ti_texlist_single"))
+            container->setWindowTitle(QString::fromUtf8(title));
+        else
+            container->setWindowTitle(QLatin1String(" "));
+    } else
+#endif
     container->setGeometry(listRect);
 
 #ifndef Q_WS_MAC
@@ -2485,6 +2535,14 @@ void QComboBox::showPopup()
     container->updateScrollers();
     view()->setFocus();
 
+#ifdef Q_WS_MAEMO_5
+    QAbstractKineticScroller *ks = view()->property("kineticScroller").value<QAbstractKineticScroller *>();
+    if (ks) {
+        QRect r = view()->visualRect(view()->currentIndex());
+        r.translate(view()->horizontalScrollBar()->value(), view()->verticalScrollBar()->value());
+        ks->ensureVisible(QPoint(r.left(), r.center().y()), 0, r.height() / 2);
+    } else
+#endif
     view()->scrollTo(view()->currentIndex(),
                      style->styleHint(QStyle::SH_ComboBox_Popup, &opt, this)
                              ? QAbstractItemView::PositionAtCenter
@@ -2747,11 +2805,96 @@ bool QComboBox::event(QEvent *event)
             d->lineEdit->event(event);  //so cursor stops
         break;
 #endif
+#ifdef Q_WS_MAEMO_5
+    case QEvent::MouseButtonPress:
+    case QEvent::MouseMove:
+    case QEvent::MouseButtonRelease:
+        if (isEnabled()) {
+            d->maemo5HandleMouseEvent(static_cast<QMouseEvent *>(event));
+            return true; // do not call mouse(Press|Move|Release)Event()
+        }
+        break;
+#endif
     default:
         break;
     }
     return QWidget::event(event);
 }
+
+#ifdef Q_WS_MAEMO_5
+
+// we need to react on release and not on press - otherwise
+// kinetic scrolling can't be started on a QComboBox
+
+void QComboBoxPrivate::maemo5HandleMouseEvent(QMouseEvent *e)
+{
+    static QMap<QComboBox *, bool> pressed;
+
+    Q_Q(QComboBox);
+    QStyleOptionComboBox opt;
+    q->initStyleOption(&opt);
+    QStyle::SubControl sc = q->style()->hitTestComplexControl(QStyle::CC_ComboBox, &opt, e->pos(), q);
+
+    switch (e->type()) {
+    case QEvent::MouseButtonPress: {
+        if (e->button() != Qt::LeftButton) {
+            e->ignore();
+            break;
+        }
+        if ((sc == QStyle::SC_ComboBoxArrow || !q->isEditable())
+            && !viewContainer()->isVisible()) {
+            updateArrow(QStyle::State_Sunken);
+            pressed.insert(q, true);
+            q->update();
+            e->accept();
+        } else {
+            e->ignore();
+        }
+        break;
+    }
+    case QEvent::MouseMove: {
+        if (!(e->buttons() & Qt::LeftButton) || !pressed.value(q)) {
+            e->ignore();
+            break;
+        }
+        bool hit = (sc == QStyle::SC_ComboBoxArrow) || (!q->isEditable() && q->rect().contains(e->pos()));
+
+        if (hit != (arrowState == QStyle::State_Sunken)) {
+            updateArrow(hit ? QStyle::State_Sunken : QStyle::State_None);
+            q->update();
+            e->accept();
+        } else if (!hit) {
+            e->ignore();
+        }
+        break;
+    }
+    case QEvent::MouseButtonRelease: {
+        pressed.remove(q);
+        if ((e->button() != Qt::LeftButton) || (arrowState != QStyle::State_Sunken)) {
+            e->ignore();
+            break;
+        }
+
+        if ((sc == QStyle::SC_ComboBoxArrow) || (!q->isEditable() && q->rect().contains(e->pos()))) {
+            // We've restricted the next couple of lines, because by not calling
+            // viewContainer(), we avoid creating the QComboBoxPrivateContainer.
+            viewContainer()->blockMouseReleaseTimer.start(QApplication::doubleClickInterval());
+            viewContainer()->initialClickPosition = q->mapToGlobal(e->pos());
+            q->showPopup();
+            e->accept();
+        } else {
+            e->ignore();
+        }
+        updateArrow(QStyle::State_None);
+        q->update();
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+#endif // Q_WS_MAEMO_5
 
 /*!
     \reimp

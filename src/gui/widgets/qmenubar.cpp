@@ -745,6 +745,9 @@ void QMenuBarPrivate::init()
     if(symbian_menubar)
         q->hide();
 #endif
+#if defined(Q_WS_MAEMO_5)
+    q->hide();
+#endif
 
     q->setBackgroundRole(QPalette::Button);
     oldWindow = oldParent = 0;
@@ -1366,6 +1369,11 @@ void QMenuBarPrivate::handleReparent()
             newWindow->installEventFilter(q);
     }
 
+#ifdef Q_WS_MAEMO_5
+    maemoResetApplicationMenuAtom(oldParent);
+    maemoResetApplicationMenuAtom(newParent);
+#endif
+
     oldParent = newParent;
     oldWindow = newWindow;
 
@@ -1387,7 +1395,6 @@ void QMenuBarPrivate::handleReparent()
     if (symbian_menubar)
         symbian_menubar->rebuild();
 #endif
-
 }
 
 #ifdef QT3_SUPPORT

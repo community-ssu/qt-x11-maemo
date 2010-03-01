@@ -7,3 +7,5 @@ contains(QT_CONFIG, audio-backend) {
     }
 }
 
+
+maemo5:SUBDIRS += n900audio

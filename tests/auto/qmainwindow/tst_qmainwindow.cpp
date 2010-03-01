@@ -1064,7 +1064,11 @@ void tst_QMainWindow::toolBarArea()
             Qt::ToolBarArea otherArea = areas[j];
 
             mw.addToolBar(&tb);
+#ifdef Q_WS_MAEMO_5
+            QCOMPARE(mw.toolBarArea(&tb), Qt::BottomToolBarArea);
+#else
             QCOMPARE(mw.toolBarArea(&tb), Qt::TopToolBarArea);
+#endif
             mw.addToolBar(otherArea, &tb);
             QCOMPARE(mw.toolBarArea(&tb), otherArea);
         }
@@ -1677,6 +1681,10 @@ void tst_QMainWindow::addToolbarAfterShow()
 
 void tst_QMainWindow::centralWidgetSize()
 {
+#ifdef Q_WS_MAEMO_5
+	QSKIP("All Windows are FullScreen on Maemo5, so the SizeHint will be ignored", SkipAll);;
+#endif
+
     QMainWindow mainWindow;
     mainWindow.menuBar()->addMenu("menu");
 

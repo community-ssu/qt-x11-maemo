@@ -2499,7 +2499,8 @@ void tst_QWebFrame::metaData()
 
 void tst_QWebFrame::popupFocus()
 {
-    QWebView view;
+    QWidget topLevel;
+    QWebView view(&topLevel);
     view.setHtml("<html>"
                  "    <body>"
                  "        <select name=\"select\">"
@@ -2514,7 +2515,7 @@ void tst_QWebFrame::popupFocus()
                  "    </body>"
                  "</html>");
     view.resize(400, 100);
-    view.show();
+    topLevel.show();
     view.setFocus();
     QTRY_VERIFY(view.hasFocus());
 
@@ -2527,6 +2528,10 @@ void tst_QWebFrame::popupFocus()
     // hide the popup and check if focus is on the page
     combo->hidePopup();
     QTRY_VERIFY(view.hasFocus() && !combo->view()->hasFocus()); // Focus should be back on the WebView
+
+#ifdef Q_WS_MAEMO_5
+    QSKIP("No blinking cursor on Maemo 5", SkipAll);
+#endif
 
     // triple the flashing time, should at least blink twice already
     int delay = qApp->cursorFlashTime() * 3;

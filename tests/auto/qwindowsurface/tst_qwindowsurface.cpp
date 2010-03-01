@@ -151,6 +151,9 @@ void tst_QWindowSurface::getSetWindowSurface()
 
 void tst_QWindowSurface::flushOutsidePaintEvent()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo5's windowing manager", SkipAll);
+#endif
 #ifdef Q_WS_X11
     if (QX11Info::isCompositingManagerRunning())
         QSKIP("Test is unreliable with composition manager", SkipAll);
@@ -211,6 +214,9 @@ void tst_QWindowSurface::flushOutsidePaintEvent()
 
 void tst_QWindowSurface::grabWidget()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QWidget parentWidget;
     QWidget childWidget(&parentWidget);
     QWidget babyWidget(&childWidget);

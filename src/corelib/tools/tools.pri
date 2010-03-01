@@ -80,6 +80,7 @@ SOURCES += \
         tools/qvsnprintf.cpp
 
 symbian:SOURCES+=tools/qlocale_symbian.cpp
+maemo5:SOURCES += tools/qlocale_maemo5.cpp
 
 #zlib support
 contains(QT_CONFIG, zlib) {

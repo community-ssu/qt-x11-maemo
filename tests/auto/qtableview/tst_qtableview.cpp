@@ -2582,9 +2582,10 @@ void tst_QTableView::scrollTo()
     QFETCH(int, expectedVerticalScroll);
 
     QtTestTableModel model(rowCount, columnCount);
-    QtTestTableView view;
+    QWidget toplevel;
+    QtTestTableView view(&toplevel);
 
-    view.show();
+    toplevel.show();
     // resizing to this size will ensure that there can ONLY_BE_ONE_CELL inside the view.
     QSize forcedSize(columnWidth * 2, rowHeight * 2);
     view.resize(forcedSize);
@@ -2739,10 +2740,11 @@ void tst_QTableView::indexAt()
     QFETCH(int, expectedColumn);
 
     QtTestTableModel model(rowCount, columnCount);
-    QtTestTableView view;
+    QWidget toplevel;
+    QtTestTableView view(&toplevel);
 
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    toplevel.show();
+    QTest::qWaitForWindowShown(&toplevel);
 
     //some styles change the scroll mode in their polish
     view.setHorizontalScrollMode(QAbstractItemView::ScrollPerItem);
@@ -3640,20 +3642,27 @@ void tst_QTableView::mouseWheel()
 #ifdef Q_OS_WINCE
     QSKIP("Since different Windows CE versions sport different taskbars, we skip this test", SkipAll);
 #endif
+
+#ifdef Q_WS_MAEMO_5
+    if(QTest::currentDataTag() == QString("scroll down per pixel"))
+        QSKIP("Skipped because of size limitation on Maemo 5",SkipSingle);
+#endif
     QFETCH(int, scrollMode);
     QFETCH(int, delta);
     QFETCH(int, horizontalPositon);
     QFETCH(int, verticalPosition);
 
     QtTestTableModel model(100, 100);
-    QtTestTableView view;
+    QWidget topLevel;
+    QtTestTableView view(&topLevel);
     view.resize(500, 500);
     for (int r = 0; r < 100; ++r)
         view.setRowHeight(r, 50);
     for (int c = 0; c < 100; ++c)
         view.setColumnWidth(c, 100);
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    topLevel.show();
+
+    QTest::qWaitForWindowShown(&topLevel);
 
     view.setModel(&model);
 
@@ -3748,6 +3757,12 @@ void tst_QTableView::task191545_dragSelectRows()
     table.show();
     QTest::qWait(200);
 
+#ifdef Q_WS_MAEMO_5 //On Maemo 5 the Rows have to be big enough to select the items
+    for (int i = 0; i < 10 ; ++i) {
+        table.setRowHeight(i,100);
+    }
+#endif
+
     ValueSaver<Qt::KeyboardModifiers> saver(QApplicationPrivate::modifier_buttons);
     QApplicationPrivate::modifier_buttons = Qt::ControlModifier;
 
@@ -3755,7 +3770,7 @@ void tst_QTableView::task191545_dragSelectRows()
         QRect cellRect = table.visualRect(model.index(3, 0));
         QHeaderView *vHeader = table.verticalHeader();
         QWidget *vHeaderVp = vHeader->viewport();
-        QPoint rowPos(5, (cellRect.top() + cellRect.bottom()) / 2);
+        QPoint rowPos(cellRect.center());
         QMouseEvent rowPressEvent(QEvent::MouseButtonPress, rowPos, Qt::LeftButton, Qt::NoButton, Qt::ControlModifier);
         qApp->sendEvent(vHeaderVp, &rowPressEvent);
 
@@ -3834,6 +3849,7 @@ void tst_QTableView::task191545_dragSelectRows()
         QMouseEvent cellReleaseEvent(QEvent::MouseButtonRelease, cellPos, Qt::LeftButton, Qt::NoButton, Qt::ControlModifier);
         qApp->sendEvent(tableVp, &cellReleaseEvent);
 
+        QTest::qWait(200);
         for (int i = 0; i < 6; ++i)
             for (int j = 0; j < 6; ++j) {
                 QModelIndex index = model.index(3 + i, 3 + j, table.rootIndex());

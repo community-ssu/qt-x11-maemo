@@ -73,6 +73,8 @@
     \tableofcontents{1 Platform Notes - Embedded Linux}
     \o \l{Platform Notes - Windows CE}
     \tableofcontents{1 Platform Notes - Windows CE}
+    \o \l{Platform Notes - Maemo 5}
+    \tableofcontents{1 Platform Notes - Maemo 5}
     \o \l{Platform Notes - QNX}
     \tableofcontents{1 Platform Notes - QNX}
     \o \l{Platform Notes - VxWorks}
@@ -523,4 +525,151 @@
     currently known to run on, with links to platform-specific notes. More
     information about the combinations of platforms and compilers supported
     by Qt can be found on the \l{Supported Platforms} page.
+*/
+
+/*!
+    \page platform-notes-maemo5.html
+    \title Platform Notes - Maemo 5
+    \contentspage Platform Notes
+    \ingroup platform-specific
+    \brief Information about the state of support for Maemo 5.
+
+    \section1 Maemo 5 (Fremantle)
+
+    Although Maemo 5 uses a fairly standard Linux/X11 setup, its compositing
+    window manager and native UI toolkit (Hildon) make it necessary to be
+    aware of a few specialities of this platform, if the Qt application
+    should look and feel the same as a native Maemo 5 application.
+
+    The Qt \l{Maemo 5 Examples} show how to achieve deeper UI integration
+    with the platform.
+
+    \section2 Window Manager
+    \list
+    \o The Qt::WindowMinimized state is not supported. As an alternative,
+    you can use D-Bus calls to switch to the home screen or the window
+    overview (see the maemo5 examples' source code for detailed information).
+
+    \o The window manager applies compositing for all top-level windows by default.
+    This behavior can be disabled by setting the Qt::WA_Maemo5NonComposited
+    widget attribute on a top-level widget.
+
+    \o Maemo 5 Stacked Windows are support by setting the
+    Qt::WA_Maemo5StackedWindow widget attribute on all top-level windows that
+    should be part of the stack.  The root window should not have a parent,
+    while all other windows in the stack should have their predecessor in
+    the stack set as their parent (do not forget to use the Qt::Window
+    widget flag, if you are not using QMainWindow derived classes).
+
+    The \l{Maemo 5 Stacked Windows Example} shows how to do stacked windows
+    with arbitrary widgets.
+
+    \o The portrait or landscape orientation is not a global setting, but is
+    handled on a per window basis.  Qt's windows use landscape orientation
+    by default.  For top-level widgets this default can be changed by
+    setting the Qt::WA_Maemo5PortraitOrientation,
+    Qt::WA_Maemo5LandscapeOrientation or Qt::WA_Maemo5AutoOrientation widget
+    attributes.
+
+    The \l{Maemo 5 Rotation Example} shows how to dynamically rotate top-level
+    widgets.
+
+    \o Telling the user that the application is busy should be done by setting
+    the Qt::WA_Maemo5ShowProgressIndicator widget attribute on any top-level
+    widget or dialog. If blocking the UI is required, QProgressDialog can be used.
+
+    \endlist
+
+    \section2 UI style guides
+
+    Style guides are available from Forum Nokia, which describe
+    in detail how a Maemo 5 user interface should look and behave. Qt tries
+    to follow the style guide closely, but there are many things which have to
+    be done on the application side to completely follow these guidelines:
+
+    \list
+    \o \l{http://www.forum.nokia.com/info/sw.nokia.com/id/e778ba1f-2507-4672-be45-798359a3aea7/Fremantle_Master_Layout_Guide.html}{Master Layout Guide}.
+    \o \l{http://www.forum.nokia.com/info/sw.nokia.com/id/eb8a68ba-6225-4d84-ba8f-a00e4a05ff6f/Hildon_2_2_UI_Style_Guide.html}{UI Style Guide}.
+    \o \l{http://www.forum.nokia.com/info/sw.nokia.com/id/019c2b31-3777-49a0-9257-970d79580756/Hildon_2_2_Widget_UI_Specification.html}{Widget UI Specification}.
+    \endlist
+
+    Here is a list of common questions and problems when developing for
+    Maemo 5:
+
+    \list
+    \o Not all of Qt's standard widgets are styled in a Maemo 5 way, simply
+    because the Hildon toolkit only supports a limited number of widgets.
+    Those widgets classes are fully supported: QLabel, QPushButton,
+    QToolButton, QCheckBox, QRadioButton, QComboBox (though combo boxes behave a
+    bit differently to those on desktop platforms), QSpinBox, QSlider, QLineEdit,
+    QTextEdit, QPlainTextEdit, QProgressBar, QAbstractItemView (and derived
+    classes).
+
+    \o Qt for Maemo 5 ships with a separate library (QtMaemo5) which
+    implements all the special Hildon UI elements that could not be mapped
+    to already existing Qt widgets: QMaemo5ValueButton,
+    QMaemo5AbstractPickSelector (and derived classes), QMaemo5EditBar and
+    QMaemo5InformationBox.
+
+    \o Qt fully supports the kinetic finger-scrolling that is used
+    everywhere in the native Maemo 5 software.  The algorithm for this
+    is implemented in the Maemo 5 specific, public QAbstractKineticScroller class,
+    while the specific implementations of this interface for QAbstractScrollArea
+    (and derived classes) as well as QWebView are private to those classes.
+    Please see the QAbstractKineticScroller documentation for more information.
+
+    The \c maemobrowser example in \c examples/maemo5 shows one way how to
+    implement kinetic scrolling of QGraphicsWebView.
+
+    \o Maemo 5 has a special application menu that is triggered by clicking
+    on the application's title bar. Qt will use all visible and enabled
+    actions it can find in the uppermost QMenuBar of the active window to
+    fill this menu. All QMenuBar widgets will be hidden automatically on creation.
+    In order to support the Maemo 5 filter groups in the application menu,
+    Qt will map all QActions within the menu bar belonging to an exclusive
+    QActionGroup to these filter buttons.
+
+    \o Dialogs are not allowed to have a \gui Cancel button, but clicking into
+    the blurred area above the dialog will effectively cancel it.  Qt supports
+    this special behavior via QDialogButtonBox.  Please note that if your
+    QDialogButtonBox does not include a \gui Cancel button, the QDialog cannot
+    be cancelled by clicking into the blurred area, which means that the
+    dialog works exactly like a Hildon Confirmation Note in this case.
+
+    \o QTextEdit and QPlainTextEdit are fully Maemo 5 style guide compliant.
+    This means that these widgets will not show scrollbars, will not allow the
+    user to select text and will not have kinetic scrolling enabled by default.
+
+    The \c textedit example in \c examples/maemo5 shows how to dynamically
+    resize QTextEdits the Maemo 5 way.
+    \endlist
+
+    \section2 Known Limitations
+
+    \list
+    \o QSound does not work due to missing NAS libraries.
+    \o QApplication::beep() does nothing since the X11 server's X XBell()
+       function call is not implemented on the N900.
+    \o Style sheets and the native QMaemo5Style do not mix very well, since
+       Maemo 5 lays out and draws some widgets very differently (e.g.
+       QRadioButton).  We recommend using local style sheets on specific
+       widgets only, instead of setting one via
+       QApplication::setStyleSheet().
+    \endlist
+
+    In addition, the PR 1.1 firmware release for the N900 contains several
+    known issues that will be resolved with the next (PR 1.2) firmware
+    release.
+
+    \list
+    \o Hildon Banners and Notifications will display with the wrong text color.
+    \o Qt::WA_Maemo5AutoOrientation is not supported.
+    \o There are styling issues with QComboBox.
+    \endlist
+
+    If you still want to test Qt 4.6 on PR 1.1, you have to use the
+    unsupported \bold libqt4-maemo5- prefixed packages from the Maemo \bold
+    extras-devel repository which will install to \bold /opt.
+    On PR 1.2 however, Qt 4.6 is already a part of the firmware and is
+    installed in \bold /usr.
 */

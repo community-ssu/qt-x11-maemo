@@ -50,6 +50,14 @@
 
 FluidLauncher::FluidLauncher(QStringList* args)
 {
+#ifdef Q_WS_MAEMO_5
+    setAttribute(Qt::WA_Maemo5NonComposited);
+    // for some reason, the "Path" entry in the Maemo desktop file is not evaluated
+    // so we need to set the current working directory manually in order to find
+    // the screenshots and demos.
+    QDir::setCurrent(QLibraryInfo::location(QLibraryInfo::DemosPath) + QLatin1String("/embedded/fluidlauncher"));
+#endif
+
     pictureFlowWidget = new PictureFlow();
     slideShowWidget = new SlideShow();
     inputTimer = new QTimer();

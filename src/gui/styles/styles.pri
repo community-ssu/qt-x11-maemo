@@ -108,6 +108,18 @@ contains( styles, plastique ) {
 	DEFINES += QT_NO_STYLE_PLASTIQUE
 }
 
+contains( styles, maemo5 ) {
+        HEADERS += styles/qmaemo5style.h
+        HEADERS += styles/qmaemo5style_p.h
+        SOURCES += styles/qmaemo5style.cpp
+	!contains( styles, gtk ) {
+		styles += gtk
+		DEFINES+= QT_STYLE_GTK
+	}
+} else {
+	DEFINES += QT_NO_STYLE_MAEMO5
+}
+
 contains( styles, gtk ) {
         HEADERS += styles/qgtkstyle.h
         HEADERS += styles/qgtkpainter_p.h

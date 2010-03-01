@@ -1268,6 +1268,11 @@ class QDataStream;
 #    else
 #      define Q_COMPAT_EXPORT Q_DECL_IMPORT
 #    endif
+#    if defined(QT_BUILD_MAEMO5_LIB)
+#      define Q_MAEMO5_EXPORT Q_DECL_EXPORT
+#    else
+#      define Q_MAEMO5_EXPORT Q_DECL_IMPORT
+#    endif
 #    define Q_TEMPLATEDLL
 #  elif defined(QT_DLL) /* use a Qt DLL library */
 #    define Q_CORE_EXPORT Q_DECL_IMPORT
@@ -1285,6 +1290,7 @@ class QDataStream;
 #    define Q_SCRIPT_EXPORT Q_DECL_IMPORT
 #    define Q_SCRIPTTOOLS_EXPORT Q_DECL_IMPORT
 #    define Q_COMPAT_EXPORT Q_DECL_IMPORT
+#    define Q_MAEMO5_EXPORT Q_DECL_IMPORT
 #    define Q_TEMPLATEDLL
 #  endif
 #  define Q_NO_DECLARED_NOT_DEFINED
@@ -1312,6 +1318,7 @@ class QDataStream;
 #    define Q_XMLPATTERNS_EXPORT Q_DECL_EXPORT
 #    define Q_SCRIPT_EXPORT Q_DECL_EXPORT
 #    define Q_SCRIPTTOOLS_EXPORT Q_DECL_EXPORT
+#    define Q_MAEMO5_EXPORT Q_DECL_EXPORT
 #    define Q_COMPAT_EXPORT Q_DECL_EXPORT
 #  else
 #    define Q_CORE_EXPORT
@@ -1326,6 +1333,7 @@ class QDataStream;
 #    define Q_XMLPATTERNS_EXPORT
 #    define Q_SCRIPT_EXPORT
 #    define Q_SCRIPTTOOLS_EXPORT
+#    define Q_MAEMO5_EXPORT
 #    define Q_COMPAT_EXPORT
 #  endif
 #endif
@@ -2494,6 +2502,7 @@ Q_CORE_EXPORT int qt_symbian_exception2Error(const std::exception& ex);
 #define QT_MODULE_OPENVG               0x20000
 #define QT_MODULE_MULTIMEDIA           0x40000
 #define QT_MODULE_DECLARATIVE          0x80000
+#define QT_MODULE_MAEMO5              0x100000
 
 /* Qt editions */
 #define QT_EDITION_CONSOLE      (QT_MODULE_CORE \
@@ -2529,6 +2538,7 @@ Q_CORE_EXPORT int qt_symbian_exception2Error(const std::exception& ex);
                                  | QT_MODULE_HELP \
                                  | QT_MODULE_TEST \
                                  | QT_MODULE_DBUS \
+                                 | QT_MODULE_MAEMO5 \
                                  | QT_MODULE_ACTIVEQT)
 #define QT_EDITION_DESKTOP      (QT_EDITION_OPENSOURCE)
 #define QT_EDITION_UNIVERSAL    QT_EDITION_DESKTOP
@@ -2607,6 +2617,9 @@ QT_LICENSED_MODULE(Test)
 #endif
 #if (QT_EDITION & QT_MODULE_DBUS)
 QT_LICENSED_MODULE(DBus)
+#endif
+#if (QT_EDITION & QT_MODULE_MAEMO5)
+QT_LICENSED_MODULE(Maemo5)
 #endif
 
 #define QT_MODULE(x) \

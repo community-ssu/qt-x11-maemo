@@ -729,11 +729,23 @@ void QMainWindow::addToolBar(Qt::ToolBarArea area, QToolBar *toolbar)
     d->layout->addToolBar(area, toolbar);
 }
 
-/*! \overload
-    Equivalent of calling addToolBar(Qt::TopToolBarArea, \a toolbar)
+/*! 
+    \overload
+    Equivalent to calling addToolBar(Qt::TopToolBarArea, \a toolbar)
+
+    On Maemo 5 this call will place the toolbar in the bottom area and make
+    it non-movable, as specified by the platform's style guides.
 */
 void QMainWindow::addToolBar(QToolBar *toolbar)
-{ addToolBar(Qt::TopToolBarArea, toolbar); }
+{
+#if defined(Q_WS_MAEMO_5)
+    // default location and behavior for Maemo5
+    addToolBar(Qt::BottomToolBarArea, toolbar);
+    toolbar->setMovable(false);
+#else
+    addToolBar(Qt::TopToolBarArea, toolbar);
+#endif
+}
 
 /*!
     \overload

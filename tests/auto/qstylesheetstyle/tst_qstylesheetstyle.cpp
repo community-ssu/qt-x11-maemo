@@ -816,6 +816,9 @@ void tst_QStyleSheetStyle::focusColors()
 
 void tst_QStyleSheetStyle::hoverColors()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("No mouse Cursor on Maemo 5",SkipAll);
+#endif
     QList<QWidget *> widgets;
     widgets << new QPushButton("TESTING");
     widgets << new QLineEdit("TESTING");
@@ -973,10 +976,11 @@ void tst_QStyleSheetStyle::background()
 
 void tst_QStyleSheetStyle::tabAlignement()
 {
-    QTabWidget tabWidget;
+    QWidget topLevel;
+    QTabWidget tabWidget(&topLevel);
     tabWidget.addTab(new QLabel("tab1"),"tab1");
     tabWidget.resize(QSize(400,400));
-    tabWidget.show();
+    topLevel.show();
     QTest::qWaitForWindowShown(&tabWidget);
     QTest::qWait(50);
     QTabBar *bar = qFindChild<QTabBar*>(&tabWidget);
@@ -1303,6 +1307,9 @@ void tst_QStyleSheetStyle::emptyStyleSheet()
     //workaround the fact that the label sizehint is one pixel different the first time.
     label.setIndent(0); //force to recompute the sizeHint:
     w.setFocus();
+#ifdef Q_WS_MAEMO_5 //We have to wait until the scrollbar-indicators disappears
+    QTest::qWait(3000);
+#endif
     QTest::qWait(100);
 
     QImage img1(w.size(), QImage::Format_ARGB32);
@@ -1406,11 +1413,16 @@ void tst_QStyleSheetStyle::embeddedFonts()
     QCOMPARE(embedded->font().pixelSize(), 32);
 
     QMenu *menu = embedded->createStandardContextMenu();
+#ifdef Q_WS_MAEMO_5 //On Maemo 5 QMenus use the native Maemo 5 Menu
+    QVERIFY(menu == NULL);
+#else
+    QVERIFY(menu != NULL);
     menu->show();
     QTest::qWait(20);
     QVERIFY(menu);
     QVERIFY(menu->font().pixelSize() != 32);
     QCOMPARE(menu->font().pixelSize(), qApp->font(menu).pixelSize());
+#endif
 
     //task 242556
     QComboBox box;

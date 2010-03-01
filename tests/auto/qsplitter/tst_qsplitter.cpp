@@ -1225,6 +1225,10 @@ void tst_QSplitter::testShowHide_data()
 
 void tst_QSplitter::testShowHide()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo5 window manager", SkipAll);
+#endif
+
     QFETCH(bool, hideWidget1);
     QFETCH(bool, hideWidget2);
 
@@ -1378,8 +1382,9 @@ class MyTextEdit : public QTextEdit
 
 void tst_QSplitter::task169702_sizes()
 {
+    QWidget topLevel;
     // Create two nested (non-collapsible) splitters
-    QSplitter* outerSplitter = new QSplitter(Qt::Vertical);
+    QSplitter* outerSplitter = new QSplitter(Qt::Vertical, &topLevel);
     outerSplitter->setChildrenCollapsible(false);
     QSplitter* splitter = new QSplitter(Qt::Horizontal, outerSplitter);
     splitter->setChildrenCollapsible(false);
@@ -1396,12 +1401,12 @@ void tst_QSplitter::task169702_sizes()
     splitter->addWidget(new QTextEdit("Bar"));
 
     outerSplitter->setGeometry(100, 100, 500, 500);
-    outerSplitter->show();
+    topLevel.show();
 
     QTest::qWait(100);
     testW->m_iFactor++;
     testW->updateGeometry();
-    QTest::qWait(100);
+    QTest::qWait(500);//100 is too fast for Maemo 5
 
     //Make sure the minimimSizeHint is respected
     QCOMPARE(testW->size().height(), testW->minimumSizeHint().height());

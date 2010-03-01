@@ -99,7 +99,9 @@ void VideoWidget::setupVideoBin()
         gst_bin_add_many (GST_BIN (m_videoBin), queue, m_colorspace, m_videoplug, videoScale, videoSink, (const char*)NULL);
         bool success = false;
         //Video balance controls color/sat/hue in the YUV colorspace
+#if !defined(Q_WS_MAEMO_5) //We can't use videobalance on Maemo due to performance issues (this should really be detcted at run-time though)
         m_videoBalance = gst_element_factory_make ("videobalance", NULL);
+#endif
         if (m_videoBalance) {
             // For video balance to work we have to first ensure that the video is in YUV colorspace,
             // then hand it off to the videobalance filter before finally converting it back to RGB.

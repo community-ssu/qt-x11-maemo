@@ -104,6 +104,10 @@ void tst_QScrollBar::scrollSingleStep()
 
 void tst_QScrollBar::task_209492()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Clicking on the ScrollBar is disabled on Maemo 5", SkipAll);
+#endif
+
     class MyScrollArea : public QScrollArea
     {
     public:

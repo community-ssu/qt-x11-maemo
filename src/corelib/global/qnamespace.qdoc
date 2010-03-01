@@ -1255,6 +1255,29 @@
     window boundary (widget without parent or dialog) is found.
     This attribute currently has effect only on Symbian platforms
 
+    \value WA_Maemo5StackedWindow Flags this window to be part of a
+    Maemo 5 Window Stack. This flag is only available on Maemo 5.
+
+    \value WA_Maemo5LandscapeOrientation Forces this window
+    into landscape orientation, independent of the device's prior
+    orientation. This flag is only available on Maemo 5.
+
+    \value WA_Maemo5PortraitOrientation Forces this window
+    into portrait orientation, independent of the device's prior
+    orientation. This flag is only available on Maemo 5.
+
+    \value WA_Maemo5AutoOrientation This window will auto-rotate into
+    portrait or landscape orientation, depending on the device's
+    orientation. This flag is only available on Maemo 5.
+
+    \value WA_Maemo5ShowProgressIndicator Shows a busy indicator
+    on this window's title bar. This flag is only available on Maemo 5.
+
+    \value WA_Maemo5NonComposited Tells the Maemo 5 window manager
+    that this window should not be part of the composition. Might
+    speed up rendering, but makes top-level transparency impossible.
+    This flag is only available on Maemo 5.
+
     \omitvalue WA_SetLayoutDirection
     \omitvalue WA_InputMethodTransparent
     \omitvalue WA_WState_CompressKeys

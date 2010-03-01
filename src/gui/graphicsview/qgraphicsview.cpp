@@ -1037,8 +1037,8 @@ void QGraphicsViewPrivate::updateInputMethodSensitivity()
     Q_Q(QGraphicsView);
     bool enabled = scene && scene->focusItem()
                    && (scene->focusItem()->flags() & QGraphicsItem::ItemAcceptsInputMethod);
-    q->setAttribute(Qt::WA_InputMethodEnabled, enabled);
     q->viewport()->setAttribute(Qt::WA_InputMethodEnabled, enabled);
+    q->setAttribute(Qt::WA_InputMethodEnabled, enabled);
 }
 
 /*!
@@ -1051,8 +1051,8 @@ QGraphicsView::QGraphicsView(QWidget *parent)
     setAcceptDrops(true);
     setBackgroundRole(QPalette::Base);
     // Investigate leaving these disabled by default.
-    setAttribute(Qt::WA_InputMethodEnabled);
     viewport()->setAttribute(Qt::WA_InputMethodEnabled);
+    setAttribute(Qt::WA_InputMethodEnabled);
 }
 
 /*!
@@ -1067,8 +1067,8 @@ QGraphicsView::QGraphicsView(QGraphicsScene *scene, QWidget *parent)
     setAcceptDrops(true);
     setBackgroundRole(QPalette::Base);
     // Investigate leaving these disabled by default.
-    setAttribute(Qt::WA_InputMethodEnabled);
     viewport()->setAttribute(Qt::WA_InputMethodEnabled);
+    setAttribute(Qt::WA_InputMethodEnabled);
 }
 
 /*!
@@ -1081,8 +1081,8 @@ QGraphicsView::QGraphicsView(QGraphicsViewPrivate &dd, QWidget *parent)
     setAcceptDrops(true);
     setBackgroundRole(QPalette::Base);
     // Investigate leaving these disabled by default.
-    setAttribute(Qt::WA_InputMethodEnabled);
     viewport()->setAttribute(Qt::WA_InputMethodEnabled);
+    setAttribute(Qt::WA_InputMethodEnabled);
 }
 
 /*!

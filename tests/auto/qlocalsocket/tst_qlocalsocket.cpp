@@ -806,6 +806,9 @@ void tst_QLocalSocket::processConnection_data()
  */
 void tst_QLocalSocket::processConnection()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("This test currently trashes the N900 kernel", SkipAll);
+#endif
 #if defined(QT_NO_PROCESS) || defined(Q_CC_NOKIAX86)
     QSKIP("Qt was compiled with QT_NO_PROCESS", SkipAll);
 #else

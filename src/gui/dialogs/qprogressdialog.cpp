@@ -60,7 +60,7 @@
 #if defined(QT_SOFTKEYS_ENABLED)
 #include <qaction.h>
 #endif
-#ifdef Q_WS_S60
+#if defined(Q_WS_S60) || defined(Q_WS_MAEMO_5)
 #include <QtGui/qdesktopwidget.h>
 #endif
 
@@ -155,6 +155,7 @@ void QProgressDialogPrivate::layout()
 
     QSize cs = cancel ? cancel->sizeHint() : QSize(0,0);
     QSize bh = bar->sizeHint();
+#ifndef Q_WS_MAEMO_5
     int cspc;
     int lh = 0;
 
@@ -187,6 +188,15 @@ void QProgressDialogPrivate::layout()
     if (label)
         label->setGeometry(mlr, 0, q->width()-mlr*2, lh);
     bar->setGeometry(mlr, lh+sp, q->width()-mlr*2, bh.height());
+#else // Q_WS_MAEMO_5
+    // hardcoded margins as given in the Hildon Style Guide
+    if (label)
+        label->setGeometry(16, 0, q->width() - 3*16 - cs.width(), q->height() - 2*8 - qMax(bh.height(), cs.height()));
+    if (cancel)
+        cancel->setGeometry(q->width() - 16 - cs.width(), q->height() - 8 - cs.height(), cs.width(), cs.height());
+    bar->setGeometry(16, q->height() - 8 - bh.height(), q->width() - 3*16 - cs.width(), bh.height());
+    bar->setTextVisible(false);
+#endif // Q_WS_MAEMO_5
 }
 
 void QProgressDialogPrivate::retranslateStrings()
@@ -309,7 +319,7 @@ QProgressDialog::QProgressDialog(QWidget *parent, Qt::WindowFlags f)
 
    The \a labelText is the text used to remind the user what is progressing.
 
-   The \a cancelButtonText is the text to display on the cancel button.  If 
+   The \a cancelButtonText is the text to display on the cancel button.  If
    QString() is passed then no cancel button is shown.
 
    The \a minimum and \a maximum is the number of steps in the operation for
@@ -459,7 +469,7 @@ void QProgressDialog::setCancelButton(QPushButton *cancelButton)
 
 /*!
   Sets the cancel button's text to \a cancelButtonText.  If the text
-  is set to QString() then it will cause the cancel button to be 
+  is set to QString() then it will cause the cancel button to be
   hidden and deleted.
 
   \sa setCancelButton()
@@ -723,16 +733,20 @@ QSize QProgressDialog::sizeHint() const
     Q_D(const QProgressDialog);
     QSize sh = d->label ? d->label->sizeHint() : QSize(0, 0);
     QSize bh = d->bar->sizeHint();
+    QSize ch = d->cancel ? d->cancel->sizeHint() : QSize(0, 0);
     int margin = style()->pixelMetric(QStyle::PM_DefaultTopLevelMargin);
     int spacing = style()->pixelMetric(QStyle::PM_DefaultLayoutSpacing);
     int h = margin * 2 + bh.height() + sh.height() + spacing;
     if (d->cancel)
-        h += d->cancel->sizeHint().height() + spacing;
+        h += ch.height() + spacing;
 #ifdef Q_WS_S60
     if (QApplication::desktop()->size().height() > QApplication::desktop()->size().width())
         return QSize(qMax(QApplication::desktop()->size().width(), sh.width() + 2 * margin), h);
     else
         return QSize(qMax(QApplication::desktop()->size().height(), sh.width() + 2 * margin), h);
+#elif defined(Q_WS_MAEMO_5)
+    // hardcoded margins as given in the Hildon Style Guide
+    return QSize(QApplication::desktop()->size().width(), sh.height() + 8 + qMax(bh.height(), ch.height()) + 8);
 #else
     return QSize(qMax(200, sh.width() + 2 * margin), h);
 #endif
@@ -797,6 +811,10 @@ int QProgressDialog::minimumDuration() const
 
 void QProgressDialog::closeEvent(QCloseEvent *e)
 {
+#ifdef Q_WS_MAEMO_5
+    e->ignore();
+    return;
+#endif
     emit canceled();
     QDialog::closeEvent(e);
 }

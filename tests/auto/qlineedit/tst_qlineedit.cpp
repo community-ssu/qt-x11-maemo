@@ -2131,6 +2131,10 @@ void tst_QLineEdit::deleteSelectedText()
     edit.selectAll();
 
     QMenu *menu = edit.createStandardContextMenu();
+#ifdef Q_WS_MAEMO_5
+    QVERIFY(menu == NULL);
+#else
+    QVERIFY(menu != NULL);
     for (int i = 0; i < menu->actions().count(); ++i) {
         QAction *current = menu->actions().at(i);
         if (current->text() == QLineEdit::tr("Delete")) {
@@ -2138,6 +2142,7 @@ void tst_QLineEdit::deleteSelectedText()
             QVERIFY(edit.text().isEmpty());
         }
     }
+#endif
 
 }
 

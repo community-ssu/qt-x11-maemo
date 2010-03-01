@@ -177,7 +177,17 @@ GstElement *DeviceManager::createAudioSink(Category category)
                     sink = 0;
                 }
             }
-
+#ifdef Q_WS_MAEMO_5
+            if (!sink) {
+                sink = gst_element_factory_make ("pulsesink", NULL);
+                if (canOpenDevice(sink))
+                    m_backend->logMessage("AudioOutput using pulse audio sink");
+                else if (sink) {
+                    gst_object_unref(sink);
+                    sink = 0;
+                }
+            }
+#endif
 #ifdef USE_ALSASINK2
             if (!sink) {
                 sink = gst_element_factory_make ("_k_alsasink", NULL);

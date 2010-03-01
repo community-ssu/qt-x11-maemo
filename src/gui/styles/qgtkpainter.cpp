@@ -142,7 +142,7 @@ QPixmap QGtkPainter::renderTheme(uchar *bdata, uchar *wdata, const QRect &rect)
     }
 
 QGtkPainter::QGtkPainter(QPainter *_painter)
-        : m_window(QGtkStylePrivate::gtkWidget(QLatin1String("GtkWindow")))
+        : m_window(QGtkStylePrivate::gtkWidget("GtkWindow"))
         , m_painter(_painter)
         , m_alpha(true)
         , m_hflipped(false)
@@ -562,16 +562,30 @@ void QGtkPainter::paintSlider(GtkWidget *gtkWidget, const gchar* part, const QRe
 
 
 void QGtkPainter::paintShadow(GtkWidget *gtkWidget, const gchar* part,
-                              const QRect &rect, GtkStateType state,
+                              const QRect &paintRect, GtkStateType state,
                               GtkShadowType shadow, GtkStyle *style,
                               const QString &pmKey)
 
 {
-    if (!rect.isValid())
+    if (!paintRect.isValid())
         return;
 
-    QRect r = rect;
     QPixmap cache;
+    QRect rect = paintRect;
+
+#ifdef Q_WS_MAEMO_5
+    // To avoid exhausting cache on large tabframes we cheat a bit by
+    // tiling the center part.
+
+    const int maxHeight = 140;
+    const int maxArea = 140*400;
+    const int border = 35;
+    if (rect.height() > maxHeight && (rect.width()*rect.height() > maxArea))
+        rect.setHeight(2 * border + 1);
+#else
+    const int border = 0;
+#endif
+
     QString pixmapName = uniqueName(QLS(part), state, shadow, rect.size()) + pmKey;
     if (!m_usePixmapCache || !QPixmapCache::find(pixmapName, cache)) {
         DRAW_TO_CACHE(QGtkStylePrivate::gtk_paint_shadow(style, pixmap, state, shadow, NULL,
@@ -579,7 +593,29 @@ void QGtkPainter::paintShadow(GtkWidget *gtkWidget, const gchar* part,
         if (m_usePixmapCache)
             QPixmapCache::insert(pixmapName, cache);
     }
-    m_painter->drawPixmap(rect.topLeft(), cache);
+    if (rect.size() != paintRect.size()) {
+        // We assume we can stretch the middle tab part
+        // Note: the side effect of this is that pinstripe patterns will get fuzzy
+        const QSize size = cache.size();
+        // top part
+        m_painter->drawPixmap(QRect(paintRect.left(), paintRect.top(),
+                                    paintRect.width(), border), cache,
+                              QRect(0, 0, size.width(), border));
+
+        // tiled center part
+        QPixmap tilePart(cache.width(), 1);
+        QPainter scanLinePainter(&tilePart);
+        scanLinePainter.drawPixmap(QRect(0, 0, tilePart.width(), tilePart.height()), cache, QRect(0, border, size.width(), 1));
+        scanLinePainter.end();
+        m_painter->drawTiledPixmap(QRect(paintRect.left(), paintRect.top() + border,
+                                         paintRect.width(), paintRect.height() - 2*border), tilePart);
+
+        // bottom part
+        m_painter->drawPixmap(QRect(paintRect.left(), paintRect.top() + paintRect.height() - border,
+                                    paintRect.width(), border), cache,
+                              QRect(0, size.height() - border, size.width(), border));
+    } else
+        m_painter->drawPixmap(paintRect.topLeft(), cache);
 }
 
 void QGtkPainter::paintFlatBox(GtkWidget *gtkWidget, const gchar* part,

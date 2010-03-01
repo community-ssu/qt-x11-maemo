@@ -1556,6 +1556,9 @@ void QTextEdit::mouseMoveEvent(QMouseEvent *e)
 {
     Q_D(QTextEdit);
     d->inDrag = false; // paranoia
+#ifdef Q_WS_MAEMO_5
+    Q_UNUSED(e);
+#else
     const QPoint pos = e->pos();
     d->sendControlEvent(e);
     if (!(e->buttons() & Qt::LeftButton))
@@ -1565,6 +1568,7 @@ void QTextEdit::mouseMoveEvent(QMouseEvent *e)
         d->autoScrollTimer.stop();
     else if (!d->autoScrollTimer.isActive())
         d->autoScrollTimer.start(100, this);
+#endif
 }
 
 /*! \reimp
@@ -1801,8 +1805,12 @@ void QTextEdit::wheelEvent(QWheelEvent *e)
 
 QMenu *QTextEdit::createStandardContextMenu()
 {
+#ifdef Q_WS_MAEMO_5
+    return 0;
+#else
     Q_D(QTextEdit);
     return d->control->createStandardContextMenu(QPointF(), this);
+#endif
 }
 
 /*!
@@ -1817,8 +1825,12 @@ QMenu *QTextEdit::createStandardContextMenu()
 
 QMenu *QTextEdit::createStandardContextMenu(const QPoint &position)
 {
+#ifdef Q_WS_MAEMO_5
+    return 0;
+#else
     Q_D(QTextEdit);
     return d->control->createStandardContextMenu(position, this);
+#endif
 }
 #endif // QT_NO_CONTEXTMENU
 

@@ -51,6 +51,9 @@
 #include <private/qt_x11_p.h>
 #include <qcoreapplication.h>
 #include <stdlib.h>
+#ifdef Q_WS_MAEMO_5
+#  include <qlibrary.h>
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -63,6 +66,22 @@ inline static bool launch(const QUrl &url, const QString &client)
 #endif
 }
 
+#ifdef Q_WS_MAEMO_5
+inline static bool maemo5Launch(const QUrl &url)
+{
+    typedef bool (*Ptr_hildon_uri_open)(const char *, void *, void **);
+    static Ptr_hildon_uri_open hildon_uri_open = 0;
+
+    if (!hildon_uri_open) {
+        QLibrary lib(QLatin1String("libhildonmime"), 0, 0);
+        hildon_uri_open = (Ptr_hildon_uri_open)lib.resolve("hildon_uri_open");
+    }
+    if (hildon_uri_open)
+        return hildon_uri_open(url.toEncoded().constData(), 0, 0);
+    return false;
+}
+#endif
+
 static bool openDocument(const QUrl &url)
 {
     if (!url.isValid())
@@ -71,12 +90,14 @@ static bool openDocument(const QUrl &url)
     if (launch(url, QLatin1String("xdg-open")))
         return true;
 
-    if (X11->desktopEnvironment == DE_GNOME && launch(url, QLatin1String("gnome-open"))) {
+    if (X11->desktopEnvironment == DE_GNOME && launch(url, QLatin1String("gnome-open")))
         return true;
-    } else {
-        if (X11->desktopEnvironment == DE_KDE && launch(url, QLatin1String("kfmclient exec")))
-            return true;
-    }
+    else if (X11->desktopEnvironment == DE_KDE && launch(url, QLatin1String("kfmclient exec")))
+        return true;
+#ifdef Q_WS_MAEMO_5
+    else if (X11->desktopEnvironment == DE_MAEMO5 && maemo5Launch(url))
+        return true;
+#endif
 
     if (launch(url, QLatin1String("firefox")))
         return true;
@@ -104,12 +125,14 @@ static bool launchWebBrowser(const QUrl &url)
     if (launch(url, QString::fromLocal8Bit(getenv("BROWSER"))))
         return true;
 
-    if (X11->desktopEnvironment == DE_GNOME && launch(url, QLatin1String("gnome-open"))) {
+    if (X11->desktopEnvironment == DE_GNOME && launch(url, QLatin1String("gnome-open")))
         return true;
-    } else {
-        if (X11->desktopEnvironment == DE_KDE && launch(url, QLatin1String("kfmclient openURL")))
-            return true;
-    }
+    else if (X11->desktopEnvironment == DE_KDE && launch(url, QLatin1String("kfmclient openURL")))
+        return true;
+#ifdef Q_WS_MAEMO_5
+    else if (X11->desktopEnvironment == DE_MAEMO5 && maemo5Launch(url))
+        return true;
+#endif
 
     if (launch(url, QLatin1String("firefox")))
         return true;

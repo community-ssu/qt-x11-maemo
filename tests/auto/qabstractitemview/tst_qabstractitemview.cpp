@@ -1230,8 +1230,8 @@ void tst_QAbstractItemView::task250754_fontChange()
 
 void tst_QAbstractItemView::task200665_itemEntered()
 {
-#ifdef Q_OS_WINCE_WM
-    QSKIP("On Windows Mobile the mouse tracking is unavailable at the moment", SkipAll);
+#if defined(Q_OS_WINCE_WM) || defined(Q_WS_MAEMO_5)
+    QSKIP("On Windows Mobile / Maemo 5 the mouse tracking is unavailable at the moment", SkipAll);
 #endif
     //we test that view will emit entered
     //when the scrollbar move but not the mouse itself
@@ -1239,7 +1239,7 @@ void tst_QAbstractItemView::task200665_itemEntered()
     QListView view;
     view.setModel(&model);
     view.show();
-    QTest::qWait(200);
+    QTest::qWaitForWindowShown(&view);
     QRect rect = view.visualRect(model.index(0,0));
     QCursor::setPos( view.viewport()->mapToGlobal(rect.center()) );
     QSignalSpy spy(&view, SIGNAL(entered(QModelIndex)));

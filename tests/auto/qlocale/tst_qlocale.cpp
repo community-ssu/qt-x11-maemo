@@ -138,6 +138,10 @@ private slots:
 #if defined(Q_OS_SYMBIAN)
     void symbianSystemLocale();
 #endif
+#if defined(Q_WS_MAEMO_5)
+    void maemoSystemLocale();
+#endif
+
 
     void ampm();
 
@@ -2021,6 +2025,54 @@ void tst_QLocale::symbianSystemLocale()
 
     QCOMPARE(finalResult, s60FinalResult);
 # endif
+}
+#endif
+
+#ifdef Q_WS_MAEMO_5
+void tst_QLocale::maemoSystemLocale()
+{
+    QLocale maemoLocale = QLocale::system();
+    QDateTime monday(QDate(2010, 1, 25), QTime(0, 0, 1));
+    QDateTime tuesday(QDate(2010, 1, 26), QTime(10, 34, 0));
+    QDateTime sunday(QDate(2010, 1, 31), QTime(13, 0, 0));
+
+    QByteArray lang = qgetenv("LANG");
+    if (lang != "en_GB" && lang != "en_US")
+        QSKIP("Unable to test maemo system locale - please set the device to en_GB (default when doing run-standalone in SDK) or en_US", SkipAll);
+
+    bool us = (lang == "en_US");
+    QCOMPARE(maemoLocale.amText(), QString("am"));
+    QCOMPARE(maemoLocale.pmText(), QString("pm"));
+
+    if (us) {
+        QCOMPARE(maemoLocale.toString(tuesday.date()), QString("Tuesday, January 26, 2010"));
+        QCOMPARE(maemoLocale.toString(tuesday.date(), QLocale::ShortFormat), QString("01/26"));
+        QCOMPARE(maemoLocale.toString(tuesday, QLocale::ShortFormat), QString("01/26 10:34 am"));
+
+        QCOMPARE(maemoLocale.toString(monday.date()), QString("Monday, January 25, 2010"));
+        QCOMPARE(maemoLocale.toString(monday.date(), QLocale::ShortFormat), QString("01/25"));
+        QCOMPARE(maemoLocale.toString(monday, QLocale::ShortFormat), QString("01/25 12:00 am"));
+
+        QCOMPARE(maemoLocale.toString(sunday.date()), QString("Sunday, January 31, 2010"));
+        QCOMPARE(maemoLocale.toString(sunday.date(), QLocale::ShortFormat), QString("01/31"));
+        QCOMPARE(maemoLocale.toString(sunday, QLocale::ShortFormat), QString("01/31  1:00 pm"));
+    } else {
+        QCOMPARE(maemoLocale.toString(tuesday.date()), QString("Tuesday 26 January 2010"));
+        QCOMPARE(maemoLocale.toString(tuesday.date(), QLocale::ShortFormat), QString("26/01"));
+        QCOMPARE(maemoLocale.toString(tuesday, QLocale::ShortFormat), QString("26/01 10:34 am"));
+
+        QCOMPARE(maemoLocale.toString(monday.date()), QString("Monday 25 January 2010"));
+        QCOMPARE(maemoLocale.toString(monday.date(), QLocale::ShortFormat), QString("25/01"));
+        QCOMPARE(maemoLocale.toString(monday, QLocale::ShortFormat), QString("25/01 12:00 am"));
+
+        QCOMPARE(maemoLocale.toString(sunday.date()), QString("Sunday 31 January 2010"));
+        QCOMPARE(maemoLocale.toString(sunday.date(), QLocale::ShortFormat), QString("31/01"));
+        QCOMPARE(maemoLocale.toString(sunday, QLocale::ShortFormat), QString("31/01  1:00 pm"));
+    }
+
+    QCOMPARE(maemoLocale.toString(tuesday.time(), QLocale::ShortFormat), QString("10:34 am"));
+    QCOMPARE(maemoLocale.toString(monday.time(), QLocale::ShortFormat), QString("12:00 am"));
+    QCOMPARE(maemoLocale.toString(sunday.time(), QLocale::ShortFormat), QString(" 1:00 pm"));
 }
 #endif
 

@@ -62,6 +62,9 @@
 #include <qaccessible.h>
 #endif
 #include <private/qsoftkeymanager_p.h>
+#ifdef Q_WS_MAEMO_5
+#  include <qabstractkineticscroller.h>
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -137,6 +140,10 @@ void QAbstractItemViewPrivate::init()
 
 #ifdef QT_SOFTKEYS_ENABLED
     doneSoftKey = QSoftKeyManager::createKeyedAction(QSoftKeyManager::DoneSoftKey, Qt::Key_Back, q);
+#endif
+#ifdef Q_WS_MAEMO_5
+    if (QAbstractKineticScroller *scroller = q->property("kineticScroller").value<QAbstractKineticScroller *>())
+        scroller->setEnabled(true);
 #endif
 }
 

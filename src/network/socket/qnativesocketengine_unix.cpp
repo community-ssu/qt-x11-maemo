@@ -725,6 +725,7 @@ qint64 QNativeSocketEnginePrivate::nativeSendDatagram(const char *data, qint64 l
     if (sentBytes < 0) {
         switch (errno) {
         case EMSGSIZE:
+        case ENOBUFS:
             setError(QAbstractSocket::DatagramTooLargeError, DatagramTooLargeErrorString);
             break;
         default:

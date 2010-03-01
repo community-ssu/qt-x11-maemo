@@ -57,6 +57,9 @@
 #include <qwhatsthis.h>
 #include <qtextobject.h>
 #include <qdesktopservices.h>
+#ifdef Q_WS_MAEMO_5
+#  include <qabstractkineticscroller.h>
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -657,6 +660,10 @@ void QTextBrowserPrivate::init()
                      q, SLOT(_q_activateAnchor(QString)));
     QObject::connect(control, SIGNAL(linkHovered(QString)),
                      q, SLOT(_q_highlightLink(QString)));
+#ifdef Q_WS_MAEMO_5
+    if (QAbstractKineticScroller *scroller = q->property("kineticScroller").value<QAbstractKineticScroller *>())
+        scroller->setEnabled(true);
+#endif
 }
 
 /*!

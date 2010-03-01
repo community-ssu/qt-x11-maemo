@@ -4085,10 +4085,14 @@ void tst_QString::localeAwareCompare_data()
     QTest::newRow("swedish3") << MAKELCID(MAKELANGID(LANG_SWEDISH, SUBLANG_SWEDISH), SORT_DEFAULT) << QString("\xe5") << QString("\xf6") << -1;
     QTest::newRow("swedish4") << MAKELCID(MAKELANGID(LANG_SWEDISH, SUBLANG_SWEDISH), SORT_DEFAULT) << QString("z") << QString("\xe5") << -1;
 #else
+#   ifndef Q_WS_MAEMO_5 //On Maemo 5 the posix locales are corrupt
     QTest::newRow("swedish1") << QString("sv_SE") << QString("\xe5") << QString("\xe4") << -1;
+#   endif
     QTest::newRow("swedish2") << QString("sv_SE") << QString("\xe4") << QString("\xf6") << -1;
     QTest::newRow("swedish3") << QString("sv_SE") << QString("\xe5") << QString("\xf6") << -1;
+#   ifndef Q_WS_MAEMO_5 //On Maemo 5 the posix locales are corrupt
     QTest::newRow("swedish4") << QString("sv_SE") << QString("z") << QString("\xe5") << -1;
+#   endif
 #endif
 
 #if 0

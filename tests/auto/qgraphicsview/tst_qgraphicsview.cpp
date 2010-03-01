@@ -522,13 +522,15 @@ void tst_QGraphicsView::sceneRect()
 
 void tst_QGraphicsView::sceneRect_growing()
 {
+    QWidget toplevel;
+
     QGraphicsScene scene;
     for (int i = 0; i < 100; ++i)
         scene.addText(QString("(0, %1)").arg((i - 50) * 20))->setPos(0, (i - 50) * 20);
 
-    QGraphicsView view(&scene);
+    QGraphicsView view(&scene, &toplevel);
     view.setFixedSize(200, 200);
-    view.show();
+    toplevel.show();
 
     int size = 200;
     scene.setSceneRect(-size, -size, size * 2, size * 2);
@@ -845,15 +847,17 @@ void tst_QGraphicsView::dragMode_rubberBand()
 
 void tst_QGraphicsView::rubberBandSelectionMode()
 {
+    QWidget toplevel;
+
     QGraphicsScene scene;
     QGraphicsRectItem *rect = scene.addRect(QRectF(10, 10, 80, 80));
     rect->setFlag(QGraphicsItem::ItemIsSelectable);
 
-    QGraphicsView view(&scene);
+    QGraphicsView view(&scene, &toplevel);
     QCOMPARE(view.rubberBandSelectionMode(), Qt::IntersectsItemShape);
     view.setDragMode(QGraphicsView::RubberBandDrag);
     view.resize(120, 120);
-    view.show();
+    toplevel.show();
 
     // Disable mouse tracking to prevent the window system from sending mouse
     // move events to the viewport while we are synthesizing events. If
@@ -1062,16 +1066,18 @@ void tst_QGraphicsView::matrix_combine()
 
 void tst_QGraphicsView::centerOnPoint()
 {
+    QWidget toplevel;
+
     QGraphicsScene scene;
     scene.addEllipse(QRectF(-100, -100, 50, 50));
     scene.addEllipse(QRectF(50, -100, 50, 50));
     scene.addEllipse(QRectF(-100, 50, 50, 50));
     scene.addEllipse(QRectF(50, 50, 50, 50));
 
-    QGraphicsView view(&scene);
+    QGraphicsView view(&scene, &toplevel);
     view.setSceneRect(-400, -400, 800, 800);
     view.setFixedSize(100, 100);
-    view.show();
+    toplevel.show();
 
     int tolerance = 5;
 
@@ -1146,6 +1152,8 @@ void tst_QGraphicsView::centerOnItem()
 
 void tst_QGraphicsView::ensureVisibleRect()
 {
+    QWidget toplevel;
+
     QGraphicsScene scene;
     QGraphicsItem *items[4];
     items[0] = scene.addEllipse(QRectF(-25, -25, 50, 50), QPen(Qt::black), QBrush(Qt::green));
@@ -1161,11 +1169,11 @@ void tst_QGraphicsView::ensureVisibleRect()
 
     QGraphicsItem *icon = scene.addEllipse(QRectF(-10, -10, 20, 20), QPen(Qt::black), QBrush(Qt::gray));
 
-    QGraphicsView view(&scene);
+    QGraphicsView view(&scene, &toplevel);
     view.setSceneRect(-500, -500, 1000, 1000);
     view.setFixedSize(250, 250);
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    toplevel.show();
+    QTest::qWaitForWindowShown(&toplevel);
 
     for (int y = -100; y < 100; y += 25) {
         for (int x = -100; x < 100; x += 13) {
@@ -1229,7 +1237,7 @@ void tst_QGraphicsView::fitInView()
     items[0]->rotate(30);
     items[1]->rotate(-30);
 
-#if defined(Q_OS_WINCE)
+#if defined(Q_OS_WINCE) || defined(Q_WS_MAEMO_5)
     //Is the standard scrollbar size
     int scrollbarSize = qApp->style()->pixelMetric(QStyle::PM_ScrollBarExtent) - 13;
 #endif
@@ -1237,11 +1245,15 @@ void tst_QGraphicsView::fitInView()
     QGraphicsView view(&scene);
     view.setSceneRect(-400, -400, 800, 800);
 
-#if defined(Q_OS_WINCE)
+#if defined(Q_OS_WINCE) || defined(Q_WS_MAEMO_5)
     //We need to take in account the scrollbar size for the WindowsMobilStyle
     view.setFixedSize(400 + scrollbarSize, 200 + scrollbarSize);
 #else
     view.setFixedSize(400, 200);
+#endif
+
+#ifdef Q_WS_MAEMO_5
+    view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
 #endif
 
     view.show();
@@ -1403,10 +1415,13 @@ void tst_QGraphicsView::itemsInRect_cosmeticAdjust()
     scene.addItem(rect);
 
     QGraphicsView view(&scene);
+#ifdef Q_WS_MAEMO_5
+    view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
+#endif
     view.setFrameStyle(0);
     view.resize(300, 300);
     view.show();
-    QTest::qWaitForWindowShown(&view) ;
+    QTest::qWaitForWindowShown(&view);
     QTRY_VERIFY(rect->numPaints > 0);
 
     rect->numPaints = 0;
@@ -1585,7 +1600,8 @@ void tst_QGraphicsView::mapToScene()
     QGraphicsScene scene;
     scene.addPixmap(QPixmap("3D-Qt-1-2.png"));
 
-    QGraphicsView view;
+    QWidget topLevel;
+    QGraphicsView view(&topLevel);
     view.setScene(&scene);
     view.setSceneRect(-500, -500, 1000, 1000);
 #if defined(Q_OS_WINCE)
@@ -1595,7 +1611,7 @@ void tst_QGraphicsView::mapToScene()
 #endif
 
     view.setFixedSize(viewSize);
-    view.show();
+    topLevel.show();
     QApplication::processEvents();
     QVERIFY(view.isVisible());
     QCOMPARE(view.size(), viewSize);
@@ -1775,11 +1791,14 @@ void tst_QGraphicsView::mapFromScenePoint()
         }
     }
     {
+        QWidget toplevel;
+
         QGraphicsScene scene(0, 0, 200, 200);
         scene.addRect(QRectF(0, 0, 200, 200), QPen(Qt::black, 1));
-        QGraphicsView view(&scene);
+        QGraphicsView view(&scene, &toplevel);
+        view.ensurePolished();
         view.resize(view.sizeHint());
-        view.show();
+        toplevel.show();
 
         QCOMPARE(view.mapFromScene(0, 0), QPoint(0, 0));
         QCOMPARE(view.mapFromScene(0.4, 0.4), QPoint(0, 0));
@@ -1797,12 +1816,13 @@ void tst_QGraphicsView::mapFromScenePoint()
 void tst_QGraphicsView::mapFromSceneRect()
 {
     QGraphicsScene scene;
-    QGraphicsView view(&scene);
+    QWidget topLevel;
+    QGraphicsView view(&scene,&topLevel);
     view.rotate(90);
     view.setFixedSize(200, 200);
     view.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     view.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    view.show();
+    topLevel.show();
     QTest::qWait(25);
 
     QPolygon polygon;
@@ -2001,6 +2021,9 @@ void tst_QGraphicsView::cursor()
 #if defined(Q_OS_WINCE)
     QSKIP("Qt/CE does not have regular cursor support", SkipAll);
 #endif
+#if defined(Q_WS_MAEMO_5)
+    QSKIP("Maemo 5 does not have regular cursor support", SkipAll);
+#endif
     QGraphicsScene scene;
     QGraphicsItem *item = scene.addRect(QRectF(-10, -10, 20, 20));
     item->setCursor(Qt::IBeamCursor);
@@ -2027,6 +2050,9 @@ void tst_QGraphicsView::cursor2()
 #ifndef QT_NO_CURSOR
 #if defined(Q_OS_WINCE)
     QSKIP("Qt/CE does not have regular cursor support", SkipAll);
+#endif
+#if defined(Q_WS_MAEMO_5)
+    QSKIP("Maemo 5 does not have regular cursor support", SkipAll);
 #endif
     QGraphicsScene scene;
     QGraphicsItem *item = scene.addRect(QRectF(-10, -10, 20, 20));
@@ -2180,6 +2206,8 @@ class CustomView : public QGraphicsView
     Q_OBJECT
 public:
     CustomView(QGraphicsScene *s = 0) : QGraphicsView(s) {}
+    CustomView(QGraphicsScene *s, QWidget *parent)
+        : QGraphicsView(s, parent) {}
     QList<QRegion> lastUpdateRegions;
     bool painted;
 
@@ -2274,17 +2302,20 @@ void tst_QGraphicsView::viewportUpdateMode()
 
 void tst_QGraphicsView::viewportUpdateMode2()
 {
+    QWidget toplevel;
+
     // Create a view with viewport rect equal to QRect(0, 0, 200, 200).
     QGraphicsScene dummyScene;
-    CustomView view;
+    CustomView view(0, &toplevel);
     view.painted = false;
     view.setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
     view.setScene(&dummyScene);
+    view.ensurePolished(); // make sure we get the right content margins
     int left, top, right, bottom;
     view.getContentsMargins(&left, &top, &right, &bottom);
     view.resize(200 + left + right, 200 + top + bottom);
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    toplevel.show();
+    QTest::qWaitForWindowShown(&toplevel);
     QTest::qWait(50);
     QTRY_VERIFY(view.painted);
     const QRect viewportRect = view.viewport()->rect();
@@ -3155,15 +3186,17 @@ void tst_QGraphicsView::scrollAfterResize()
 #else
     QCommonStyle style;
 #endif
-    QGraphicsView view;
+    QWidget toplevel;
+
+    QGraphicsView view(&toplevel);
     view.setStyle(&style);
     if (reverse)
         view.setLayoutDirection(Qt::RightToLeft);
 
     view.setSceneRect(-1000, -1000, 2000, 2000);
     view.resize(300, 300);
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    toplevel.show();
+    QTest::qWaitForWindowShown(&toplevel);
     view.horizontalScrollBar()->setValue(0);
     view.verticalScrollBar()->setValue(0);
     QCOMPARE(view.viewportTransform(), x1);
@@ -3248,8 +3281,10 @@ void tst_QGraphicsView::moveItemWhileScrolling()
 
 void tst_QGraphicsView::centerOnDirtyItem()
 {
-    QGraphicsView view;
-    view.setWindowFlags(view.windowFlags() | Qt::WindowStaysOnTopHint);
+    QWidget toplevel;
+
+    QGraphicsView view(&toplevel);
+    toplevel.setWindowFlags(view.windowFlags() | Qt::WindowStaysOnTopHint);
     view.resize(200, 200);
 
     QGraphicsScene *scene = new QGraphicsScene;
@@ -3261,8 +3296,9 @@ void tst_QGraphicsView::centerOnDirtyItem()
     scene->addItem(item);
     view.centerOn(item);
 
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    toplevel.show();
+    QTest::qWaitForWindowShown(&toplevel);
+    QTest::qWait(50);
 
     QImage before(view.viewport()->size(), QImage::Format_ARGB32);
     view.viewport()->render(&before);
@@ -3624,19 +3660,26 @@ void tst_QGraphicsView::update()
 {
     QFETCH(QRect, updateRect);
 
+    // some window manager resize the toplevel to max screen size
+    // so we must make our view a child (no layout!) of a dummy toplevel
+    // to ensure that it's really 200x200 pixels
+    QWidget toplevel;
+
     // Create a view with viewport rect equal to QRect(0, 0, 200, 200).
     QGraphicsScene dummyScene;
-    CustomView view;
+    CustomView view(0, &toplevel);
     view.setScene(&dummyScene);
+    view.ensurePolished(); // must ensure polished to get content margins right
     int left, top, right, bottom;
     view.getContentsMargins(&left, &top, &right, &bottom);
     view.resize(200 + left + right, 200 + top + bottom);
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    toplevel.show();
+    QTest::qWaitForWindowShown(&toplevel);
 
-    QApplication::setActiveWindow(&view);
+
+    QApplication::setActiveWindow(&toplevel);
     QApplication::processEvents();
-    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(&view));
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(&toplevel));
 
     const QRect viewportRect = view.viewport()->rect();
     QCOMPARE(viewportRect, QRect(0, 0, 200, 200));
@@ -3854,14 +3897,18 @@ void tst_QGraphicsView::task255529_transformationAnchorMouseAndViewportMargins()
     QSKIP("Qt/CE does not implement mouse tracking at this point", SkipAll);
 #endif
 
+#ifdef Q_WS_MAEMO_5
+    QSKIP("On Maemo 5 the Display Manager is shown on Window change, so the test won't work", SkipAll);
+#endif
+
     QGraphicsScene scene(-100, -100, 200, 200);
     scene.addRect(QRectF(-50, -50, 100, 100), QPen(Qt::black), QBrush(Qt::blue));
 
     class VpGraphicsView: public QGraphicsView
     {
     public:
-        VpGraphicsView(QGraphicsScene *scene)
-            : QGraphicsView(scene)
+        VpGraphicsView(QGraphicsScene *scene, QWidget *parent=0)
+            : QGraphicsView(scene, parent)
         {
             setViewportMargins(8, 16, 12, 20);
             setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
@@ -3869,9 +3916,15 @@ void tst_QGraphicsView::task255529_transformationAnchorMouseAndViewportMargins()
         }
     };
 
+#ifdef Q_WS_MAEMO_5
+    QWidget topLevel;
+    VpGraphicsView view(&scene, &topLevel);
+    topLevel.show();
+#else
     VpGraphicsView view(&scene);
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
     view.show();
+#endif
     QTest::qWaitForWindowShown(&view);
     QTest::qWait(50);
     QPoint mouseViewPos(20, 20);
@@ -4019,6 +4072,9 @@ void tst_QGraphicsView::QTBUG_5859_exposedRect()
     scene.addItem(&item);
 
     QGraphicsView view(&scene);
+#ifdef Q_WS_MAEMO_5
+    view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
+#endif
     view.scale(4.15, 4.15);
     view.show();
     QTest::qWaitForWindowShown(&view);

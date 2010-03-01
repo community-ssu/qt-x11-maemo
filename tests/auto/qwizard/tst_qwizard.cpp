@@ -164,7 +164,11 @@ void tst_QWizard::buttonText()
 
     // Check the buttons' original text in Classic and Modern styles.
     for (int pass = 0; pass < 2; ++pass) {
+#ifdef Q_WS_MAEMO_5
+        QCOMPARE(wizard.buttonText(QWizard::BackButton), QString("&Previous"));
+#else
         QCOMPARE(wizard.buttonText(QWizard::BackButton), QString("< &Back"));
+#endif
         QVERIFY(wizard.buttonText(QWizard::NextButton).contains("Next"));
         QVERIFY(wizard.buttonText(QWizard::FinishButton).endsWith("Finish"));
         QVERIFY(wizard.buttonText(QWizard::CancelButton).endsWith("Cancel"));
@@ -227,7 +231,11 @@ void tst_QWizard::buttonText()
     wizard.setWizardStyle(QWizard::ClassicStyle);
 
     for (int pass = 0; pass < 2; ++pass) {
+#ifdef Q_WS_MAEMO_5
+        QCOMPARE(wizard.buttonText(QWizard::BackButton), QString("&Previous"));
+#else
         QCOMPARE(wizard.buttonText(QWizard::BackButton), QString("< &Back"));
+#endif
         QCOMPARE(wizard.buttonText(QWizard::NextButton), QString("N&este"));
         QVERIFY(wizard.buttonText(QWizard::FinishButton).endsWith("Finish"));
         QVERIFY(wizard.buttonText(QWizard::CancelButton).endsWith("Cancel"));
@@ -270,7 +278,11 @@ void tst_QWizard::setButtonLayout()
 
     // if these crash, this means there's a bug in QWizard
     QVERIFY(wizard.button(QWizard::NextButton)->text().contains("Next"));
+#ifdef Q_WS_MAEMO_5
+    QVERIFY(wizard.button(QWizard::BackButton)->text().contains("Previous"));
+#else
     QVERIFY(wizard.button(QWizard::BackButton)->text().contains("Back"));
+#endif
     QVERIFY(wizard.button(QWizard::FinishButton)->text().contains("Finish"));
     QVERIFY(wizard.button(QWizard::CancelButton)->text().contains("Cancel"));
     QVERIFY(wizard.button(QWizard::HelpButton)->text().contains("Help"));
@@ -333,7 +345,11 @@ void tst_QWizard::setButtonLayout()
     // we're on first page
     QVERIFY(!wizard.button(QWizard::BackButton)->isVisible());
     QVERIFY(wizard.button(QWizard::FinishButton)->isVisible());
+#ifdef Q_WS_MAEMO_5
+    QVERIFY(!wizard.button(QWizard::CancelButton)->isVisible()); // NoCancelButton overridden
+#else
     QVERIFY(wizard.button(QWizard::CancelButton)->isVisible()); // NoCancelButton overridden
+#endif
     QVERIFY(wizard.button(QWizard::HelpButton)->isVisible());
     QVERIFY(!wizard.button(QWizard::CustomButton1)->isVisible());
     QVERIFY(wizard.button(QWizard::CustomButton2)->isVisible());    // HaveCustomButton2 overridden
@@ -348,12 +364,41 @@ void tst_QWizard::setButtonLayout()
     QVERIFY(!wizard.button(QWizard::NextButton)->isEnabled());
     QVERIFY(wizard.button(QWizard::FinishButton)->isVisible());
     QVERIFY(wizard.button(QWizard::FinishButton)->isEnabled());
+#ifdef Q_WS_MAEMO_5
+    QVERIFY(!wizard.button(QWizard::CancelButton)->isVisible()); // NoCancelButton overridden
+#else
     QVERIFY(wizard.button(QWizard::CancelButton)->isVisible()); // NoCancelButton overridden
+#endif
     QVERIFY(wizard.button(QWizard::HelpButton)->isVisible());
     QVERIFY(!wizard.button(QWizard::CustomButton1)->isVisible());
     QVERIFY(wizard.button(QWizard::CustomButton2)->isVisible());    // HaveCustomButton2 overridden
     QVERIFY(!wizard.button(QWizard::CustomButton3)->isVisible());
 
+
+#ifdef Q_WS_MAEMO_5 //On Maemo 5 the wizard buttons are layouted vertically and have a other order
+    // Check that the buttons are in the right order on screen.
+    for (int pass = 0; pass < 2; ++pass) {
+        wizard.setLayoutDirection(pass == 0 ? Qt::LeftToRight : Qt::RightToLeft);
+        qApp->processEvents();
+
+        int p[4];
+        p[0] = wizard.button(QWizard::FinishButton)->y();
+        p[1] = wizard.button(QWizard::NextButton)->y();
+        p[2] = wizard.button(QWizard::CustomButton2)->y();
+        p[3] = wizard.button(QWizard::HelpButton)->y();
+
+        QVERIFY(p[0] < p[1]);
+        QVERIFY(p[1] < p[2]);
+        QVERIFY(p[2] < p[3]);
+        /*
+        qDebug() << wizard.button(QWizard::FinishButton)->x();
+        qDebug() << wizard.geometry().center().x();
+        if(pass == 0)
+            QVERIFY(wizard.button(QWizard::FinishButton)->x() > wizard.geometry().center().x());
+        else
+            QVERIFY(wizard.button(QWizard::FinishButton)->x() < wizard.geometry().center().x());*/
+    }
+#else
     // Check that the buttons are in the right order on screen.
     for (int pass = 0; pass < 2; ++pass) {
         wizard.setLayoutDirection(pass == 0 ? Qt::LeftToRight : Qt::RightToLeft);
@@ -373,6 +418,7 @@ void tst_QWizard::setButtonLayout()
         QVERIFY(p[2] < p[3]);
         QVERIFY(p[3] < p[4]);
     }
+#endif
 
     layout.clear();
     wizard.setButtonLayout(layout);
@@ -1023,7 +1069,12 @@ void tst_QWizard::setOption_IgnoreSubTitles()
             wizard1.setWizardStyle(i == 0 ? QWizard::ClassicStyle
                                    : i == 1 ? QWizard::ModernStyle
                                             : QWizard::MacStyle);
+#ifdef Q_WS_MAEMO_5
+            if(wizard1.wizardStyle() == QWizard::MacStyle)
+                QSKIP("MacStyle not properly supported on Maemo 5", SkipSingle);
+#endif
             wizard1.restart();
+            QTest::qWaitForWindowShown(&wizard1);
             QImage i1 = grabWidget(&wizard1);
 
             wizard1.next();
@@ -1042,6 +1093,10 @@ void tst_QWizard::setOption_ExtendedWatermarkPixmap()
 {
 #if defined(Q_OS_WINCE)
     QSKIP("Skipped because of limited resources and potential crash. (Task: 166824)", SkipAll);
+#endif
+
+#ifdef Q_WS_MAEMO_5
+    QSKIP("This Option is disabled on Maemo 5", SkipAll);
 #endif
     QPixmap watermarkPixmap(200, 400);
     watermarkPixmap.fill(Qt::black);
@@ -1323,7 +1378,12 @@ void tst_QWizard::setOption_HaveNextButtonOnLastPage()
 void tst_QWizard::setOption_HaveFinishButtonOnEarlyPages()
 {
     QWizard wizard;
+#ifdef Q_WS_MAEMO_5
+    QVERIFY(wizard.testOption(QWizard::HaveFinishButtonOnEarlyPages));
+    wizard.setOption(QWizard::HaveFinishButtonOnEarlyPages, false);
+#else
     QVERIFY(!wizard.testOption(QWizard::HaveFinishButtonOnEarlyPages));
+#endif
     wizard.addPage(new QWizardPage);
     wizard.addPage(new QWizardPage);
     wizard.page(1)->setFinalPage(true);
@@ -1375,11 +1435,20 @@ void tst_QWizard::setOption_NoCancelButton()
         wizard.next();
         QVERIFY(!wizard.button(QWizard::CancelButton)->isVisible());
 
+#ifdef Q_WS_MAEMO_5 //The Maemo 5 Wizard has no Cancel-Button
+        wizard.setOption(QWizard::NoCancelButton, false);
+        QVERIFY(!wizard.button(QWizard::CancelButton)->isVisible());
+
+        wizard.back();
+        QVERIFY(!wizard.button(QWizard::CancelButton)->isVisible());
+#else
         wizard.setOption(QWizard::NoCancelButton, false);
         QVERIFY(wizard.button(QWizard::CancelButton)->isVisible());
 
         wizard.back();
         QVERIFY(wizard.button(QWizard::CancelButton)->isVisible());
+
+#endif
 
         wizard.setOption(QWizard::NoCancelButton, true);
         QVERIFY(!wizard.button(QWizard::CancelButton)->isVisible());
@@ -1388,6 +1457,10 @@ void tst_QWizard::setOption_NoCancelButton()
 
 void tst_QWizard::setOption_CancelButtonOnLeft()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("There is no Cancel Button for Wizards on Maemo 5" , SkipAll);
+#endif
+
     for (int i = 0; i < 2; ++i) {
         int sign = (i == 0) ? +1 : -1;
 
@@ -1452,6 +1525,10 @@ void tst_QWizard::setOption_HaveHelpButton()
 
 void tst_QWizard::setOption_HelpButtonOnRight()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("This Option is disabled on Maemo 5", SkipAll);
+#endif
+
     for (int i = 0; i < 2; ++i) {
         int sign = (i == 0) ? +1 : -1;
 
@@ -1509,10 +1586,17 @@ void tst_QWizard::setOption_HaveCustomButtonX()
 
                 if (i + j + k == 0) {
                     qApp->processEvents();
+#ifdef Q_WS_MAEMO_5 //On Maemo 5 the buttons are layouted vertically
+                    QVERIFY(wizard.button(QWizard::CustomButton1)->y()
+                            < wizard.button(QWizard::CustomButton2)->y());
+                    QVERIFY(wizard.button(QWizard::CustomButton2)->y()
+                            < wizard.button(QWizard::CustomButton3)->y());
+#else
                     QVERIFY(wizard.button(QWizard::CustomButton1)->x()
                             < wizard.button(QWizard::CustomButton2)->x());
                     QVERIFY(wizard.button(QWizard::CustomButton2)->x()
                             < wizard.button(QWizard::CustomButton3)->x());
+#endif
                 }
             }
         }
@@ -2306,10 +2390,19 @@ void tst_QWizard::task161660_buttonSpacing()
     wizard.addPage(new QWizardPage);
     wizard.show();
     const QAbstractButton *finishButton = wizard.button(QWizard::FinishButton);
+
+#ifdef Q_WS_MAEMO_5 //No Cancel Button and vertical layout on Maemo 5
+    const QAbstractButton *backButton = wizard.button(QWizard::BackButton);
+    const int spacing = finishButton->geometry().top() - backButton->geometry().bottom() - 1;
+    QCOMPARE(spacing, wizard.style()->layoutSpacing(
+                 QSizePolicy::PushButton, QSizePolicy::PushButton, Qt::Vertical));
+#else
     const QAbstractButton *cancelButton = wizard.button(QWizard::CancelButton);
     const int spacing = cancelButton->geometry().left() - finishButton->geometry().right() - 1;
     QCOMPARE(spacing, wizard.style()->layoutSpacing(
                  QSizePolicy::PushButton, QSizePolicy::PushButton, Qt::Horizontal));
+#endif
+
     QApplication::setStyle(origStyle);
 #endif
 }
@@ -2450,7 +2543,8 @@ void tst_QWizard::task177022_setFixedSize()
 {
     int width = 300;
     int height = 200;
-    QWizard wiz;
+    QWidget topLevel;
+    QWizard wiz(&topLevel);
     QWizardPage page1;
     QWizardPage page2;
     wiz.addPage(&page1);
@@ -2465,7 +2559,7 @@ void tst_QWizard::task177022_setFixedSize()
     QCOMPARE(wiz.maximumWidth(), width);
     QCOMPARE(wiz.maximumHeight(), height);
 
-    wiz.show();
+    topLevel.show();
     QTest::qWait(100);
     QCOMPARE(wiz.size(), QSize(width, height));
     QCOMPARE(wiz.minimumWidth(), width);

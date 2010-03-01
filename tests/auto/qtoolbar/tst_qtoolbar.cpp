@@ -133,6 +133,9 @@ void tst_QToolBar::setMovable()
 
 void tst_QToolBar::isMovable()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("No Movable Toolbars on Maemo 5",SkipAll);
+#endif
 #define DO_TEST                                                 \
     do {                                                        \
         QVERIFY(tb.isMovable());                                 \

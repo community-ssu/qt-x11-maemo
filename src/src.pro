@@ -8,12 +8,14 @@ wince*:{
 } else:symbian {
   SRC_SUBDIRS += src_s60main src_corelib src_xml src_gui src_network src_sql src_testlib src_s60installs
 } else {
-    SRC_SUBDIRS += src_corelib src_xml src_network src_gui src_sql src_testlib
+    SRC_SUBDIRS += src_corelib src_xml
+    contains(QT_CONFIG, dbus):SRC_SUBDIRS += src_dbus
+    SRC_SUBDIRS += src_network src_gui src_sql src_testlib
     !vxworks:contains(QT_CONFIG, qt3support): SRC_SUBDIRS += src_qt3support
     include(tools/tools.pro)
-    contains(QT_CONFIG, dbus):SRC_SUBDIRS += src_dbus
 }
 win32:SRC_SUBDIRS += src_activeqt
+maemo5:SRC_SUBDIRS += src_maemo5
 
 contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles1)|contains(QT_CONFIG, opengles2): SRC_SUBDIRS += src_opengl
 contains(QT_CONFIG, openvg): SRC_SUBDIRS += src_openvg
@@ -78,6 +80,8 @@ src_webkit.subdir = $$QT_SOURCE_TREE/src/3rdparty/webkit/WebCore
 src_webkit.target = sub-webkit
 src_declarative.subdir = $$QT_SOURCE_TREE/src/declarative
 src_declarative.target = sub-declarative
+src_maemo5.subdir = $$QT_SOURCE_TREE/src/maemo5
+src_maemo5.target = sub-maemo5
 
 #CONFIG += ordered
 !wince*:!symbian:!ordered {
@@ -91,6 +95,8 @@ src_declarative.target = sub-declarative
    src_script.depends = src_corelib
    src_scripttools.depends = src_script src_gui src_network
    src_network.depends = src_corelib
+   maemo5: src_network.depends += src_dbus
+   maemo5: src_maemo5.depends = src_corelib src_gui src_dbus
    src_opengl.depends = src_gui
    src_openvg.depends = src_gui
    src_sql.depends = src_corelib

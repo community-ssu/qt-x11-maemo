@@ -446,6 +446,17 @@
     Qt developers.
 
     \clearfloat
+    \section1 \l{Maemo 5 Examples}{Qt for Maemo 5}
+    \beginfloatleft
+    \l{Maemo 5 Examples}{\inlineimage maemo5-examples.png
+    }
+
+    \endfloat
+    These examples demonstrate how to integrate deeper into Maemo 5
+    with Qt, and how to use the special Maemo 5 widgets.
+
+    \clearfloat
+
 */
 
 /*!
@@ -1370,5 +1381,26 @@
     \o \l{activeqt/simple}{Simple}\raisedaster
     \o \l{activeqt/webbrowser}{Web Browser}\raisedaster
     \o \l{activeqt/wrapper}{Wrapper}\raisedaster
+    \endlist
+*/
+
+/*!
+    \page examples-maemo5.html
+    \title Maemo 5 Examples
+
+    \contentspage Qt Examples
+
+    \image maemo5-examples.png Maemo5
+
+    \list
+    \o \l{maemo5/informationbox}{Information Boxes}\raisedaster
+    \o \l{maemo5/listpickselector}{List Pick Selectors}\raisedaster
+    \o \l{maemo5/menu}{Maemo 5 Style Menu}\raisedaster
+    \o \l{maemo5/rotation}{Rotation}\raisedaster
+    \o \l{maemo5/stackedwindows}{Stacked Windows}\raisedaster
+    \o \l{maemo5/windowstates}{Window States}\raisedaster
+    \o \l{maemo5/zoom}{Zoom Buttons}\raisedaster
+    \o \l{maemo5/datetime}{Date Time Formatting}\raisedaster
+    \o \l{maemo5/textedit}{Maemo 5 Text Edit Example}\raisedaster
     \endlist
 */

@@ -49,6 +49,7 @@
 #include "qboxlayout.h"
 #include "qlayoutitem.h"
 #include "qdesktopwidget.h"
+#include "qdialogbuttonbox.h"
 #include "qevent.h"
 #include "qframe.h"
 #include "qlabel.h"
@@ -646,13 +647,23 @@ static QString buttonDefaultText(int wstyle, int which, const QWizardPrivate *wi
     const bool macStyle = (wstyle == QWizard::MacStyle);
     switch (which) {
     case QWizard::BackButton:
-        return macStyle ? QWizard::tr("Go Back") : QWizard::tr("< &Back");
+        return macStyle ? QWizard::tr("Go Back") :
+#ifndef Q_WS_MAEMO_5
+            QWizard::tr("< &Back");
+#else
+            QWizard::tr("&Previous");
+#endif
     case QWizard::NextButton:
         if (macStyle)
             return QWizard::tr("Continue");
         else
             return wizardPrivate->isVistaThemeEnabled()
-                ? QWizard::tr("&Next") : QWizard::tr("&Next >");
+                ? QWizard::tr("&Next") :
+#ifndef Q_WS_MAEMO_5
+                QWizard::tr("&Next >");
+#else
+                QWizard::tr("&Next");
+#endif
     case QWizard::CommitButton:
         return QWizard::tr("Commit");
     case QWizard::FinishButton:
@@ -676,6 +687,10 @@ void QWizardPrivate::init()
         opts = (QWizard::NoDefaultButton | QWizard::NoCancelButton);
     } else if (wizStyle == QWizard::ModernStyle) {
         opts = QWizard::HelpButtonOnRight;
+#ifdef Q_WS_MAEMO_5
+    } else if (wizStyle == QWizard::ClassicStyle) {
+        opts = (QWizard::NoDefaultButton | QWizard::HaveFinishButtonOnEarlyPages | QWizard::HaveNextButtonOnLastPage);
+#endif
     }
 
 #if !defined(QT_NO_STYLE_WINDOWSVISTA)
@@ -1159,6 +1174,18 @@ void QWizardPrivate::recreateLayout(const QWizardLayoutInfo &info)
         mainLayout->setContentsMargins(0, 11, 0, 0);
     }
 
+#ifdef Q_WS_MAEMO_5
+    int screenWidth = QApplication::desktop()->screenGeometry().width();
+    int screenHeight = QApplication::desktop()->screenGeometry().height();
+
+    if (classic && screenWidth>screenHeight) {
+
+        // for maemo 5 I need to add the button box to the right
+        mainLayout->addLayout(buttonLayout, 0, numColumns, row, 1);
+        numColumns++;
+    } else {
+#endif
+
     int buttonStartColumn = info.extension ? 1 : 0;
     int buttonNumColumns = info.extension ? 1 : numColumns;
 
@@ -1172,6 +1199,10 @@ void QWizardPrivate::recreateLayout(const QWizardLayoutInfo &info)
         mainLayout->setRowMinimumHeight(row++, deltaVSpacing);
 
     mainLayout->addLayout(buttonLayout, row++, buttonStartColumn, 1, buttonNumColumns);
+
+#ifdef Q_WS_MAEMO_5
+    }
+#endif
 
     if (info.watermark) {
         if (info.extension)
@@ -1430,10 +1461,17 @@ void QWizardPrivate::updateButtonLayout()
             int i = (opts & QWizard::CancelButtonOnLeft) ? 5 : 10;
             array[i] = QWizard::CancelButton;
         }
+#ifndef Q_WS_MAEMO_5
         array[6] = QWizard::BackButton;
         array[7] = QWizard::NextButton;
         array[8] = QWizard::CommitButton;
         array[9] = QWizard::FinishButton;
+#else
+        array[6] = QWizard::CommitButton;
+        array[7] = QWizard::FinishButton;
+        array[8] = QWizard::BackButton;
+        array[9] = QWizard::NextButton;
+#endif
 
         setButtonLayout(array, ArraySize);
     }
@@ -1450,17 +1488,39 @@ void QWizardPrivate::setButtonLayout(const QWizard::WizardButton *array, int siz
         delete item;
     }
 
+#ifdef Q_WS_MAEMO_5
+    // take all the buttons and stuff them into a dialog button box
+    // need to do this to get the correct layout and width for the buttons
+    QDialogButtonBox *bBox = new QDialogButtonBox(Qt::Vertical);
+#endif
+
     for (int i = 0; i < size; ++i) {
         QWizard::WizardButton which = array[i];
         if (which == QWizard::Stretch) {
+#ifndef Q_WS_MAEMO_5
             buttonLayout->addStretch(1);
+#endif
         } else if (which != QWizard::NoButton) {
             ensureButton(which);
+#ifndef Q_WS_MAEMO_5
             buttonLayout->addWidget(btns[which]);
+#else
+            if (which == QWizard::CancelButton)
+                bBox->addButton(btns[which], QDialogButtonBox::RejectRole);
+            else if (which == QWizard::HelpButton)
+                bBox->addButton(btns[which], QDialogButtonBox::HelpRole);
+            else if (which == QWizard::CommitButton || which == QWizard::FinishButton)
+                bBox->addButton(btns[which], QDialogButtonBox::AcceptRole);
+            else
+                bBox->addButton(btns[which], QDialogButtonBox::ActionRole);
+#endif
 
             // Back, Next, Commit, and Finish are handled in _q_updateButtonStates()
             if (which != QWizard::BackButton && which != QWizard::NextButton
                 && which != QWizard::CommitButton && which != QWizard::FinishButton)
+#ifdef Q_WS_MAEMO_5
+                if (which != QWizard::CancelButton) // cancel button is hidden on maemo
+#endif
                 btns[which]->show();
 
             if (prev)
@@ -1468,6 +1528,9 @@ void QWizardPrivate::setButtonLayout(const QWizard::WizardButton *array, int siz
             prev = btns[which];
         }
     }
+#ifdef Q_WS_MAEMO_5
+    buttonLayout->addWidget(bBox);
+#endif
 
     _q_updateButtonStates();
 }

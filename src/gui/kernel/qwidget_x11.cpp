@@ -99,6 +99,81 @@ int qt_x11_create_desktop_on_screen = -1;
 
 extern void qt_net_update_user_time(QWidget *tlw, unsigned long timestamp);
 
+#ifdef Q_WS_MAEMO_5
+static void maemo5CheckStackedWindow(QWidget *q)
+{
+    if (!q->isWindow())
+        return;
+
+    if (q->testAttribute(Qt::WA_Maemo5StackedWindow)) {
+        int position = 0;
+
+        for (QWidget *pq = q->parentWidget(); pq; pq = pq->window()->parentWidget()) {
+            if (!pq->window()->testAttribute(Qt::WA_Maemo5StackedWindow))
+                break;
+            position++;
+        }
+
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_STACKABLE_WINDOW), XA_INTEGER, 32,
+                        PropModeReplace, (unsigned char *) &position, 1);
+    } else {
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_STACKABLE_WINDOW));
+    }
+}
+
+static void maemo5CheckOrientation(QWidget *q)
+{
+    // Apps linked against 4.5.0 will run with the platform defaults
+    if (QApplicationPrivate::app_compile_version < QT_VERSION_CHECK(4, 6, 0))
+        return;
+
+    if (!q->isWindow())
+        return;
+
+    const Qt::WidgetAttribute maemo5Orientations[] = { Qt::WA_Maemo5LandscapeOrientation,
+                                                       Qt::WA_Maemo5PortraitOrientation,
+                                                       Qt::WA_Maemo5AutoOrientation };
+    Qt::WidgetAttribute orientation = maemo5Orientations[0];
+
+    for (int i = 0; i < 3; ++i) {
+        if (q->testAttribute(maemo5Orientations[i])) {
+            orientation = maemo5Orientations[i];
+            break;
+        }
+    }
+
+    if (orientation == Qt::WA_Maemo5PortraitOrientation) {
+        long on = 1;
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+    } else {
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST));
+    }
+    if (orientation != Qt::WA_Maemo5LandscapeOrientation) {
+        long on = 1;
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+    } else {
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT));
+    }
+}
+
+static void maemo5CheckNonComposited(QWidget *q)
+{
+    if (!q->isWindow())
+        return;
+
+    if (q->testAttribute(Qt::WA_Maemo5NonComposited) || (q->windowState() & Qt::WindowFullScreen)) {
+        int on = 1;
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_NON_COMPOSITED_WINDOW), XA_INTEGER, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+    } else {
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_NON_COMPOSITED_WINDOW));
+    }
+}
+
+#endif // Q_WS_MAEMO_5
+
 // MWM support
 struct QtMWMHints {
     ulong flags, functions, decorations;
@@ -182,6 +257,9 @@ static inline bool isTransient(const QWidget *w)
              || w->windowType() == Qt::SplashScreen
              || w->windowType() == Qt::ToolTip
              || w->windowType() == Qt::Drawer
+#ifdef Q_WS_MAEMO_5
+             || (w->testAttribute(Qt::WA_Maemo5StackedWindow) && w->parentWidget())
+#endif
              || w->windowType() == Qt::Popup)
             && !w->testAttribute(Qt::WA_X11BypassTransientForHint));
 }
@@ -491,9 +569,13 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
 
     if (type == Qt::ToolTip)
         flags |= Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::X11BypassWindowManagerHint;
-    if (type == Qt::Popup)
-        flags |= Qt::X11BypassWindowManagerHint;
 
+    if (type == Qt::Popup) {
+#ifdef Q_WS_MAEMO_5
+        if (!q->testAttribute(Qt::WA_X11NetWmWindowTypePopupMenu))
+#endif
+        flags |= Qt::X11BypassWindowManagerHint;
+    }
     bool topLevel = (flags & Qt::Window);
     bool popup = (type == Qt::Popup);
     bool dialog = (type == Qt::Dialog
@@ -774,12 +856,13 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     } else if (popup) {                        // popup widget
         // set EWMH window types
         setNetWmWindowTypes();
-
-        wsa.override_redirect = True;
-        wsa.save_under = True;
-        Q_ASSERT(id);
-        XChangeWindowAttributes(dpy, id, CWOverrideRedirect | CWSaveUnder,
-                                &wsa);
+        if (flags & Qt::X11BypassWindowManagerHint) {
+            wsa.override_redirect = True;
+            wsa.save_under = True;
+            Q_ASSERT(id);
+            XChangeWindowAttributes(dpy, id, CWOverrideRedirect | CWSaveUnder,
+                                    &wsa);
+        }
     } else if (topLevel && !desktop) {        // top-level widget
         if (!X11->wm_client_leader)
             create_wm_client_leader();
@@ -798,7 +881,14 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
         XWMHints wm_hints;                        // window manager hints
         memset(&wm_hints, 0, sizeof(wm_hints)); // make valgrind happy
         wm_hints.flags = InputHint | StateHint | WindowGroupHint;
+#ifdef Q_WS_MAEMO_5
+        // this hack prevents Maemo5 information boxes from getting the focus:
+        //  - Qt::X11BypassWindowManagerHint bypasses too much (no fade in/out animations)
+        //  - Qt::WA_ShowWithoutActivating is ignored by the window manager.
+        wm_hints.input = q->testAttribute(Qt::WA_X11NetWmWindowTypeNotification) ? False : True;
+#else
         wm_hints.input = True;
+#endif
         wm_hints.initial_state = NormalState;
         wm_hints.window_group = X11->wm_client_leader;
 
@@ -818,7 +908,7 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
         Atom protocols[5];
         int n = 0;
         protocols[n++] = ATOM(WM_DELETE_WINDOW);        // support del window protocol
-        protocols[n++] = ATOM(WM_TAKE_FOCUS);                // support take focus window protocol
+        protocols[n++] = ATOM(WM_TAKE_FOCUS);               // support take focus window protocol
         protocols[n++] = ATOM(_NET_WM_PING);                // support _NET_WM_PING protocol
 #ifndef QT_NO_XSYNC
         protocols[n++] = ATOM(_NET_WM_SYNC_REQUEST);        // support _NET_WM_SYNC_REQUEST protocol
@@ -1286,6 +1376,10 @@ void QWidgetPrivate::setParent_sys(QWidget *parent, Qt::WindowFlags f)
         || (!q->isWindow() && q->parentWidget() && q->parentWidget()->testAttribute(Qt::WA_DropSiteRegistered))) {
         q->setAttribute(Qt::WA_DropSiteRegistered, true);
     }
+#ifdef Q_WS_MAEMO_5
+    if (wasCreated)
+        maemo5CheckStackedWindow(q);
+#endif
 #if !defined(QT_NO_IM)
     ic = 0;
 #endif
@@ -1659,6 +1753,22 @@ void QWidget::activateWindow()
         if (X11->userTime == 0)
             X11->userTime = X11->time;
         qt_net_update_user_time(tlw, X11->userTime);
+
+        if (X11->isSupportedByWM(ATOM(_NET_ACTIVE_WINDOW))) {
+            XEvent e;
+            e.xclient.type = ClientMessage;
+            e.xclient.message_type = ATOM(_NET_ACTIVE_WINDOW);
+            e.xclient.display = X11->display;
+            e.xclient.window = tlw->internalWinId();
+            e.xclient.format = 32;
+            e.xclient.data.l[0] = 1;     // 1 == application
+            e.xclient.data.l[1] = X11->time;
+            e.xclient.data.l[2] = XNone; // currently active window
+            e.xclient.data.l[3] = 0;
+            e.xclient.data.l[4] = 0;
+            XSendEvent(X11->display, RootWindow(X11->display, tlw->x11Info().screen()),
+                       false, SubstructureNotifyMask | SubstructureRedirectMask, &e);
+        }
         XSetInputFocus(X11->display, tlw->internalWinId(), XRevertToParent, X11->time);
     }
 }
@@ -1792,6 +1902,10 @@ void QWidget::setWindowState(Qt::WindowStates newstate)
     }
 
     data->window_state = newstate;
+
+#ifdef Q_WS_MAEMO_5
+    maemo5CheckNonComposited(this);
+#endif
 
     if (needShow)
         show();
@@ -1979,12 +2093,14 @@ void QWidgetPrivate::show_sys()
         }
 #endif
 
+#ifndef Q_WS_MAEMO_5 // the maemo5 window manager is broken: it won't show a previously hidden top-level
         if (!topData()->embedded
             && (topData()->validWMState || topData()->waitingForMapNotify)
             && !q->isMinimized()) {
             X11->deferred_map.append(q);
             return;
         }
+#endif
 
         if (q->isMaximized() && !q->isFullScreen()
             && !(X11->isSupportedByWM(ATOM(_NET_WM_STATE_MAXIMIZED_HORZ))
@@ -2109,8 +2225,14 @@ void QWidgetPrivate::setNetWmWindowTypes()
     // manual selection 2 (Qt uses these during auto selection);
     if (q->testAttribute(Qt::WA_X11NetWmWindowTypeUtility))
         windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_UTILITY));
-    if (q->testAttribute(Qt::WA_X11NetWmWindowTypeSplash))
-        windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_SPLASH));
+    if (q->testAttribute(Qt::WA_X11NetWmWindowTypeSplash)) {
+#ifndef Q_WS_MAEMO_5
+        if (X11->isSupportedByWM(ATOM(_NET_WM_WINDOW_TYPE_SPLASH)))
+            windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_SPLASH));
+        else
+#endif
+            windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_POPUP_MENU));
+    }
     if (q->testAttribute(Qt::WA_X11NetWmWindowTypeDialog))
         windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_DIALOG));
     if (q->testAttribute(Qt::WA_X11NetWmWindowTypeToolTip))
@@ -2153,7 +2275,12 @@ void QWidgetPrivate::setNetWmWindowTypes()
 
     case Qt::SplashScreen:
         // splash netwm type
-        windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_SPLASH));
+#ifndef Q_WS_MAEMO_5
+        if (X11->isSupportedByWM(ATOM(_NET_WM_WINDOW_TYPE_SPLASH)))
+            windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_SPLASH));
+        else
+#endif
+            windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_POPUP_MENU));
         break;
 
     default:
@@ -2165,8 +2292,22 @@ void QWidgetPrivate::setNetWmWindowTypes()
         windowTypes.append(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE));
     }
 
+#ifdef Q_WS_MAEMO_5
+    // this is not really netwm stuff, but it still makes sense
+    // to fiddle with all those X atoms at a central location.
+    maemo5CheckOrientation(q);
+    maemo5CheckNonComposited(q);
+    maemo5CheckStackedWindow(q);
+#endif // Q_WS_MAEMO_5
+
     // normal netwm type - default
     windowTypes.append(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
+
+#ifdef Q_WS_MAEMO_5
+    // the Maemo5 WM doesn't support multiple window types on a single window
+    if (windowTypes.count() > 1)
+        windowTypes.resize(1);
+#endif // Q_WS_MAEMO_5
 
     if (!windowTypes.isEmpty()) {
         XChangeProperty(X11->display, q->winId(), ATOM(_NET_WM_WINDOW_TYPE), XA_ATOM, 32,
@@ -3023,6 +3164,25 @@ Picture QX11Data::getSolidFill(int screen, const QColor &c)
 void QWidgetPrivate::setModal_sys()
 {
 }
+
+#ifdef Q_WS_MAEMO_5
+void QWidgetPrivate::maemo5ShowProgressIndicator(bool on)
+{
+    Q_Q(QWidget);
+
+    if (!q->isWindow())
+        return;
+
+    if (on) {
+        long state = 1;
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_WM_WINDOW_PROGRESS_INDICATOR), XA_INTEGER, 32,
+                        PropModeReplace, (unsigned char *) &state, 1);
+    
+    } else {
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_WM_WINDOW_PROGRESS_INDICATOR));                
+    }
+}
+#endif
 
 void qt_x11_getX11InfoForWindow(QX11Info * xinfo, const QX11WindowAttributes &att)
 {

@@ -5,3 +5,4 @@ QT += network
 
 win32:!wince*:LIBS += -luser32
 
+maemo5:DEFINES += NO_EVENTLOOP_EXCEPTIONS

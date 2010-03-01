@@ -71,6 +71,7 @@ namespace QStyleHelper
 #ifndef QT_NO_DIAL
     qreal angle(const QPointF &p1, const QPointF &p2);
     QPolygonF calcLines(const QStyleOptionSlider *dial);
+    QPointF calcRadialPos(const QStyleOptionSlider *dial, qreal offset);
     int calcBigLineSize(int radius);
     void drawDial(const QStyleOptionSlider *dial, QPainter *painter);
 #endif //QT_NO_DIAL

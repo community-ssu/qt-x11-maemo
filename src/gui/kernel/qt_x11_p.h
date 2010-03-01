@@ -338,6 +338,7 @@ enum DesktopEnvironment {
     DE_KDE,
     DE_GNOME,
     DE_CDE,
+    DE_MAEMO5,
     DE_4DWM
 };
 
@@ -626,6 +627,8 @@ struct QX11Data
 
         _NET_SYSTEM_TRAY_VISUAL,
 
+        _NET_ACTIVE_WINDOW,
+
         // Property formats
         COMPOUND_TEXT,
         TEXT,
@@ -663,6 +666,38 @@ struct QX11Data
 
         // Xkb
         _XKB_RULES_NAMES,
+
+#ifdef Q_WS_MAEMO_5
+        // Hildon Desktop (WM)
+        _HILDON_WM_WINDOW_TYPE_APP_MENU,
+        _HILDON_WM_WINDOW_TYPE_HOME_APPLET,
+        _HILDON_WM_WINDOW_MENU_INDICATOR,
+        _HILDON_WM_WINDOW_PROGRESS_INDICATOR,
+        _HILDON_NON_COMPOSITED_WINDOW,
+        _HILDON_PORTRAIT_MODE_REQUEST,
+        _HILDON_PORTRAIT_MODE_SUPPORT,
+        _HILDON_STACKABLE_WINDOW,
+        _HILDON_APPLET_ID,
+        _HILDON_ZOOM_KEY_ATOM,
+        _HILDON_NOTIFICATION_TYPE,
+        _NET_WM_CONTEXT_CUSTOM,
+        _MB_GRAB_TRANSFER,
+
+        // Hildon Input Method
+        _HILDON_IM_WINDOW,
+        _HILDON_IM_ACTIVATE,
+        _HILDON_IM_SURROUNDING,
+        _HILDON_IM_SURROUNDING_CONTENT,
+        _HILDON_IM_KEY_EVENT,
+        _HILDON_IM_INSERT_UTF8,
+        _HILDON_IM_COM,
+        _HILDON_IM_CLIPBOARD_COPIED,          //### NOT USED
+        _HILDON_IM_CLIPBOARD_SELECTION_QUERY, //### NOT USED
+        _HILDON_IM_CLIPBOARD_SELECTION_REPLY,
+        _HILDON_IM_INPUT_MODE,
+        _HILDON_IM_PREEDIT_COMMITTED,
+        _HILDON_IM_PREEDIT_COMMITTED_CONTENT,
+#endif
 
         // XEMBED
         _XEMBED,

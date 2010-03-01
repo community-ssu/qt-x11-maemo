@@ -167,3 +167,8 @@ wince*: {
 symbian*: {
     SOURCES += widgets/qmenu_symbian.cpp
 }
+
+maemo5 {
+    HEADERS += widgets/qmenu_maemo5_p.h
+    SOURCES += widgets/qmenu_maemo5.cpp
+}

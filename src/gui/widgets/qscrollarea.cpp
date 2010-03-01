@@ -51,6 +51,9 @@
 #include "qvariant.h"
 #include "qdebug.h"
 #include "private/qlayoutengine_p.h"
+#ifdef Q_WS_MAEMO_5
+#  include "qabstractkineticscroller.h"
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -151,6 +154,10 @@ QScrollArea::QScrollArea(QWidget *parent)
     d->vbar->setSingleStep(20);
     d->hbar->setSingleStep(20);
     d->layoutChildren();
+#ifdef Q_WS_MAEMO_5
+    if (QAbstractKineticScroller *scroller = property("kineticScroller").value<QAbstractKineticScroller *>())
+        scroller->setEnabled(true);
+#endif
 }
 
 /*!
@@ -164,6 +171,10 @@ QScrollArea::QScrollArea(QScrollAreaPrivate &dd, QWidget *parent)
     d->vbar->setSingleStep(20);
     d->hbar->setSingleStep(20);
     d->layoutChildren();
+#ifdef Q_WS_MAEMO_5
+    if (QAbstractKineticScroller *scroller = property("kineticScroller").value<QAbstractKineticScroller *>())
+        scroller->setEnabled(true);
+#endif
 }
 
 /*!

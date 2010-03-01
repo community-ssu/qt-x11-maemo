@@ -264,8 +264,10 @@ void tst_QMenu::onStatusMessageChanged(const QString &s)
 void tst_QMenu::populateMenu(){
     //just adds 3 dummy actions and a separator.
         lastMenu->addAction("Foo");
+#ifndef Q_WS_MAEMO_5 //tst_QMenu::pushButtonPopulateOnAboutToShow() fails because the Menu is too long and positioned above the button
         lastMenu->addAction("Bar");
         lastMenu->addAction("FooBar");
+#endif
         lastMenu->addSeparator();
 
 }
@@ -295,15 +297,17 @@ void tst_QMenu::mouseActivation()
 #ifdef Q_OS_WINCE_WM
     QSKIP("We have a separate mouseActivation test for Windows mobile.", SkipAll);
 #endif
-    QMenu menu;
+    QWidget topLevel;
+    QMenu menu(&topLevel);
+    topLevel.show();
     menu.addAction("Menu Action");
     menu.show();
-    QTest::mouseClick(&menu, Qt::LeftButton, 0, QPoint(5, 5), 300);
+    QTest::mouseClick(&menu, Qt::LeftButton, 0, menu.rect().center(), 300);
     QVERIFY(!menu.isVisible());
 
     //context menus can allways be accessed with right click except on windows
     menu.show();
-    QTest::mouseClick(&menu, Qt::RightButton, 0, QPoint(5, 5), 300);
+    QTest::mouseClick(&menu, Qt::RightButton, 0, menu.rect().center(), 300);
     QVERIFY(!menu.isVisible());
 
 #ifdef Q_OS_WIN
@@ -456,6 +460,8 @@ void tst_QMenu::overrideMenuAction()
     QSKIP("On Windows CE, we need to create native key events to test menu action activation", SkipAll);
 #elif defined(Q_OS_SYMBIAN)
     QSKIP("On Symbian OS, we need to create native key events to test menu action activation", SkipAll);
+#elif defined(Q_WS_MAEMO_5)
+    QSKIP("On Maemo 5, we need to create native key events to test menu action activation", SkipAll);
 #endif
 
     QAction *aQuit = new QAction("Quit", &w);
@@ -577,6 +583,9 @@ void tst_QMenu::widgetActionFocus()
 
 void tst_QMenu::tearOff()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("TearOff Menus are not supported on Maemo 5", SkipAll);
+#endif
     QWidget widget;
     QMenu *menu = new QMenu(&widget);
     QVERIFY(!menu->isTearOffEnabled()); //default value
@@ -590,7 +599,7 @@ void tst_QMenu::tearOff()
     QTest::qWait(50);
     QVERIFY(!menu->isTearOffMenuVisible());
 
-    QTest::mouseClick(menu, Qt::LeftButton, 0, QPoint(3, 3), 10);
+    QTest::mouseClick(menu, Qt::LeftButton, 0, menu->rect().center(), 10);
     QTest::qWait(100);
 
     QVERIFY(menu->isTearOffMenuVisible());
@@ -865,6 +874,9 @@ void tst_QMenu::task258920_mouseBorder()
 {
 #ifdef Q_OS_WINCE_WM
     QSKIP("Mouse move related signals for Windows Mobile unavailable", SkipAll);
+#endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("The test passes, but it doesn't work when the display is in energy saving mode", SkipAll);
 #endif
     Menu258920 menu;
     // On Symbian, styleHint(QStyle::SH_Menu_MouseTracking) in QS60Style is false.

@@ -224,12 +224,7 @@ void QMessageBoxPrivate::init(const QString &title, const QString &text)
                      q, SLOT(_q_buttonClicked(QAbstractButton*)));
 
     QGridLayout *grid = new QGridLayout;
-#ifndef Q_WS_MAC
-    grid->addWidget(iconLabel, 0, 0, 2, 1, Qt::AlignTop);
-    grid->addWidget(label, 0, 1, 1, 1);
-    // -- leave space for information label --
-    grid->addWidget(buttonBox, 2, 0, 1, 2);
-#else
+#if defined(Q_WS_MAC)
     grid->setMargin(0);
     grid->setVerticalSpacing(8);
     grid->setHorizontalSpacing(0);
@@ -240,6 +235,22 @@ void QMessageBoxPrivate::init(const QString &title, const QString &text)
     grid->setRowStretch(1, 100);
     grid->setRowMinimumHeight(2, 6);
     grid->addWidget(buttonBox, 3, 1, 1, 1);
+#else
+    grid->addWidget(iconLabel, 0, 0, 2, 1, Qt::AlignTop);
+    grid->addWidget(label, 0, 1, 1, 1);
+    // -- leave space for information label at (1,1) --
+
+#  if defined(Q_WS_MAEMO_5)
+    buttonBox->setOrientation(Qt::Vertical);
+    if (QApplication::desktop()->screenGeometry().width() < QApplication::desktop()->screenGeometry().height()) {
+        grid->addWidget(buttonBox, 2, 0, 1, 2); // portrait
+        buttonBox->setSizePolicy(QSizePolicy::MinimumExpanding, buttonBox->sizePolicy().verticalPolicy());
+    } else {
+        grid->addWidget(buttonBox, 0, 2, 2, 1, Qt::AlignBottom); // landscape
+    }
+#  else
+    grid->addWidget(buttonBox, 2, 0, 1, 2);
+#  endif
 #endif
 
     grid->setSizeConstraint(QLayout::SetNoConstraint);
@@ -273,7 +284,7 @@ void QMessageBoxPrivate::updateSize()
         return;
 
     QSize screenSize = QApplication::desktop()->availableGeometry(QCursor::pos()).size();
-#if defined(Q_WS_QWS) || defined(Q_WS_WINCE) || defined(Q_OS_SYMBIAN)
+#if defined(Q_WS_QWS) || defined(Q_WS_WINCE) || defined(Q_WS_S60) || defined(Q_WS_MAEMO_5)
     // the width of the screen, less the window border.
     int hardLimit = screenSize.width() - (q->frameGeometry().width() - q->geometry().width());
 #else
@@ -286,13 +297,10 @@ void QMessageBoxPrivate::updateSize()
     int softLimit = qMin(screenSize.width()/2, 420);
 #elif defined(Q_WS_QWS)
     int softLimit = qMin(hardLimit, 500);
+#elif defined(Q_WS_WINCE)
+    int softLimit = qMin(screenSize.width() * 3/4, 500);
 #else
-    // note: ideally on windows, hard and soft limits but it breaks compat
-#ifndef Q_WS_WINCE
     int softLimit = qMin(screenSize.width()/2, 500);
-#else
-    int softLimit = qMin(screenSize.width() * 3 / 4, 500);
-#endif //Q_WS_WINCE
 #endif
 
     if (informativeLabel)
@@ -322,6 +330,9 @@ void QMessageBoxPrivate::updateSize()
             // in landscape the messageBoxes should be of same width as in portrait
             width = qMin(QApplication::desktop()->size().height(), hardLimit);
         }
+#elif defined(Q_WS_MAEMO_5)
+        // in Maemo5 messageBoxes should always occupy maximum width
+        width = hardLimit;
 #endif
     }
 
@@ -981,6 +992,7 @@ void QMessageBoxPrivate::detectEscapeButton()
     if (detectedEscapeButton)
         return;
 
+#if !defined(Q_WS_MAEMO_5)
     // if the message box has one NoRole button, make it the escape button
     for (int i = 0; i < buttons.count(); i++) {
         if (buttonBox->buttonRole(buttons.at(i)) == QDialogButtonBox::NoRole) {
@@ -991,6 +1003,7 @@ void QMessageBoxPrivate::detectEscapeButton()
             detectedEscapeButton = buttons.at(i);
         }
     }
+#endif
 }
 
 /*!

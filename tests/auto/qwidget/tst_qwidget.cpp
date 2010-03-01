@@ -1955,6 +1955,9 @@ void tst_QWidget::windowState()
 
 void tst_QWidget::showMaximized()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QWidget plain;
     QHBoxLayout *layout;
     layout = new QHBoxLayout;
@@ -2080,7 +2083,7 @@ void tst_QWidget::showFullScreen()
     layouted.showNormal();
     QVERIFY(!(layouted.windowState() & Qt::WindowFullScreen));
 
-#if !defined(Q_WS_QWS) && !defined(Q_OS_WINCE) && !defined (Q_WS_S60)
+#if !defined(Q_WS_QWS) && !defined(Q_OS_WINCE) && !defined (Q_WS_S60) && !defined(Q_WS_MAEMO_5)
 //embedded may choose a different size to fit on the screen.
     QCOMPARE(layouted.size(), layouted.sizeHint());
 #endif
@@ -2231,6 +2234,9 @@ void tst_QWidget::showMinimized()
 
 void tst_QWidget::showMinimizedKeepsFocus()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo's window manager doesn't work with this test", SkipAll);
+#endif
     //here we test that minimizing a widget and restoring it doesn't change the focus inside of it
     {
         QWidget window;
@@ -2506,7 +2512,9 @@ void tst_QWidget::hideWhenFocusWidgetIsChild()
 
     parentWidget->hide();
     qApp->processEvents();
-    actualFocusWidget.sprintf("%p %s %s", qApp->focusWidget(), qApp->focusWidget()->objectName().toLatin1().constData(), qApp->focusWidget()->metaObject()->className());
+    actualFocusWidget.sprintf("%p %s %s", qApp->focusWidget(),
+            qApp->focusWidget() ? qApp->focusWidget()->objectName().toLatin1().constData() : "",
+            qApp->focusWidget() ? qApp->focusWidget()->metaObject()->className() : "");
     expectedFocusWidget.sprintf("%p %s %s", edit2, edit2->objectName().toLatin1().constData(), edit2->metaObject()->className());
     QCOMPARE(actualFocusWidget, expectedFocusWidget);
 
@@ -2518,6 +2526,9 @@ void tst_QWidget::normalGeometry()
 {
 #ifdef Q_OS_IRIX
     QSKIP("4DWM issues on IRIX makes this test fail", SkipAll);
+#endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo's window manager doesn't work with this test", SkipAll);
 #endif
     QWidget parent;
     parent.setWindowTitle("NormalGeometry parent");
@@ -2622,6 +2633,9 @@ void tst_QWidget::normalGeometry()
 
 void tst_QWidget::setGeometry()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QWidget tlw;
     QWidget child(&tlw);
 
@@ -3090,6 +3104,9 @@ void tst_QWidget::saveRestoreGeometry()
 #ifdef Q_OS_IRIX
     QSKIP("4DWM issues on IRIX makes this test fail", SkipAll);
 #endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     const QPoint position(100, 100);
     const QSize size(200, 200);
 
@@ -3242,6 +3259,9 @@ void tst_QWidget::restoreVersion1Geometry()
 #ifdef Q_OS_IRIX
     QSKIP("4DWM issues on IRIX makes this test fail", SkipAll);
 #endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
 
     QFETCH(QString, fileName);
     QFETCH(uint, expectedWindowState);
@@ -3316,6 +3336,9 @@ void tst_QWidget::restoreVersion1Geometry()
 
 void tst_QWidget::widgetAt()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     Q_CHECK_PAINTEVENTS
 
     QWidget *w1 = new QWidget(0, Qt::X11BypassWindowManagerHint);
@@ -3377,8 +3400,8 @@ void tst_QWidget::widgetAt()
 #if defined(Q_OS_SYMBIAN)
     QEXPECT_FAIL("", "Symbian/S60 does only support rectangular regions", Continue); //See also task 147191
 #endif
-    QTRY_COMPARE(QApplication::widgetAt(100,100)->objectName(), w1->objectName());
-    QTRY_COMPARE(QApplication::widgetAt(101,101)->objectName(), w2->objectName());
+    QTRY_VERIFY(QApplication::widgetAt(100, 100) && QApplication::widgetAt(100,100)->objectName() == w1->objectName());
+    QTRY_VERIFY(QApplication::widgetAt(101, 101) && QApplication::widgetAt(101,101)->objectName() == w2->objectName());
 
     QBitmap bitmap(w2->size());
     QPainter p(&bitmap);
@@ -4158,6 +4181,9 @@ void tst_QWidget::optimizedResize_topLevel()
 #if defined(Q_WS_MAC) || defined(Q_WS_QWS)
     QSKIP("We do not yet have static contents support for *top-levels* on this platform", SkipAll);
 #endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
 
     StaticWidget topLevel;
     topLevel.gotPaintEvent = false;
@@ -4239,6 +4265,9 @@ void tst_QWidget::childDeletesItsSibling()
 
 void tst_QWidget::setMinimumSize()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QWidget w;
     QSize defaultSize = w.size();
     SET_SAFE_SIZE(w);
@@ -4299,6 +4328,9 @@ void tst_QWidget::setMaximumSize()
 
 void tst_QWidget::setFixedSize()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QWidget w;
     QSize defaultSize = w.size();
     SET_SAFE_SIZE(w);
@@ -4937,6 +4969,9 @@ void tst_QWidget::isOpaque()
 */
 void tst_QWidget::scroll()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     UpdateWidget updateWidget;
     updateWidget.resize(500, 500);
     updateWidget.reset();
@@ -5488,6 +5523,9 @@ void tst_QWidget::moveChild_data()
 
 void tst_QWidget::moveChild()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QFETCH(QPoint, offset);
 
     ColorWidget parent;
@@ -5543,6 +5581,9 @@ void tst_QWidget::moveChild()
 
 void tst_QWidget::showAndMoveChild()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QWidget parent(0, Qt::FramelessWindowHint);
     // prevent custom styles
     parent.setStyle(new QWindowsStyle);
@@ -6055,6 +6096,9 @@ void tst_QWidget::setToolTip()
 #ifdef Q_OS_WINCE_WM
     QSKIP("Mouse over doesn't work on Windows mobile.", SkipAll);
 #endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
 
     for (int pass = 0; pass < 2; ++pass) {
         QWidget *popup = new QWidget(0, Qt::Popup);
@@ -6228,6 +6272,9 @@ signals:
 
 void tst_QWidget::showHideShow()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     ShowHideShowWidget w;
     w.show();
     w.hide();
@@ -6704,6 +6751,9 @@ static void workaroundPaletteIssue(QWidget *widget)
 //#define RENDER_DEBUG
 void tst_QWidget::renderInvisible()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QCalendarWidget *calendar = new QCalendarWidget;
     // disable anti-aliasing to eliminate potential differences when subpixel antialiasing
     // is enabled on the screen
@@ -7560,6 +7610,9 @@ void tst_QWidget::moveWindowInShowEvent()
 #ifdef Q_OS_IRIX
     QSKIP("4DWM issues on IRIX makes this test fail", SkipAll);
 #endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     QFETCH(QPoint, initial);
     QFETCH(QPoint, position);
 
@@ -8378,6 +8431,9 @@ public slots:
 
 void tst_QWidget::setMaskInResizeEvent()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     UpdateWidget w;
     w.reset();
     w.resize(200, 200);
@@ -8440,6 +8496,9 @@ public slots:
 
 void tst_QWidget::moveInResizeEvent()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     MoveInResizeWidget testWidget;
     testWidget.setGeometry(50, 50, 200, 200);
     testWidget.show();
@@ -9161,6 +9220,9 @@ void tst_QWidget::maskedUpdate()
 #if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS)
 void tst_QWidget::syntheticEnterLeave()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
+#endif
     class MyWidget : public QWidget
     {
     public:
@@ -9268,6 +9330,9 @@ void tst_QWidget::taskQTBUG_4055_sendSyntheticEnterLeave()
 {
 #ifdef Q_OS_WINCE_WM
     QSKIP("Windows Mobile has no proper cursor support", SkipAll);
+#endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
 #endif
     class SELParent : public QWidget
     {
@@ -9512,6 +9577,9 @@ void tst_QWidget::rectOutsideCoordinatesLimit_task144779()
 {
 #ifdef Q_OS_WINCE_WM
     QSKIP( "Tables of 5000 elements do not make sense on Windows Mobile.", SkipAll);
+#endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo's window manager", SkipAll);
 #endif
     QApplication::setOverrideCursor(Qt::BlankCursor); //keep the cursor out of screen grabs
     QWidget main(0,Qt::FramelessWindowHint); //don't get confused by the size of the window frame

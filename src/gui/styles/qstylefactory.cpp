@@ -72,6 +72,9 @@
 #ifndef QT_NO_STYLE_S60
 #include "qs60style.h"
 #endif
+#ifndef QT_NO_STYLE_MAEMO_5
+#include "qmaemo5style.h"
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -177,6 +180,11 @@ QStyle *QStyleFactory::create(const QString& key)
         ret = new QGtkStyle;
     else
 #endif
+#ifndef QT_NO_STYLE_MAEMO5
+    if (style == QLatin1String("maemo5") || style == QLatin1String("hildon"))
+        ret = new QMaemo5Style;
+    else
+#endif
 #ifndef QT_NO_STYLE_MAC
     if (style.startsWith(QLatin1String("macintosh"))) {
         ret = new QMacStyle;
@@ -252,6 +260,10 @@ QStringList QStyleFactory::keys()
 #ifndef QT_NO_STYLE_GTK
     if (!list.contains(QLatin1String("GTK+")))
         list << QLatin1String("GTK+");
+#endif
+#ifndef QT_NO_STYLE_MAEMO5
+    if (!list.contains(QLatin1String("Maemo5")))
+        list << QLatin1String("Maemo5");
 #endif
 #ifndef QT_NO_STYLE_CLEANLOOKS
     if (!list.contains(QLatin1String("Cleanlooks")))

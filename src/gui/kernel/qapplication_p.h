@@ -352,6 +352,7 @@ public:
         KB_Gnome = 16,
         KB_CDE = 32,
         KB_S60 = 64,
+        KB_Maemo5 = 128,
         KB_All = 0xffff
     };
 
@@ -576,6 +577,10 @@ public:
     bool readRX71MultiTouchEvents(int deviceNumber);
     void fakeMouseEventFromRX71TouchEvent();
     void _q_readRX71MultiTouchEvents();
+#endif
+
+#if defined(Q_WS_MAEMO_5)
+    static void maemo5ShowApplicationMenu();
 #endif
 
 #if defined(Q_WS_S60)

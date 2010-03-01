@@ -71,5 +71,12 @@
     in existing Symbian platform environments. Applications use the appropriate
     style for the embedded environment and use native features, such as menus,
     to conform to the native style guidelines.
+
+    \header \o Maemo 5 \o \o
+    \row
+    \o \l{Qt for Maemo 5} is designed to be used on devices running the
+    Linux and X11-based Maemo 5 platform.
+    \o
+    \o
     \endtable
 */

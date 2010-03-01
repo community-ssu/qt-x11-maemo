@@ -270,6 +270,9 @@ public:
     static int symbianCommands(int command);
 
 #endif
+#ifdef Q_WS_MAEMO_5
+    static void maemoResetApplicationMenuAtom(QWidget *w);
+#endif
 };
 #endif
 

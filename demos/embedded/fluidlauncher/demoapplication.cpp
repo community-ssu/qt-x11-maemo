@@ -98,7 +98,7 @@ void DemoApplication::processFinished(int exitCode, QProcess::ExitStatus exitSta
 
 void DemoApplication::processError(QProcess::ProcessError err)
 {
-    qDebug() << "Process error: " << err;
+    qDebug() << "Process error: " << process.errorString() << err;
     if (err == QProcess::Crashed)
         emit demoFinished();
 }

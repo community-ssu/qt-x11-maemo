@@ -177,6 +177,10 @@ public:
     explicit QColumnViewDelegate(QObject *parent = 0) : QItemDelegate(parent) {}
     ~QColumnViewDelegate() {}
 
+#ifdef Q_WS_MAEMO_5
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const;
+#endif
+
     void paint(QPainter *painter,
                const QStyleOptionViewItem &option,
                const QModelIndex &index) const;

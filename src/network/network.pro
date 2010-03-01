@@ -11,9 +11,11 @@ DEFINES += QT_BUILD_NETWORK_LIB QT_NO_USING_NAMESPACE
 #DEFINES += QTCPSOCKETENGINE_DEBUG QTCPSOCKET_DEBUG QTCPSERVER_DEBUG QSSLSOCKET_DEBUG
 #DEFINES += QUDPSOCKET_DEBUG QUDPSERVER_DEBUG
 QT = core
+maemo5:QT += dbus
 win32-msvc*|win32-icc:QMAKE_LFLAGS += /BASE:0x64000000
 
 unix:QMAKE_PKGCONFIG_REQUIRES = QtCore
+maemo5:QMAKE_PKGCONFIG_REQUIRES += QtDBus
 
 include(../qbase.pri)
 include(access/access.pri)
@@ -21,6 +23,7 @@ include(bearer/bearer.pri)
 include(kernel/kernel.pri)
 include(socket/socket.pri)
 include(ssl/ssl.pri)
+include(maemo/maemo.pri)
 
 QMAKE_LIBS += $$QMAKE_LIBS_NETWORK
 

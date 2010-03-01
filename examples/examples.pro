@@ -56,6 +56,7 @@ contains(QT_CONFIG, opengl): SUBDIRS += opengl
 contains(QT_CONFIG, openvg): SUBDIRS += openvg
 contains(QT_CONFIG, dbus): SUBDIRS += dbus
 win32: SUBDIRS += activeqt
+maemo5: SUBDIRS += maemo5
 contains(QT_CONFIG, xmlpatterns): SUBDIRS += xmlpatterns
 contains(DEFINES, QT_NO_CURSOR): SUBDIRS -= mainwindows
 

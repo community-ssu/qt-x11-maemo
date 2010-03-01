@@ -2366,7 +2366,11 @@ void tst_QTreeView::extendedSelection_data()
     QTest::addColumn<int>("selectedCount");
 
     QTest::newRow("select") << QPoint(10, 10) << 2;
+#ifdef Q_WS_MAEMO_5 //On Maemo 5 we have a greater default rowHeight
+    QTest::newRow("unselect") << QPoint(10, 500) << 0;
+#else
     QTest::newRow("unselect") << QPoint(10, 150) << 0;
+#endif
 }
 
 void tst_QTreeView::extendedSelection()
@@ -2375,11 +2379,12 @@ void tst_QTreeView::extendedSelection()
     QFETCH(int, selectedCount);
 
     QStandardItemModel model(5, 2);
-    QTreeView view;
+    QWidget topLevel;
+    QTreeView view(&topLevel);
     view.resize(qMax(mousePressPos.x() * 2, 200), qMax(mousePressPos.y() * 2, 200));
     view.setModel(&model);
     view.setSelectionMode(QAbstractItemView::ExtendedSelection);
-    view.show();
+    topLevel.show();
     QTest::mousePress(view.viewport(), Qt::LeftButton, 0, mousePressPos);
     QCOMPARE(view.selectionModel()->selectedIndexes().count(), selectedCount);
 }

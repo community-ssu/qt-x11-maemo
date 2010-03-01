@@ -43,3 +43,12 @@ symbian {
     LIBS += -lsendas2 -letext -lapmime
     contains(QT_CONFIG, s60): LIBS += -lplatformenv -lcommonui
 }
+
+maemo5 {
+    HEADERS += \
+        util/qabstractkineticscroller.h \
+        util/qabstractkineticscroller_p.h
+
+    SOURCES += \
+        util/qabstractkineticscroller.cpp
+}

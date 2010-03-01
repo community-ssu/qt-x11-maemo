@@ -562,7 +562,7 @@ void tst_QNativeSocketEngine::tooManySockets()
 //---------------------------------------------------------------------------
 void tst_QNativeSocketEngine::bind()
 {
-#if !defined Q_OS_WIN && !defined Q_OS_SYMBIAN
+#if !defined Q_OS_WIN && !defined Q_OS_SYMBIAN && !defined Q_WS_MAEMO_5
     QNativeSocketEngine binder;
     QVERIFY(binder.initialize(QAbstractSocket::TcpSocket, QAbstractSocket::IPv4Protocol));
     QVERIFY(!binder.bind(QHostAddress::Any, 82));

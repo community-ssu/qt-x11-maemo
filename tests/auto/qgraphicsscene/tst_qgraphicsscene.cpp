@@ -1322,7 +1322,7 @@ void tst_QGraphicsScene::addText()
 
 void tst_QGraphicsScene::removeItem()
 {
-#if defined(Q_OS_WINCE) && !defined(GWES_ICONCURS)
+#if (defined(Q_OS_WINCE) && !defined(GWES_ICONCURS)) || defined(Q_WS_MAEMO_5)
     QSKIP("No mouse cursor support", SkipAll);
 #endif
     QGraphicsScene scene;
@@ -2678,12 +2678,14 @@ void tst_QGraphicsScene::render()
     QPixmap pix(30, 30);
     pix.fill(Qt::blue);
 
-    QGraphicsScene scene;
+    QGraphicsView view;
+    QGraphicsScene scene(&view);
     scene.addEllipse(QRectF(-10, -10, 20, 20), QPen(Qt::black), QBrush(Qt::white));
     scene.addEllipse(QRectF(-2, -7, 4, 4), QPen(Qt::black), QBrush(Qt::yellow))->setZValue(1);
     QGraphicsPixmapItem *item = scene.addPixmap(pix);
     item->setZValue(2);
     item->setOffset(QPointF(3, 3));
+    view.show();
 
     scene.setSceneRect(scene.itemsBoundingRect());
 

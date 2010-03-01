@@ -1118,6 +1118,21 @@ void QColumnViewPrivate::doLayout()
     }
 }
 
+#ifdef Q_WS_MAEMO_5
+/*!
+    \internal
+
+    As long as the QColumnView does not use a QStyledItemDelegate we have to increase
+    the hight of a row here.
+*/
+
+QSize QColumnViewDelegate::sizeHint(const QStyleOptionViewItem &option,
+                                    const QModelIndex &index) const
+{
+    return QItemDelegate::sizeHint(option, index).expandedTo(QSize(0, 70)); // 70 is the default finger row height.
+}
+#endif
+
 /*!
     \internal
 

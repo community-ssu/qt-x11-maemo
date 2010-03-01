@@ -713,13 +713,17 @@ void tst_QGridLayout::spacingsAndMargins()
     toplevel.show();
     toplevel.adjustSize();
     QApplication::processEvents();
+    QTest::qWaitForWindowShown(&toplevel);
 
     QSize topsize = toplevel.size();
     QSize minimumsize = vbox.totalMinimumSize();
 
-#ifdef Q_WS_QWS
+#if defined(Q_WS_QWS)
     if (topsize.width() < minimumsize.width() || topsize.height() < minimumsize.height())
         QSKIP("The screen is too small to run this test case", SkipSingle);
+#endif
+#if defined(Q_WS_MAEMO_5)
+    QSKIP("Test does not work with Maemo5 window manager", SkipAll);
 #endif
 
 // We are relying on the order here...
@@ -843,6 +847,9 @@ void tst_QGridLayout::minMaxSize_data()
 
 void tst_QGridLayout::minMaxSize()
 {
+#if defined(Q_WS_MAEMO_5)
+    QSKIP("Test does not work with Maemo5 window manager", SkipAll);
+#endif
 /*
     The test tests a gridlayout as a child of a top-level widget
 */
@@ -1226,6 +1233,7 @@ void tst_QGridLayout::layoutSpacingImplementation_data()
     }
 
 
+#ifndef Q_WS_MAEMO_5
     {
         style->hspacing = 5;
         style->vspacing = 10;
@@ -1292,6 +1300,7 @@ void tst_QGridLayout::layoutSpacingImplementation_data()
                 )
                 << style->hspacing << style->vspacing << style->reimplementSubelementRect;
     }
+#endif
 
     {
         style->hspacing = 5;
@@ -1463,15 +1472,18 @@ void tst_QGridLayout::layoutSpacingImplementation()
     QFETCH(int, vSpacing);
     QFETCH(bool, customSubElementRect);
 
+    QWidget toplevel;
+
     CustomLayoutStyle *style = new CustomLayoutStyle();
     style->hspacing = hSpacing;
     style->vspacing = vSpacing;
     style->reimplementSubelementRect = customSubElementRect;
     QApplication::setStyle(style);
+    widget->setParent(&toplevel);
     widget->resize(widget->sizeHint());
-    widget->show();
+    toplevel.show();
 #if defined(Q_WS_X11)
-    qt_x11_wait_for_window_manager(widget);     // wait for the show
+    qt_x11_wait_for_window_manager(&toplevel);     // wait for the show
 #endif
 
     QLayout *layout = widget->layout();
@@ -1482,8 +1494,6 @@ void tst_QGridLayout::layoutSpacingImplementation()
         //qDebug()  << item->widget()->pos();
         QCOMPARE(item->widget()->pos(), expectedpositions.at(pi));
     }
-    delete widget;
-
 }
 
 void tst_QGridLayout::spacing()

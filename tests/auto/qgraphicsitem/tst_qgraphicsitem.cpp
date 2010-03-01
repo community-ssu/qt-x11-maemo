@@ -3970,9 +3970,10 @@ void tst_QGraphicsItem::cursor()
     item1->setCursor(Qt::IBeamCursor);
     item2->setCursor(Qt::PointingHandCursor);
 
-    QGraphicsView view(&scene);
+    QWidget topLevel;
+    QGraphicsView view(&scene,&topLevel);
     view.setFixedSize(200, 100);
-    view.show();
+    topLevel.show();
     QTest::mouseMove(&view, view.rect().center());
 
     QTest::qWait(25);
@@ -3994,7 +3995,7 @@ void tst_QGraphicsItem::cursor()
         QApplication::sendEvent(view.viewport(), &event);
     }
 
-#if !defined(Q_OS_WINCE)
+#if !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
     QTest::qWait(250);
 #else
     // Test environment does not have any cursor, therefore no shape
@@ -5631,9 +5632,10 @@ void tst_QGraphicsItem::untransformable()
     QGraphicsScene scene(-500, -500, 1000, 1000);
     scene.addItem(item1);
 
-    QGraphicsView view(&scene);
+    QWidget topLevel;
+    QGraphicsView view(&scene,&topLevel);
     view.resize(300, 300);
-    view.show();
+    topLevel.show();
     view.scale(8, 8);
     view.centerOn(0, 0);
 
@@ -7078,9 +7080,10 @@ void tst_QGraphicsItem::update()
 {
     QGraphicsScene scene;
     scene.setSceneRect(-100, -100, 200, 200);
-    MyGraphicsView view(&scene);
+    QWidget topLevel;
+    MyGraphicsView view(&scene,&topLevel);
 
-    view.show();
+    topLevel.show();
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&view);
 #endif
@@ -7359,9 +7362,10 @@ void tst_QGraphicsItem::itemUsesExtendedStyleOption()
     MyStyleOptionTester *rect = new MyStyleOptionTester(QRect(0, 0, 100, 100));
     scene.addItem(rect);
     rect->setPos(200, 200);
-    QGraphicsView view(&scene);
+    QWidget topLevel;
+    QGraphicsView view(&scene, &topLevel);
     rect->startTrack = false;
-    view.show();
+    topLevel.show();
     QTest::qWaitForWindowShown(&view);
     QTest::qWait(60);
     rect->startTrack = true;
@@ -7534,6 +7538,10 @@ void tst_QGraphicsItem::sorting_data()
 
 void tst_QGraphicsItem::sorting()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not work with Maemo window manager", SkipAll);
+#endif
+
     _paintedItems.clear();
 
     QGraphicsScene scene;
@@ -7569,7 +7577,7 @@ void tst_QGraphicsItem::sorting()
     _paintedItems.clear();
 
     view.viewport()->repaint();
-#ifdef Q_WS_MAC
+#if defined(Q_WS_MAC)
     // There's no difference between repaint and update on the Mac,
     // so we have to process events here to make sure we get the event.
     QTest::qWait(100);
@@ -7668,10 +7676,12 @@ void tst_QGraphicsItem::hitTestGraphicsEffectItem()
     QGraphicsScene scene;
     scene.setSceneRect(-100, -100, 200, 200);
 
-    QGraphicsView view(&scene);
-    view.show();
+    QWidget toplevel;
+
+    QGraphicsView view(&scene, &toplevel);
+    toplevel.show();
 #ifdef Q_WS_X11
-    qt_x11_wait_for_window_manager(&view);
+    qt_x11_wait_for_window_manager(&toplevel);
 #endif
     QTest::qWait(100);
 

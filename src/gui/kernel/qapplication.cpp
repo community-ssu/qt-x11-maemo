@@ -468,6 +468,8 @@ static int drag_time = 500;
 #ifdef Q_OS_SYMBIAN
 // The screens are a bit too small to for your thumb when using only 4 pixels drag distance.
 static int drag_distance = 8;
+#elif defined(Q_WS_MAEMO_5)
+static int drag_distance = 12;
 #else
 static int drag_distance = 4;
 #endif
@@ -775,6 +777,12 @@ void QApplicationPrivate::construct(
     initResources();
 
     qt_is_gui_used = (qt_appType != QApplication::Tty);
+
+#ifdef Q_WS_MAEMO_5
+    if (qt_is_gui_used && qgetenv("AF_DEFINES_SOURCED").isNull())
+        qWarning("Maemo applications must be run with the run-standalone.sh script!");
+#endif
+
     process_cmdline();
     // Must be called before initialize()
     qt_init(this, qt_appType
@@ -5300,6 +5308,8 @@ uint QApplicationPrivate::currentPlatform(){
         platform |= KB_Gnome;
     if (X11->desktopEnvironment == DE_CDE)
         platform |= KB_CDE;
+    if (X11->desktopEnvironment == DE_MAEMO5)
+        platform |= KB_Maemo5;
 #elif defined(Q_OS_SYMBIAN)
     platform = KB_S60;
 #endif

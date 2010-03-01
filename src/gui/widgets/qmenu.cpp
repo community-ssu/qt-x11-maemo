@@ -202,7 +202,7 @@ QRect QMenuPrivate::popupGeometry(int screen) const
 #ifdef Q_WS_WIN
     return QApplication::desktop()->screenGeometry(screen);
 #elif defined Q_WS_X11
-    if (X11->desktopEnvironment == DE_KDE)
+    if (X11->desktopEnvironment == DE_KDE || X11->desktopEnvironment == DE_MAEMO5)
         return QApplication::desktop()->screenGeometry(screen);
     else
         return QApplication::desktop()->availableGeometry(screen);

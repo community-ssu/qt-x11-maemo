@@ -119,6 +119,20 @@ protected Q_SLOTS:
                                      const QWidget *widget = 0) const;
 };
 
+typedef QStringList (*_qt_filedialog_open_filenames_hook)(QWidget * parent, const QString &caption, const QString &dir,
+                                                          const QString &filter, QString *selectedFilter, QFileDialog::Options options);
+typedef QString (*_qt_filedialog_open_filename_hook)     (QWidget * parent, const QString &caption, const QString &dir,
+                                                          const QString &filter, QString *selectedFilter, QFileDialog::Options options);
+typedef QString (*_qt_filedialog_save_filename_hook)     (QWidget * parent, const QString &caption, const QString &dir,
+                                                          const QString &filter, QString *selectedFilter, QFileDialog::Options options);
+typedef QString (*_qt_filedialog_existing_directory_hook)(QWidget *parent, const QString &caption, const QString &dir,
+                                                          QFileDialog::Options options);
+
+extern Q_GUI_EXPORT _qt_filedialog_open_filename_hook qt_filedialog_open_filename_hook;
+extern Q_GUI_EXPORT _qt_filedialog_open_filenames_hook qt_filedialog_open_filenames_hook;
+extern Q_GUI_EXPORT _qt_filedialog_save_filename_hook qt_filedialog_save_filename_hook;
+extern Q_GUI_EXPORT _qt_filedialog_existing_directory_hook qt_filedialog_existing_directory_hook;
+
 #endif //!defined(QT_NO_STYLE_QGTK)
 
 QT_END_NAMESPACE

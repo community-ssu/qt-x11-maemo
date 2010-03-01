@@ -211,7 +211,13 @@ static QDialogButtonBox::ButtonRole roleFor(QDialogButtonBox::StandardButton but
     return QDialogButtonBox::InvalidRole;
 }
 
-static const int layouts[2][5][14] =
+#ifdef Q_WS_MAEMO_5
+#define NUMBER_OF_LAYOUTS 6
+#else
+#define NUMBER_OF_LAYOUTS 5
+#endif
+
+static const int layouts[2][NUMBER_OF_LAYOUTS][14] =
 {
     // Qt::Horizontal
     {
@@ -231,8 +237,14 @@ static const int layouts[2][5][14] =
         { HelpRole, ResetRole, Stretch, ActionRole, ApplyRole | Reverse, DestructiveRole | Reverse,
           AlternateRole | Reverse, RejectRole | Reverse, AcceptRole | Reverse, NoRole | Reverse, YesRole | Reverse, EOL },
 
-        // Mac modeless
-        { ResetRole, ApplyRole, ActionRole, Stretch, HelpRole, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL }
+        // Mac modeless - private, index [4]
+        { ResetRole, ApplyRole, ActionRole, Stretch, HelpRole, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL },
+
+#ifdef Q_WS_MAEMO_5
+        // Maemo5 Layout - private, index [5]
+        { Stretch, HelpRole, ResetRole, ActionRole, ApplyRole | Reverse, DestructiveRole | Reverse,
+          AlternateRole | Reverse, AcceptRole | Reverse, NoRole | Reverse, YesRole | Reverse, RejectRole, EOL, EOL, EOL },
+#endif
     },
 
     // Qt::Vertical
@@ -253,8 +265,14 @@ static const int layouts[2][5][14] =
         { YesRole, NoRole, AcceptRole, RejectRole, AlternateRole, DestructiveRole, ApplyRole, ActionRole, Stretch,
           ResetRole, HelpRole, EOL, EOL, EOL },
 
-        // Mac modeless
-        { ActionRole, ApplyRole, ResetRole, Stretch, HelpRole, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL }
+        // Mac modeless - private, index [4]
+        { ActionRole, ApplyRole, ResetRole, Stretch, HelpRole, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL, EOL },
+
+#ifdef Q_WS_MAEMO_5
+        // Maemo5 Layout - private, index [5]
+        { Stretch, YesRole, NoRole, AcceptRole, AlternateRole, DestructiveRole, ApplyRole, ActionRole,
+          ResetRole, HelpRole, RejectRole, EOL, EOL, EOL },
+#endif
     }
 };
 
@@ -404,6 +422,10 @@ void QDialogButtonBoxPrivate::layoutButtons()
         if (!hasModalButton)
             tmpPolicy = 4;  // Mac modeless
     }
+#ifdef Q_WS_MAEMO_5
+    if (tmpPolicy == QDialogButtonBox::GnomeLayout)
+        tmpPolicy = 5; // Maemo5
+#endif
 
     const int *currentLayout = layouts[orientation == Qt::Vertical][tmpPolicy];
 
@@ -466,6 +488,15 @@ void QDialogButtonBoxPrivate::layoutButtons()
             }
             break;
         case RejectRole:
+#ifdef Q_WS_MAEMO_5
+            /*
+                Maemo5 does not have cancel buttons, but will instead use
+                the blurred area above the dialog as a cancel area
+            */
+            foreach (QAbstractButton *p, buttonLists[RejectRole])
+                p->hide();
+            break;
+#endif
         case ActionRole:
         case HelpRole:
         case YesRole:
@@ -646,6 +677,10 @@ const char *QDialogButtonBoxPrivate::standardButtonText(QDialogButtonBox::Standa
     switch (sbutton) {
     case QDialogButtonBox::Ok:
         buttonText = gnomeLayout ? QT_TRANSLATE_NOOP("QDialogButtonBox", "&OK") : QT_TRANSLATE_NOOP("QDialogButtonBox", "OK");
+#ifdef Q_WS_MAEMO_5
+        if (gnomeLayout)
+            buttonText = QT_TRANSLATE_NOOP("QDialogButtonBox", "Done");
+#endif
         break;
     case QDialogButtonBox::Save:
         buttonText = gnomeLayout ? QT_TRANSLATE_NOOP("QDialogButtonBox", "&Save") : QT_TRANSLATE_NOOP("QDialogButtonBox", "Save");
@@ -1240,7 +1275,7 @@ bool QDialogButtonBox::event(QEvent *event)
         if (dialog)
             setFixedSize(0,0);
 #endif
-    }else if (event->type() == QEvent::LanguageChange) {
+    } else if (event->type() == QEvent::LanguageChange) {
         d->retranslateStrings();
     }
 #ifdef QT_SOFTKEYS_ENABLED

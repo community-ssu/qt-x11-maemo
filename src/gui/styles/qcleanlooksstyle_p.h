@@ -53,7 +53,7 @@
 // We mean it.
 //
 
-#include "qwindowsstyle.h"
+#include "qcleanlooksstyle.h"
 #include "qwindowsstyle_p.h"
 
 #ifndef QT_NO_STYLE_CLEANLOOKS

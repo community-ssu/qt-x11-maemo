@@ -74,6 +74,9 @@
 #ifdef Q_WS_S60
 #include "qcoefepinputcontext_p.h"
 #endif
+#ifdef Q_WS_MAEMO_5
+#include "qhildoninputcontext_p.h"
+#endif
 
 #include "private/qfactoryloader_p.h"
 #include "qmutex.h"
@@ -152,6 +155,12 @@ QInputContext *QInputContextFactory::create( const QString& key, QObject *parent
         result = new QCoeFepInputContext;
     }
 #endif
+#if defined(Q_WS_MAEMO_5)
+    if (key == QLatin1String("hildon")) {
+        result = new QHildonInputContext;
+    }
+#endif
+
 #if defined(QT_NO_LIBRARY) || defined(QT_NO_SETTINGS)
     Q_UNUSED(key);
 #else
@@ -192,6 +201,10 @@ QStringList QInputContextFactory::keys()
 #if defined(Q_WS_S60)
     result << QLatin1String("coefep");
 #endif
+#if defined (Q_WS_MAEMO_5)
+    result << QLatin1String("hildon");
+#endif
+
 #if !defined(QT_NO_LIBRARY) && !defined(QT_NO_SETTINGS)
     result += loader()->keys();
 #endif // QT_NO_LIBRARY
@@ -231,6 +244,11 @@ QStringList QInputContextFactory::languages( const QString &key )
     if (key == QLatin1String("coefep"))
         return QStringList(QString());
 #endif
+#if defined (Q_WS_MAEMO_5)
+    if (key == QLatin1String("hildon"))
+        return QStringList(QString());
+#endif
+
 #if defined(QT_NO_LIBRARY) || defined(QT_NO_SETTINGS)
     Q_UNUSED(key);
 #else
@@ -293,6 +311,10 @@ QString QInputContextFactory::description( const QString &key )
 #if defined(Q_WS_S60)
     if (key == QLatin1String("coefep"))
         return QInputContext::tr( "S60 FEP input method" );
+#endif
+#if defined(Q_WS_MAEMO_5)
+    if (key == QLatin1String("hildon"))
+        return QInputContext::tr("Hildon input method");
 #endif
 #if defined(QT_NO_LIBRARY) || defined(QT_NO_SETTINGS)
     Q_UNUSED(key);

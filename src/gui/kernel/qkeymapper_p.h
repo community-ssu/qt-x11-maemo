@@ -170,6 +170,10 @@ public:
     QList<int> possibleKeysXKB(QKeyEvent *event);
     QList<int> possibleKeysCore(QKeyEvent *event);
 
+#ifdef Q_WS_MAEMO_5
+    static QString maemo5TranslateKeySym(KeySym keysym);
+#endif
+
     bool translateKeyEventInternal(QWidget *keywidget,
                                    const XEvent *,
                                    KeySym &keysym,

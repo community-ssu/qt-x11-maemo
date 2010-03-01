@@ -73,7 +73,9 @@
 #include "QtGui/qcompleter.h"
 #include "QtGui/qevent.h"
 #include "QtCore/qdebug.h"
-
+#ifdef Q_WS_MAEMO_5
+#  include "QtGui/qstyleditemdelegate.h"
+#endif
 #include <limits.h>
 
 QT_BEGIN_NAMESPACE
@@ -243,6 +245,9 @@ protected:
     void timerEvent(QTimerEvent *timerEvent);
     void leaveEvent(QEvent *e);
     void resizeEvent(QResizeEvent *e);
+#ifdef Q_WS_MAEMO_5
+    void closeEvent(QCloseEvent *e);
+#endif
     QStyleOptionComboBox comboStyleOption() const;
 
 Q_SIGNALS:
@@ -289,10 +294,15 @@ private:
 // Note that this class is intentionally not using QStyledItemDelegate 
 // Vista does not use the new theme for combo boxes and there might 
 // be other side effects from using the new class
-class QComboBoxDelegate : public QItemDelegate
+#ifdef Q_WS_MAEMO_5
+typedef QStyledItemDelegate QComboBoxDelegateBase;
+#else
+typedef QItemDelegate QComboBoxDelegateBase;
+#endif
+class QComboBoxDelegate : public QComboBoxDelegateBase
 { Q_OBJECT
 public:
-    QComboBoxDelegate(QObject *parent, QComboBox *cmb) : QItemDelegate(parent), mCombo(cmb) {}
+    QComboBoxDelegate(QObject *parent, QComboBox *cmb) : QComboBoxDelegateBase(parent), mCombo(cmb) {}
 
     static bool isSeparator(const QModelIndex &index) {
         return index.data(Qt::AccessibleDescriptionRole).toString() == QLatin1String("separator");
@@ -317,7 +327,7 @@ protected:
             opt.rect = rect;
             mCombo->style()->drawPrimitive(QStyle::PE_IndicatorToolBarSeparator, &opt, painter, mCombo);
         } else {
-            QItemDelegate::paint(painter, option, index);
+            QComboBoxDelegateBase::paint(painter, option, index);
         }
     }
 
@@ -327,7 +337,7 @@ protected:
             int pm = mCombo->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, 0, mCombo);
             return QSize(pm, pm);
         }
-        return QItemDelegate::sizeHint(option, index);
+        return QComboBoxDelegateBase::sizeHint(option, index);
     }
 private:
     QComboBox *mCombo;
@@ -377,6 +387,9 @@ public:
     void keyboardSearchString(const QString &text);
     void modelChanged();
     void updateViewContainerPaletteAndOpacity();
+#ifdef Q_WS_MAEMO_5
+    void maemo5HandleMouseEvent(QMouseEvent *);
+#endif
 
     QAbstractItemModel *model;
     QLineEdit *lineEdit;

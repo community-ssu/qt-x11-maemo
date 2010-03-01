@@ -163,7 +163,7 @@ protected slots:
 
 private:
     QComboBox *testWidget;
-    QDialog *parent;
+    QWidget *parent;
     QPushButton* ok;
     int editTextCount;
     QString editText;
@@ -395,7 +395,7 @@ tst_QComboBox::~tst_QComboBox()
 void tst_QComboBox::initTestCase()
 {
     // Create the test class
-    parent = new QDialog(0);
+    parent = new QWidget(0, Qt::Window);
     parent->setObjectName("parent");
     parent->resize(400, 400);
     testWidget = new QComboBox(parent);
@@ -1907,6 +1907,9 @@ void tst_QComboBox::layoutDirection()
 
 void tst_QComboBox::itemListPosition()
 {
+/*#ifdef Q_WS_MAEMO_5
+    QSKIP("Combo Box positioning not supported on Maemo 5", SkipAll);
+#else*/
     //tests that the list is not out of the screen boundaries
 
     //put the QApplication layout back
@@ -1914,7 +1917,8 @@ void tst_QComboBox::itemListPosition()
 
     //we test QFontComboBox because it has the specific behaviour to set a fixed size
     //to the list view
-    QFontComboBox combo;
+    QWidget topLevel;
+    QFontComboBox combo(&topLevel);
 
     //the code to get the avaialbe screen space is copied from QComboBox code
     const int scrNumber = QApplication::desktop()->screenNumber(&combo);
@@ -1932,7 +1936,7 @@ void tst_QComboBox::itemListPosition()
 
     combo.move(screen.width()-combo.sizeHint().width(), 0); //puts the combo to the top-right corner
 
-    combo.show();
+    topLevel.show();
     //wait because the window manager can move the window if there is a right panel
     QTRY_VERIFY(combo.isVisible());
     combo.showPopup();
@@ -1944,7 +1948,7 @@ void tst_QComboBox::itemListPosition()
     QEXPECT_FAIL("", "QtS60Style does not yet position the combobox popup correctly", Continue);
 #endif
     QVERIFY( combo.view()->window()->x() + combo.view()->window()->width() <= screen.x() + screen.width() );
-
+//#endif
 }
 
 void tst_QComboBox::separatorItem_data()
@@ -2044,7 +2048,7 @@ void tst_QComboBox::task166349_setEditableOnReturn()
 
 void tst_QComboBox::task191329_size()
 {
-#ifndef QT_NO_STYLE_CLEANLOOKS
+#if !defined(QT_NO_STYLE_CLEANLOOKS) && !defined(Q_WS_MAEMO_5)
     const QString oldStyle = QApplication::style()->objectName();
     QApplication::setStyle(new QCleanlooksStyle);
 
@@ -2123,6 +2127,9 @@ void tst_QComboBox::task190205_setModelAdjustToContents()
 
 void tst_QComboBox::task248169_popupWithMinimalSize()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test does not make sense on Maemo 5", SkipAll);
+#endif
     QStringList initialContent;
     initialContent << "foo" << "bar" << "foobar";
 
@@ -2238,7 +2245,11 @@ void tst_QComboBox::noScrollbar_data()
     QTest::newRow("margin") << QString::fromLatin1("QAbstractItemView { margin: 12px 15px 13px 10px; }");
     QTest::newRow("padding") << QString::fromLatin1("QAbstractItemView { padding: 12px 15px 13px 10px;}");
     QTest::newRow("everything") << QString::fromLatin1("QAbstractItemView {  border: 12px  solid blue; "
+#ifdef Q_WS_MAEMO_5 //Maemo 5 has other display margins
+                                                       " padding: 8px 8px 13px 10px; margin: 12px 15px 13px 10px;  }");
+#else
                                                        " padding: 12px 15px 13px 10px; margin: 12px 15px 13px 10px;  }");
+#endif
     QTest::newRow("everything and more") << QString::fromLatin1("QAbstractItemView {  border: 1px 3px 5px 1px solid blue; "
                                                        " padding: 2px 5px 3px 1px; margin: 2px 5px 3px 1px;  } "
                                                        " QAbstractItemView::item {  border: 2px solid green; "
@@ -2254,9 +2265,10 @@ void tst_QComboBox::noScrollbar()
     qApp->setStyleSheet(stylesheet);
 
     {
-        QComboBox comboBox;
+        QWidget topLevel;
+        QComboBox comboBox(&topLevel);
         comboBox.addItems(initialContent);
-        comboBox.show();
+        topLevel.show();
         comboBox.resize(200, comboBox.height());
         QTRY_VERIFY(comboBox.isVisible());
         comboBox.showPopup();
@@ -2474,7 +2486,11 @@ void tst_QComboBox::keyBoardNavigationWithMouse()
 #ifdef Q_OS_WINCE
     QSKIP("When calling cursor function, Windows CE responds with: This function is not supported on this system.", SkipAll);
 #endif
-
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo 5 displays ComboBox Popups differently", SkipAll);
+#endif
+        
+    
     QCursor::setPos(combo.view()->mapToGlobal(combo.view()->rect().center()));
     QTest::qWait(200);
 

@@ -448,7 +448,11 @@ void tst_QDialogButtonBox::testStandardButtonMapping_data()
 
     QTest::newRow("QDialogButtonBox::Ok") << QDialogButtonBox::Ok
                                           << QDialogButtonBox::AcceptRole
+#ifdef Q_WS_MAEMO_5
+                                          << QDialogButtonBox::tr("Done");
+#else
                                           << QDialogButtonBox::tr("OK");
+#endif
     QTest::newRow("QDialogButtonBox::Open") << QDialogButtonBox::Open
                                             << QDialogButtonBox::AcceptRole
                                             << QDialogButtonBox::tr("Open");

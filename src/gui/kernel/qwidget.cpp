@@ -1121,7 +1121,8 @@ void QWidgetPrivate::init(QWidget *parentWidget, Qt::WindowFlags f)
         qFatal("QWidget: Cannot create a QWidget when no GUI is being used");
 
     Q_ASSERT(allWidgets);
-    allWidgets->insert(q);
+    if (allWidgets)
+        allWidgets->insert(q);
 
     QWidget *desktopWidget = 0;
     if (parentWidget && parentWidget->windowType() == Qt::Desktop) {
@@ -6466,6 +6467,9 @@ void QWidget::setTabOrder(QWidget* first, QWidget *second)
     if (QWidget *sp = second->focusProxy())
         second = sp;
 
+    if (first == second)
+        return;
+
 //    QWidget *fp = first->d_func()->focus_prev;
     QWidget *fn = first->d_func()->focus_next;
 
@@ -10263,6 +10267,29 @@ const QPixmap *QWidget::icon() const
 #endif // QT3_SUPPORT
 
 /*!
+  \internal
+
+  This just sets the corresponding attribute bit to 1 or 0
+ */
+static void setAttribute_internal(Qt::WidgetAttribute attribute, bool on, QWidgetData *data,
+                                  QWidgetPrivate *d)
+{
+    if (attribute < int(8*sizeof(uint))) {
+        if (on)
+            data->widget_attributes |= (1<<attribute);
+        else
+            data->widget_attributes &= ~(1<<attribute);
+    } else {
+        const int x = attribute - 8*sizeof(uint);
+        const int int_off = x / (8*sizeof(uint));
+        if (on)
+            d->high_attributes[int_off] |= (1<<(x-(int_off*8*sizeof(uint))));
+        else
+            d->high_attributes[int_off] &= ~(1<<(x-(int_off*8*sizeof(uint))));
+    }
+}
+
+/*!
     Sets the attribute \a attribute on this widget if \a on is true;
     otherwise clears the attribute.
 
@@ -10288,19 +10315,7 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
     }
 #endif
 
-    if (attribute < int(8*sizeof(uint))) {
-        if (on)
-            data->widget_attributes |= (1<<attribute);
-        else
-            data->widget_attributes &= ~(1<<attribute);
-    } else {
-        const int x = attribute - 8*sizeof(uint);
-        const int int_off = x / (8*sizeof(uint));
-        if (on)
-            d->high_attributes[int_off] |= (1<<(x-(int_off*8*sizeof(uint))));
-        else
-            d->high_attributes[int_off] &= ~(1<<(x-(int_off*8*sizeof(uint))));
-    }
+    setAttribute_internal(attribute, on, data, d);
 
     switch (attribute) {
 
@@ -10359,14 +10374,11 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
 #ifdef Q_WS_MAC
         {
             // We can only have one of these set at a time
-            static const int MacSizes[] = { Qt::WA_MacNormalSize, Qt::WA_MacSmallSize,
-                                            Qt::WA_MacMiniSize, 0 };
-            for (int i = 0; MacSizes[i] != 0; ++i) {
-                if (MacSizes[i] == attribute)
-                    continue;
-                int macsize_x = MacSizes[i] - 8*sizeof(uint);
-                int macsize_int_off = macsize_x / (8*sizeof(uint));
-                d->high_attributes[macsize_int_off] &= ~(1<<(macsize_x-(macsize_int_off*8*sizeof(uint))));
+            const Qt::WidgetAttribute MacSizes[] = { Qt::WA_MacNormalSize, Qt::WA_MacSmallSize,
+                                                     Qt::WA_MacMiniSize };
+            for (int i = 0; i < 3; ++i) {
+                if (MacSizes[i] != attribute)
+                    setAttribute_internal(MacSizes[i], false, data, d);
             }
             d->macUpdateSizeAttribute();
         }
@@ -10526,6 +10538,32 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
         if (testAttribute(Qt::WA_WState_Created))
             d->setNetWmWindowTypes();
         break;
+#  ifdef Q_WS_MAEMO_5
+    case Qt::WA_Maemo5PortraitOrientation:
+    case Qt::WA_Maemo5LandscapeOrientation:
+    case Qt::WA_Maemo5AutoOrientation:
+        if (on) {
+            // We can only have one of these set at a time
+            const Qt::WidgetAttribute maemo5Orientations[] = { Qt::WA_Maemo5PortraitOrientation,
+                                                               Qt::WA_Maemo5LandscapeOrientation,
+                                                               Qt::WA_Maemo5AutoOrientation };
+            for (int i = 0; i < 3; ++i) {
+                if (maemo5Orientations[i] != attribute)
+                    setAttribute_internal(maemo5Orientations[i], false, data, d);
+            }
+        }
+        // fall through
+    case Qt::WA_Maemo5NonComposited:
+    case Qt::WA_Maemo5StackedWindow:
+        if (testAttribute(Qt::WA_WState_Created))
+            d->setNetWmWindowTypes();
+        break;
+    case Qt::WA_Maemo5ShowProgressIndicator:
+        if (testAttribute(Qt::WA_WState_Created)) {
+            d->maemo5ShowProgressIndicator(on);
+        }
+        break;
+#  endif
 #endif
 
     case Qt::WA_StaticContents:

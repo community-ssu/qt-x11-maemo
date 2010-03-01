@@ -2011,6 +2011,11 @@ void QTextControlPrivate::editFocusEvent(QEvent *e)
 #ifndef QT_NO_CONTEXTMENU
 QMenu *QTextControl::createStandardContextMenu(const QPointF &pos, QWidget *parent)
 {
+#ifdef Q_WS_MAEMO_5
+    Q_UNUSED(pos);
+    Q_UNUSED(parent);
+    return 0;
+#else
     Q_D(QTextControl);
 
     const bool showTextSelectionActions = d->interactionFlags & (Qt::TextEditable | Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
@@ -2086,6 +2091,7 @@ QMenu *QTextControl::createStandardContextMenu(const QPointF &pos, QWidget *pare
     }
 
     return menu;
+#endif // !Q_WS_MAEMO_5
 }
 #endif // QT_NO_CONTEXTMENU
 

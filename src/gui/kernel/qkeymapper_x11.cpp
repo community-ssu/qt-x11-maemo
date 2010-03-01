@@ -1510,6 +1510,19 @@ static QString translateKeySym(KeySym keysym, uint xmodifiers,
     return text;
 }
 
+#ifdef Q_WS_MAEMO_5
+QString QKeyMapperPrivate::maemo5TranslateKeySym(KeySym keysym)
+{
+    uint xmodifiers = 0;
+    int code = 0;
+    Qt::KeyboardModifiers modifiers = Qt::NoModifier;
+    QByteArray chars;
+    int count = 0;
+
+    return translateKeySym(keysym, xmodifiers, code, modifiers, chars, count);
+}
+#endif
+
 extern bool qt_use_rtl_extensions; // from qapplication_x11.cpp
 
 bool QKeyMapperPrivate::translateKeyEventInternal(QWidget *keyWidget,

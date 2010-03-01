@@ -3098,9 +3098,14 @@ void tst_QTreeWidget::task253109_itemHeight()
 
 void tst_QTreeWidget::task206367_duplication()
 {
-    QTreeWidget treeWidget;
-    treeWidget.show();
+    QWidget topLevel;
+    QTreeWidget treeWidget(&topLevel);
+    topLevel.show();
+#ifdef Q_WS_MAEMO_5
+    treeWidget.resize(200, 550);
+#else
     treeWidget.resize(200, 200);
+#endif
 
     treeWidget.setSortingEnabled(true);
     QTreeWidgetItem* rootItem = new QTreeWidgetItem( &treeWidget, QStringList("root") );

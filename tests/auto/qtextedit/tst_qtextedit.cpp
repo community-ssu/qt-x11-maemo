@@ -1762,6 +1762,9 @@ void tst_QTextEdit::currentCharFormatChanged()
 
 void tst_QTextEdit::textObscuredByScrollbars()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo 5 has invisible scrollbars", SkipAll);
+#endif
     ed->textCursor().insertText(
             "ab cab cab c abca kjsdf lka sjd lfk jsal df j kasdf abc ab abc "
             "a b c d e f g h i j k l m n o p q r s t u v w x y z "
@@ -1962,6 +1965,10 @@ void tst_QTextEdit::fullWidthSelection()
     widget.document()->setDocumentMargin(2);
     widget.setPalette(myPalette);
     widget.setStyle(&myStyle);
+#ifdef Q_WS_MAEMO_5
+    // maemo's scrollbars are magic, so switch them off
+    widget.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+#endif
     QTextCursor cursor = widget.textCursor();
     QTextBlockFormat bf1;
     bf1.setAlignment(Qt::AlignCenter);
@@ -2155,7 +2162,8 @@ void tst_QTextEdit::pasteFromQt3RichText()
 
 void tst_QTextEdit::noWrapBackgrounds()
 {
-    QTextEdit edit;
+    QWidget topLevel;
+    QTextEdit edit(&topLevel);
     edit.setLineWrapMode(QTextEdit::NoWrap);
 
     QTextFrame *root = edit.document()->rootFrame();
@@ -2169,6 +2177,7 @@ void tst_QTextEdit::noWrapBackgrounds()
     edit.textCursor().setBlockFormat(format);
     edit.insertPlainText(QLatin1String(" \n  \n   \n    \n"));
     edit.setFixedSize(100, 200);
+    topLevel.show();
 
     QImage img = QPixmap::grabWidget(edit.viewport()).toImage();
     QCOMPARE(img, img.mirrored(true, false));
