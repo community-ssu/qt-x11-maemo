@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Name=Qt Control Panel
+Comment=A Qt control panel example applet
+Type=HildonControlPanelPlugin
+Icon=chat_smiley_wink
+X-control-panel-plugin=libqtpanelplugin.so
+Categories=general
