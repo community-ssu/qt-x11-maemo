@@ -1,0 +1,121 @@
+This is Qt version %VERSION%.
+
+Qt is a comprehensive cross-platform C++ application framework. With
+this release you can make advanced graphical applications and
+utilize TCP/IP connections. All modules except Qt3Support are available
+on Maemo 5.
+
+INSTALLING Qt
+
+Follow the instructions in the INSTALL file.
+
+REFERENCE DOCUMENTATION
+
+The Qt reference documentation is available locally in Qt's doc/html
+directory or at http://doc.trolltech.com/
+
+SUPPORTED PLATFORMS
+
+For this release, the official Maemo 5.0 SDK has been tested.
+Device testing was done on a N900 with PR 1.2
+
+HOW TO REPORT A BUG
+
+We have set up a special mailing list for feedback on the Maemo port.
+Feedback or questions all go to this list.
+To join, send a mail with the subject set as "subscribe" to:
+
+    qt-maemo-feedback-request@trolltech.com
+
+To report bugs, use the public bug tracking tool at
+
+    http://bugreports.qt.nokia.com/
+
+Make sure to include "Maemo 5" in the "Component" list of your bug report.
+
+Always include the following information in your bug report:
+the version of Qt you are using, and what configure options it was
+compiled with.
+
+If the problem you are reporting is only visible at run-time, try to
+create a small test program that shows the problem when run. Often,
+such a program can be created with some minor changes to one of the
+many unit tests in Qt's tests/auto directory.
+
+KNOWN ISSUES
+
+N900 devices with PR 1.1 come with some issues that will be resolved
+in the next firmware upgrade (1.2). Qt running on PR 1.1 phones
+has the following known issues:
+
+   * Text in hildon banners and notifications wrong
+   * The WA_Maemo5AutoOrientation enum does not work as documented
+
+
+                   INSTALLING Qt for Maemo Version %VERSION%
+
+Note: These instructions only apply if you choose to build your own version
+of Qt. For most users, we suggest to install the pre-made Qt binaries that
+are in Maemo's "extras-devel" repository. See
+    http://wiki.maemo.org/Qt4_Hildon
+for details.
+
+1.  Install needed IDE and SDKs
+
+    Make sure you have the following installed:
+    
+    - Scratchbox
+    - Maemo 5 SDK
+
+    Both are available from Forum Nokia:
+
+    http://www.forum.nokia.com/Tools_Docs_and_Code/Tools/Platforms/Maemo/
+
+    Follow the Maemo 5 SDK installation instructions.
+
+    For OpenGL ES 2 support for scratchbox ARM (not for scratchbox x86 targets!),
+    the packages opengles-sgx-img-common-dev and libgles2-sgx-img-dev are required.
+    If they are not already installed, run the following command:
+
+        fakeroot apt-get install opengles-sgx-img-common-dev libgles2-sgx-img-dev
+
+    Note: If these packages cannot be found, you probably forgot to do step 7 of the
+          Scratchbox installation instructions:
+
+          " 7. Proceed further to accept the EULA in order to obtain
+               the Nokia proprietary binary packages. These Nokia binaries
+               are essential for the complete functionality of the Maemo SDK."
+
+           See http://wiki.maemo.org/Documentation/Maemo_5_Final_SDK_Installation
+
+2.  Install Qt
+
+    Uncompress the package into any directory, e.g. $HOME/qt
+
+3.  Configure Qt
+
+    To configure Qt for Maemo 5 for ARM, do:
+
+        cd $HOME/qt
+        configure -maemo5 -opengl es2 --prefix=/opt/yourorganization
+
+    For x86, OpenGL ES 2 is not available, so the opengl parameter can be omitted:
+
+        configure -maemo5 --prefix=/opt/yourorganization
+
+    For other options, type "configure -help" to get a list of all available
+    options.
+
+5.  Build Qt
+
+    To build Qt, type:
+
+        make
+
+    To install Qt to its destination folder, type:
+
+        make install
+
+    Congratulations, Qt is now ready to use.
+
+    We hope you will enjoy using Qt.

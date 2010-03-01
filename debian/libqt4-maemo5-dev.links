@@ -1,0 +1,15 @@
+opt/qt4-maemo5/include             opt/qt4-maemo5/share/qt4/include
+opt/qt4-maemo5/bin/lrelease        opt/qt4-maemo5/share/qt4/bin/lrelease
+opt/qt4-maemo5/bin/lupdate         opt/qt4-maemo5/share/qt4/bin/lupdate
+opt/qt4-maemo5/bin/moc             opt/qt4-maemo5/share/qt4/bin/moc
+opt/qt4-maemo5/bin/qdbusxml2cpp    opt/qt4-maemo5/share/qt4/bin/qdbusxml2cpp
+opt/qt4-maemo5/bin/qdbuscpp2xml    opt/qt4-maemo5/share/qt4/bin/qdbuscpp2xml
+opt/qt4-maemo5/bin/qmake           opt/qt4-maemo5/share/qt4/bin/qmake
+opt/qt4-maemo5/bin/uic             opt/qt4-maemo5/share/qt4/bin/uic
+opt/qt4-maemo5/bin/lrelease        opt/qt4-maemo5/bin/lrelease-qt4   
+opt/qt4-maemo5/bin/lupdate         opt/qt4-maemo5/bin/lupdate-qt4   
+opt/qt4-maemo5/bin/moc             opt/qt4-maemo5/bin/moc-qt4      
+opt/qt4-maemo5/bin/qmake           opt/qt4-maemo5/bin/qmake-qt4   
+opt/qt4-maemo5/bin/uic             opt/qt4-maemo5/bin/uic-qt4       
+opt/qt4-maemo5/bin/rcc             opt/qt4-maemo5/share/qt4/bin/rcc
+opt/qt4-maemo5/lib/qt4/plugins     opt/qt4-maemo5/share/qt4/plugins

@@ -1,0 +1,144 @@
+/****************************************************************************
+**
+** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of the Qt Toolkit.
+**
+** $QT_BEGIN_LICENSE:LGPL$
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
+**
+**
+**
+**
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \group qtmaemo5
+    \title Qt for Maemo 5
+    \ingroup qt-embedded
+    \brief Documents related to Qt for Maemo 5
+
+    Qt for Maemo 5 is essentially Qt for X11 with deeper integration into the
+    Linux and X11-based Maemo 5 platform. It allows applications to be written that
+    look and feel native to the Maemo 5 user interface.
+
+    \list
+        \o \l {Qt for Maemo 5 Requirements}
+        \o \l {Installing Qt on the Maemo 5 Platform from a Binary Package}
+        \o \l {Installing Qt on the Maemo 5 Platform from Source}
+        \o \l {The Maemo 5 Platform - Introduction to Qt}{Introduction to using Qt on Maemo 5}
+    \endlist
+*/
+
+/*!
+    \page maemo5-with-qt-introduction.html
+
+    \title The Maemo 5 Platform - Introduction to Qt
+    \brief An introduction to Qt for the Maemo 5 platform developers.
+    \ingroup howto
+    \ingroup qtmaemo5
+
+    \tableofcontents
+
+    \section1 Required tools
+
+    See \l{Qt for Maemo 5 Requirements} to see what tools are
+    required to use Qt for the Maemo 5 platform.
+
+    \section1 Installing Qt and Running Demos
+
+    Follow the instructions found in \l{Installing Qt on the Maemo 5 Platform from a Binary Package}
+    to learn how to install Qt using a binary package, and how to build and run Qt demos.
+
+    \section1 Building Your Own Applications
+
+    If you are new to Qt development, have a look at \l{How to Learn Qt}.
+    In general, the difference between developing a Qt application for Maemo 5
+    compared to any Linux with X11 is not that big.
+
+    See \l{Maemo 5 Examples} for a set of examples showing how to do deeper integration
+    with Maemo 5. See \l{Platform Notes - Maemo 5} for a list of platform specific
+    behavioral changes.
+
+    qmake is fully supported for Maemo 5 and can be used to build Qt applications.
+    qmake will take care of all platform-specific compiler flags required to build
+    for a device.
+    For more information on how to use qmake have a look at the \l{qmake Tutorial}.
+
+    After running qmake, type "make" to build your application.
+
+    \section1 Running Your Applications in Scratchbox
+
+    Please consult the Maemo 5 documentation about setting up Scratchbox and Xephyr
+    to obtain a Maemo 5 emulation environment. Do not forget to set the \c DISPLAY
+    environment variable.
+
+    As documented, all Qt applications that are started from the console must be run with
+    the "run-standalone.sh" shell script. This script sets up the Maemo 5 environment,
+    which is required to enable the Maemo 5 support in Qt.
+
+    Example: Instead of running "./wiggly" to bring up the Wiggly example, you should
+    use "run-standalone.sh ./wiggly".
+
+    \note For convenience, "run-standalone.sh" can also be sourced into your current shell
+    with "source /usr/bin/run-standalone.sh". In that shell, it is no longer required to
+    invoke "run-standalone.sh" on every Qt application launch.
+
+    \section1 Running Your Applications on the Device
+
+    To run an application without installing it on the device, copy it using secure copy
+    (scp, requires an ssh server to be installed on the device) or use NFS to mount your
+    desktop PC's drives on the device.
+
+    Open the X terminal and execute your application; for example, by typing
+    "/home/user/myApp/myApp". The "run-standalone.sh" script is not required. Note
+    that applications must be launched as the default user. 
+
+    Note that Maemo 5 does not execute binaries from memory cards. Applications
+    must be copied to the internal memory first.
+
+    \section1 Installing Your Own Applications
+
+    Maemo 5 uses the Debian package format for installation. Qt applications install
+    like all other Maemo 5 applications. Please refer to the Maemo 5 packaging
+    documentation for information on how to create Debian packages.
+
+    As with all applications, the dependencies of a Qt application need to be specified
+    by adding the respective libraries to the "Depends" field in the package's control file.
+    Every Qt library is shipped in its own package. The package name starts with "libqt4-"
+    followed by the library name in lowercase.
+
+    Example: If your application requires QtCore, QtGui, QtSql and QtOpenGL, your "Depends" line
+    should contain "libqt4-core, libqt4-gui, libqt4-sql, libqt4-opengl".
+
+    If your application is open source, add "libqt4-dev" to the "Build-Depends" settings
+    in the control file. The "libqt4-dev" package contains headers for all Qt libraries.
+*/
+

@@ -1,0 +1,4 @@
+opt/qt4-maemo5/lib/libQtSvg.so.*
+opt/qt4-maemo5/lib/qt4/plugins/iconengines/libqsvgicon.so
+opt/qt4-maemo5/lib/qt4/plugins/imageformats/libqsvg.so
+

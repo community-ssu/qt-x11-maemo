@@ -1,0 +1,117 @@
+/****************************************************************************
+**
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of the Qt Toolkit.
+**
+** $QT_BEGIN_LICENSE:LGPL$
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
+**
+**
+**
+**
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \example maemo5/datetime
+    \title Maemo 5 Date Time Formatting Example
+
+
+    The Maemo 5 Date Time example shows how to format dates and times according to
+    the Maemo 5 settings.
+
+    By default, Qt formats dates and times according to the current locale. However,
+    Maemo 5 allows the user to set 24 hour or 12 hour (+ am/pm) settings independently
+    of the current locale.
+
+    In order convert a QTime to a string that is formatted according to the system's
+    settings, QLocale::system() can be used.
+
+    \snippet examples/maemo5/datetime/main.cpp 0
+
+    In this snippet, the current time was converted to a string using the system's
+    default (short) time format, also honoring the system's am/pm settings.
+
+    \snippet examples/maemo5/datetime/main.cpp 1
+
+    The strings for "am" and "pm" can be overridden by Maemo 5. QLocale::amText()
+    and QLocale::pmText() return the am/pm strings as defined by the current locale,
+    whereas QLocale::system() returns the am/pm strings as currently set by Maemo 5.
+    
+    \snippet examples/maemo5/datetime/main.cpp 2
+
+    Here, the current date is formatted into the long and short format specified
+    by the system.
+
+    Maemo 5 supports some custom date time formats that are not supported by QLocale.
+    In order to format a date or time, native system calls can be used. The following
+    code snippets show how that can be done and can be copy/pasted into your project.
+
+    \snippet examples/maemo5/datetime/main.cpp 3
+
+    The \c libintl.h and \c time.h headers are required.
+
+    \snippet examples/maemo5/datetime/main.cpp 4
+    
+    In order to obtain date/time format strings, the \c dgettext call must be used.
+    Note that this function will only work after QApplication or QCoreApplication
+    has been instantiated. Applications that do not use a QApplication object should
+    call \c setlocale before the first \c dgettext call, e.g. \c{setlocale(LC_ALL, "");}.
+
+    \snippet examples/maemo5/datetime/main.cpp 5
+
+    The format strings for \c wdgt_va_date_day_name_short and \c wdgt_va_24h_time
+    are fetched from the system. The string constants are defined in the Hildon Widget
+    UI Specification, chapters 18.3 and 18.4. \c wdgt_va_date_day_name_short is documented
+    to return a format string that contains the day name in shortened form (e.g. "Tue")
+    and the short date (e.g. "31.03"). \c wdgt_va_24h_time is documented to return the
+    24h format string, independend of the 24h/12h settings. The returned \c {const char}
+    array is statically allocated and must not be freed or deleted.
+
+    Note: These format strings are POSIX format strings designed to be used with the
+    \c strftime system call. They are not suitable for passing to QDateTime::toString().
+
+    \snippet examples/maemo5/datetime/main.cpp 6
+
+    This function uses \c strftime to format a QDateTime into a QString, using the native
+    format string obtained by \c getHildonTranslation (see above).
+
+    In order to call \c strftime, the QDateTime needs to be converted into a \c {struct tm}.
+    Full documentation about \c {struct tm} can be found in the mktime(3) man page.
+
+    \snippet examples/maemo5/datetime/main.cpp 7
+
+    \c formatHildonDate is used to convert the current date and time to
+    Maemo's short day name format and to Maemo's 24h format. Note that depending on the
+    format strings, it is safe to call \c formatHildonDate with a QDateTime containing
+    only a QDate or a QTime component. For example, QDateTime(QDate(), QTime::currentTime()) is
+    safe to use with Maemo's 24h format string.
+*/
+

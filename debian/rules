@@ -1,0 +1,235 @@
+#!/usr/bin/make -f
+
+export QTDIR := $(shell pwd)
+export PATH := $(QTDIR)/bin:$(PATH)
+# workaround to use lrelease.
+export LD_LIBRARY_PATH := $(QTDIR)/lib:$(LD_LIBRARY_PATH)
+export DH_VERBOSE=1
+
+# Only present in official source package
+#QTVERSION := $(shell ls changes-* | cut -f2 -d '-')
+CURRENTVERSION := $(shell head -1 debian/changelog  | sed 's/[^(]*(\([^)]*\)).*/\1/')
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/makefile.mk
+include /usr/share/cdbs/1/rules/utils.mk
+
+# Find out how many parallel threads to run 
+comma := ,
+TMP_BUILD_OPTS = $(subst $(comma), ,$(DEB_BUILD_OPTIONS))
+ifneq (,$(filter parallel=%,$(TMP_BUILD_OPTS)))
+	NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(TMP_BUILD_OPTS)))
+	PARALLEL_MAKEFLAGS += -j$(NUMJOBS)
+endif
+
+DEB_MAKE_INVOKE := $(MAKE) $(PARALLEL_MAKEFLAGS)
+DEB_MAKE_BUILD_TARGET := sub-src
+DEB_MAKE_INSTALL_TARGET := INSTALL_ROOT=$(DEB_DESTDIR) install
+DEB_DH_INSTALL_SOURCEDIR := debian/tmp
+DEB_DH_ALWAYS_EXCLUDE := .git
+
+# Ensure the *.debug files aren't included in any package other than libqt4-maemo5-dbg
+DEB_DH_INSTALL_ARGS := --exclude=.debug
+
+DEB_MAKE_CLEAN_TARGET := confclean distclean
+
+# Shlibs of the current upstream version
+DEB_DH_MAKESHLIBS_ARGS_ALL := -V
+
+TARGET_BUILD=0
+ifeq ($(DEB_HOST_ARCH),arm)
+	TARGET_BUILD=1
+endif
+ifeq ($(DEB_HOST_ARCH),armel)
+	TARGET_BUILD=1
+endif
+
+# Select OpenGL backend driver
+ifeq ($(TARGET_BUILD),1)
+	GL_BACKEND=es2
+	# On the target, moc, rcc, uic and qmake are built as host tools, so we'll strip them later
+	EXTRA_STRIP_ARGS=-X/moc -X/rcc -X/uic -X/qmake -X/lrelease
+	EXTRA_HOST_STRIP_ARGS=--strip-all bin/moc bin/rcc bin/uic bin/qmake bin/lrelease
+else
+	GL_BACKEND=desktop
+	EXTRA_STRIP_ARGS=
+	EXTRA_HOST_STRIP_ARGS=
+endif
+
+DEB_DH_STRIP_ARGS := --dbg-package=libqt4-maemo5-core --dbg-package=libqt4-maemo5-gui --dbg-package=libqt4-maemo5-network --dbg-package=libqt4-maemo5-script --dbg-package=libqt4-maemo5-sql --dbg-package=libqt4-maemo5-sql-sqlite --dbg-package=libqt4-maemo5-svg --dbg-package=libqt4-maemo5-xml --dbg-package=libqt4-maemo5-dbus --dbg-package=libqt4-maemo5-opengl --dbg-package=libqt4-maemo5-phonon --dbg-package=libqt4-maemo5-multimedia --dbg-package=libqt4-maemo5-xmlpatterns --dbg-package=libqt4-maemo5-webkit --dbg-package=libqt4-maemo5-test --dbg-package=libqt4-maemo5-maemo5 $(EXTRA_STRIP_ARGS)
+
+DEB_DH_SHLIBDEPS_ARGS_ALL := --exclude=.debug
+
+# Only present in official source package
+#DEB_INSTALL_CHANGELOGS_ALL := changes-$(QTVERSION)
+
+common-configure-arch:: config.status
+
+config.status:
+	./configure -maemo5 \
+				-opensource \
+				-confirm-license \
+				-prefix "/opt/qt4-maemo5" \
+				-plugindir "/opt/qt4-maemo5/lib/qt4/plugins" \
+				-translationdir "/opt/qt4-maemo5/share/qt4/translations" \
+				-sysconfdir "/etc/xdg" \
+				-release \
+				--separate-debug-info=nocopy \
+				-mitshm \
+				-reduce-relocations \
+				-system-zlib \
+				-system-libtiff \
+				-system-libpng \
+				-system-libjpeg \
+				-no-nas-sound \
+				-qt-gif \
+				-no-qt3support \
+				-no-libmng \
+				-opengl $(GL_BACKEND) \
+				-nomake examples \
+				-nomake demos \
+				-nomake tools \
+				-no-cups \
+				-exceptions \
+				-no-xinerama \
+				-dbus \
+				-glib \
+				-gstreamer \
+				-svg \
+				-webkit \
+				-no-sql-ibase \
+				-xmlpatterns \
+				-system-sqlite \
+				-plugin-sql-sqlite \
+				-openssl \
+				-gtkstyle \
+				-graphicssystem raster \
+				$(EXTRA_CONFIGURE_OPTS)
+
+common-build-arch:: build-dbus-tools build-linguist-tools build-maemo5-examples strip-host-tools build-uitools
+
+strip-host-tools:
+	if [ -n "$(EXTRA_HOST_STRIP_ARGS)" ] ; then host-strip $(EXTRA_HOST_STRIP_ARGS) ; fi
+
+build-dbus-tools:
+	bin/qmake -o tools/qdbus/qdbusxml2cpp/Makefile tools/qdbus/qdbusxml2cpp/qdbusxml2cpp.pro
+	bin/qmake -o tools/qdbus/qdbuscpp2xml/Makefile tools/qdbus/qdbuscpp2xml/qdbuscpp2xml.pro
+	$(MAKE) -C tools/qdbus/qdbusxml2cpp
+	$(MAKE) -C tools/qdbus/qdbuscpp2xml
+
+build-linguist-tools:
+	bin/qmake -spec $(CURDIR)/mkspecs/linux-host-g++ -o tools/linguist/lrelease/Makefile tools/linguist/lrelease/lrelease.pro
+	bin/qmake -o tools/linguist/lupdate/Makefile tools/linguist/lupdate/lupdate.pro
+	$(MAKE) -C tools/linguist/lrelease
+	$(MAKE) -C tools/linguist/lupdate
+
+build-maemo5-examples:
+	# with SUBDIRS pro files, we do not need to specify -o
+	bin/qmake examples/maemo5/maemo5.pro
+	$(MAKE) -C examples/maemo5
+
+build-uitools:
+	bin/qmake -o tools/designer/src/uitools/Makefile tools/designer/src/uitools/uitools.pro
+	$(MAKE) -C tools/designer/src/uitools
+
+common-install-arch:: install-dbus-tools install-linguist-tools install-maemo5-examples install-uitools
+
+install-dbus-tools:
+	$(MAKE) -C tools/qdbus/qdbusxml2cpp $(DEB_MAKE_INSTALL_TARGET)
+	$(MAKE) -C tools/qdbus/qdbuscpp2xml $(DEB_MAKE_INSTALL_TARGET)
+
+install-linguist-tools:
+	$(MAKE) -C tools/linguist/lrelease $(DEB_MAKE_INSTALL_TARGET)
+	$(MAKE) -C tools/linguist/lupdate $(DEB_MAKE_INSTALL_TARGET)
+
+install-maemo5-examples:
+	$(MAKE) -C examples/maemo5 $(DEB_MAKE_INSTALL_TARGET)
+
+install-uitools:
+	$(MAKE) -C tools/designer/src/uitools $(DEB_MAKE_INSTALL_TARGET)
+
+clean::
+# Extra stuff missed by confclean/distclean
+	
+	# Misc. files
+	rm -f \
+	  config.status \
+	  config.tests/.qmake.cache \
+	  examples/dbus/*/Makefile.* \
+	  mkspecs/qconfig.pri \
+	  src/corelib/global/qconfig.* \
+	;
+	
+	# Misc. directories
+	rm -rf \
+	  examples/tools/plugandpaint/plugins/ \
+	  examples/tools/styleplugin/styles/ \
+	  lib/ \
+	  mkspecs/glibc-g++/ \
+	  plugins/ \
+	;
+	
+	# hppa test directory
+	rm -rf debian/hppa-tmp
+
+	# Leftover dirs
+	find -depth -type d \( -false \
+	  -o -name debug-shared \
+	  -o -name debug-static \
+	  -o -name \*.gch \
+	  -o -name .moc\* \
+	  -o -name .obj\* \
+	  -o -name .pch \
+	  -o -name pkgconfig \
+	  -o -name .rcc \
+	  -o -name release-shared \
+	  -o -name release-static \
+	  -o -name .uic \
+	\) -print0 | xargs -0 rm -rf
+		
+	# Leftover files and all symlinks
+	find \( -false \
+	  -o -name \*.a \
+	  -o -name Makefile.Debug \
+	  -o -name Makefile.Release \
+	  -o -name \*.o \
+	  -o -name \*.prl \
+	  -o -name \*.so \
+	  -o -name \*.so.debug \
+	  -o -type l \
+	\) -print0 | xargs -0 rm -rf 
+	
+	# Delete all Makefiles, excluding some from src/3rdparty
+	find $(CURDIR) -name Makefile \
+	  ! -path $(CURDIR)/src/3rdparty/Makefile \
+	  ! -path $(CURDIR)/src/3rdparty/freetype/\* \
+	  ! -path $(CURDIR)/src/3rdparty/zlib/\* \
+	 -print0 | xargs -0 rm -rf 
+	
+	# Any remaining executables
+	find $(CURDIR) -type f -print0 | xargs -0 file -i \; | grep \
+	  -e application/x-executable \
+	| cut -d ':' -f 1 | xargs rm -f
+
+	# Generated on build
+	rm -f debian/shlibs.local
+
+#common-install-arch::
+#	mkdir -p $(DEB_DESTDIR)/opt/qt4-maemo5/share/qt4/translations/
+#	cp $(CURDIR)/translations/*.ts $(DEB_DESTDIR)/opt/qt4-maemo5/share/qt4/translations/.
+#	find $(DEB_DESTDIR)/opt/qt4-maemo5/share/qt4/translations/ -type f -name "*.ts" | xargs $(CURDIR)/bin/lrelease
+#	rm -rf $(DEB_DESTDIR)/opt/qt4-maemo5/share/qt4/translations/*.ts
+
+# Automatically install lintian overrides, stolen from debian-qt-kde.mk
+#$(patsubst %,binary-install/%,$(DEB_PACKAGES)) :: binary-install/%:
+#	if test -e debian/$(cdbs_curpkg).lintian; then \
+#	    install -p -D -m644 debian/$(cdbs_curpkg).lintian \
+#	    debian/$(cdbs_curpkg)/usr/share/lintian/overrides/$(cdbs_curpkg); \
+#        fi
+
+# Generate shlibs local files
+#$(patsubst %,binary-fixup/%,$(DEB_ALL_PACKAGES)) :: binary-fixup/%: binary-strip/%
+#	if test -e debian/$(cdbs_curpkg)/DEBIAN/shlibs ; then \
+#		sed 's/>=[^)]*/= $(CURRENTVERSION)/' debian/$(cdbs_curpkg)/DEBIAN/shlibs >> debian/shlibs.local ;\
+#	fi
+

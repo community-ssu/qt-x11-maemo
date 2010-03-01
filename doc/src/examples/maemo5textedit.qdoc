@@ -1,0 +1,89 @@
+/****************************************************************************
+**
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of the Qt Toolkit.
+**
+** $QT_BEGIN_LICENSE:LGPL$
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
+**
+**
+**
+**
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \example maemo5/textedit
+    \title Maemo 5 Text Edit Example
+
+    The Maemo 5 Text Edit example shows how to use QTextEdit or QPlainTextEdit
+    within a QScrollArea.
+
+    \image maemo5-textedit-example.png Screenshot of the Text Edit example
+
+    The Maemo 5 style guide doesn't allow placing scrollable widgets within
+    scrollable widgets. If a text edit is placed within a QScrollArea together
+    with some other controls, the text edit shall not scroll, but adjust its
+    size depending on the content. This allows the user to use finger scrolling
+    to scroll the entire QScrollArea, independend on whether he scrolls on the
+    text edit or some other control.
+
+    First, the top-level QScrollArea is created:
+
+    \snippet examples/maemo5/textedit/main.cpp 0
+
+    Then, the main widget for the QScrollArea is created:
+
+    \snippet examples/maemo5/textedit/main.cpp 1
+
+    Then, two widgets are created. One QPushButton and a QTextEdit:
+
+    \snippet examples/maemo5/textedit/main.cpp 2
+
+    Finally, the two widgets are added to the layout, and the main widget is
+    added to the QScrollArea:
+
+    \snippet examples/maemo5/textedit/main.cpp 3
+
+    In the current state, the QTextEdit will do scrolling once the text won't
+    fit into the widget, which is against the style guide. To prevent that,
+    the convenience class \c TextEditAutoResizer (part of this example) can be
+    used to automatically resize the QTextEdit once the contents become too large:
+
+    \snippet examples/maemo5/textedit/main.cpp 4
+
+    The \c TextEditAutoResizer class also scrolls the QScrollArea when the user
+    moves the cursor, ensuring that the cursor will be visible at all time.
+
+    To use the \c TextEditAutoResizer class in your own project, copy the header
+    file \c texteditautoresizer.h to your own project. If you use qmake, ensure
+    to add \c texteditautoresizer.h to your project's HEADERS variable.
+*/
+

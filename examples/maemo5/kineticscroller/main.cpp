@@ -1,0 +1,277 @@
+/****************************************************************************
+**
+** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the examples of the Qt Toolkit.
+**
+** $QT_BEGIN_LICENSE:LGPL$
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
+**
+**
+**
+**
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+#include <QtGui>
+#include <QtMaemo5>
+#include "window.h"
+
+/*! 
+    \class ScrollerWindow
+    \brief An example of how to use the kinetic scroller.
+    \internal
+
+    This window uses two kinetic scrollers. One on the right side to scroll the table view and
+    one on the left to allow scrolling of the settings widgets.
+    You can change the parameters of both by changing the settings.
+
+    The meaning of these settings is quite complex and I recommend to leave the defaults for
+    your own applications.
+*/
+
+
+/*! \internal
+\brief Create a nice model to demonstrate the scroller. */
+QAbstractItemModel* createTableModel( int rows, int columns )
+{
+    QStandardItemModel *tableModel = new QStandardItemModel(0, 0);
+
+    for (int i = 0; i < rows; ++i) {
+        QList<QStandardItem*> row;
+        for (int j = 0; j < columns; ++j) {
+            QStandardItem *item;
+            item = new QStandardItem(QString("%1 %2").
+                    arg(i, 2, 10, QChar('0')).
+                    arg(j, 2, 10, QChar('0')));
+            item->setBackground(QBrush(QColor((256*i/rows)<<16 | (256*j/columns)<<8 | 80 )));
+            row.append(item);
+        }
+        tableModel->appendRow(row);
+    }
+
+    return tableModel;
+}
+
+void ScrollerWindow::setLowFrictionEnabled(bool value)
+{
+    scroller1->setLowFrictionEnabled(value);
+    scroller2->setLowFrictionEnabled(value);
+}
+
+void ScrollerWindow::setAutoMode()
+{
+    scroller1->setMode(QAbstractKineticScroller::AutoMode);
+    scroller2->setMode(QAbstractKineticScroller::AutoMode);
+}
+
+void ScrollerWindow::setPushMode()
+{
+    scroller1->setMode(QAbstractKineticScroller::PushMode);
+    scroller2->setMode(QAbstractKineticScroller::PushMode);
+}
+
+void ScrollerWindow::setAccelerationMode()
+{
+    scroller1->setMode(QAbstractKineticScroller::AccelerationMode);
+    scroller2->setMode(QAbstractKineticScroller::AccelerationMode);
+}
+
+void ScrollerWindow::setDragInertia(int value)
+{
+    scroller1->setDragInertia( (double)value / 100.0);
+    scroller2->setDragInertia( (double)value / 100.0);
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setDirectionErrorMargin(int value)
+{
+    scroller1->setDirectionErrorMargin( value );
+    scroller2->setDirectionErrorMargin( value );
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setPanningThreshold(int value)
+{
+    scroller1->setPanningThreshold( value );
+    scroller2->setPanningThreshold( value );
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setDecelerationFactor(int value)
+{
+    scroller1->setDecelerationFactor( (double)value / 100.0);
+    scroller2->setDecelerationFactor( (double)value / 100.0);
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setFastVelocityFactor(int value)
+{
+    scroller1->setFastVelocityFactor( (double)value / 1000.0);
+    scroller2->setFastVelocityFactor( (double)value / 1000.0);
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setMinimumVelocity(int value)
+{
+    scroller1->setMinimumVelocity( (double)value / 1.0);
+    scroller2->setMinimumVelocity( (double)value / 1.0);
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setMaximumVelocity(int value)
+{
+    scroller1->setMaximumVelocity( (double)value / 1.0);
+    scroller2->setMaximumVelocity( (double)value / 1.0);
+    updateNumberLabels();
+}
+
+void ScrollerWindow::scrollToRandom()
+{
+    QPoint newPos( qrand()%table->horizontalScrollBar()->maximum(),
+            qrand()%table->verticalScrollBar()->maximum());
+    scroller1->scrollTo(newPos);
+}
+
+void ScrollerWindow::updateNumberLabels()
+{
+    numberLabels[0]->setText(QString::number(scroller1->dragInertia(), 'f', 2));
+    numberLabels[1]->setText(QString::number(scroller1->directionErrorMargin(), 'f', 0));
+    numberLabels[2]->setText(QString::number(scroller1->panningThreshold(), 'f', 0));
+    numberLabels[3]->setText(QString::number(scroller1->decelerationFactor(), 'f', 2));
+    numberLabels[4]->setText(QString::number(scroller1->fastVelocityFactor(), 'f', 3));
+    numberLabels[5]->setText(QString::number(scroller1->minimumVelocity(), 'f', 0));
+    numberLabels[6]->setText(QString::number(scroller1->maximumVelocity(), 'f', 0));
+}
+
+void ScrollerWindow::setupSlider(const char* text, int min, int max, int value, const char* slot, int *row, QGridLayout *layout)
+{
+    QLabel *label;
+    QSlider *slider;
+
+    label = new QLabel(tr(text));
+    slider = new QSlider(Qt::Horizontal);
+    slider->setMinimum(min);
+    slider->setMaximum(max);
+    slider->setValue(value);
+    connect( slider, SIGNAL(valueChanged(int)), this, slot);
+
+    layout->addWidget(label, (*row), 0);
+    layout->addWidget(slider, (*row)++, 1);
+}
+
+ScrollerWindow::ScrollerWindow()
+{
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    QSplitter *splitter = new QSplitter(Qt::Horizontal);
+    layout->addWidget(splitter);
+
+    // -- the right side
+    table = new QTableView();
+    table->setModel(createTableModel(200, 20));
+    table->setItemDelegate(new QItemDelegate(this));
+    table->setSelectionMode(QAbstractItemView::NoSelection);
+
+    scroller1 = table->property("kineticScroller").value<QAbstractKineticScroller *>();
+    if (!scroller1)
+        qFatal("This example only works with QMaemo5Style as the default style for all QAbstractScrollAreas");
+
+    // -- the left side of the splitter
+    QWidget *left = new QWidget();
+    QGridLayout *layoutLeft = new QGridLayout(left);
+    QRadioButton *radio;
+    int row = 0;
+    left->setLayout(layoutLeft);
+
+    QCheckBox *checkbox = new QCheckBox(tr("low friction enabled"));
+    connect( checkbox, SIGNAL(clicked(bool)), this, SLOT(setLowFrictionEnabled(bool)));
+    layoutLeft->addWidget(checkbox, row++, 0, 1, 3);
+
+    QHBoxLayout *layoutMode = new QHBoxLayout();
+    layoutMode->setSpacing(0);
+
+    QButtonGroup *groupMode = new QButtonGroup(this);
+    radio = new QRadioButton(tr("Auto"));
+    radio->setChecked(true);
+    connect(radio, SIGNAL(clicked()), this, SLOT(setAutoMode()) );
+    groupMode->addButton(radio);
+    layoutMode->addWidget(radio);
+    radio = new QRadioButton(tr("Push"));
+    connect(radio, SIGNAL(clicked()), this, SLOT(setPushMode()) );
+    groupMode->addButton(radio);
+    layoutMode->addWidget(radio);
+    radio = new QRadioButton(tr("Accel."));
+    connect(radio, SIGNAL(clicked()), this, SLOT(setAccelerationMode()) );
+    groupMode->addButton(radio);
+    layoutMode->addWidget(radio);
+
+    layoutLeft->addLayout(layoutMode, row++, 0, 1, 3);
+
+    setupSlider( "Drag inertia", 10, 100, scroller1->dragInertia()*100.0, SLOT(setDragInertia(int)), &row, layoutLeft);
+    setupSlider( "Dir.err. marg.", 1, 50, scroller1->directionErrorMargin(), SLOT(setDirectionErrorMargin(int)), &row, layoutLeft);
+    setupSlider( "Pan. thres.", 1, 100, scroller1->panningThreshold(), SLOT(setPanningThreshold(int)), &row, layoutLeft);
+    setupSlider( "Decel. fact.", 1, 100, scroller1->decelerationFactor()*100.0, SLOT(setDecelerationFactor(int)), &row, layoutLeft);
+    setupSlider( "Fast vel. fact.", 1, 100, scroller1->fastVelocityFactor()*1000.0, SLOT(setFastVelocityFactor(int)), &row, layoutLeft);
+    setupSlider( "Min vel.", 1, 1000, scroller1->minimumVelocity(), SLOT(setMinimumVelocity(int)), &row, layoutLeft);
+    setupSlider( "Max vel.", 1, 10000, scroller1->maximumVelocity(), SLOT(setMaximumVelocity(int)), &row, layoutLeft);
+
+    // create the number labels
+    for (int i=0; i<7; i++) {
+        numberLabels[i] = new QLabel();
+        layoutLeft->addWidget(numberLabels[i], i+2, 2);
+    }
+    updateNumberLabels();
+
+    QPushButton *button = new QPushButton(tr("Scroll to random"));
+    connect( button, SIGNAL(clicked()), this, SLOT(scrollToRandom()));
+    layoutLeft->addWidget(button, row++, 0, 1, 3);
+
+    QScrollArea *scrollArea = new QScrollArea();
+    scrollArea->setWidget(left);
+    scrollArea->setWidgetResizable(true);
+
+    scroller2 = scrollArea->property("kineticScroller").value<QAbstractKineticScroller *>();
+    if (!scroller2)
+        qFatal("This example only works with QMaemo5Style as the default style for all QAbstractScrollAreas");
+
+    splitter->addWidget(scrollArea);
+
+    splitter->addWidget(table);
+}
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+
+    ScrollerWindow toplevel;
+    toplevel.show();
+
+    return app.exec();
+}
+

@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+  <qresource>
+    <file>images/landscape.png</file>
+    <file>images/portrait.png</file>
+  </qresource>
+</RCC>

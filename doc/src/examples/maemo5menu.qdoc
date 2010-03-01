@@ -1,0 +1,78 @@
+/****************************************************************************
+**
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the documentation of the Qt Toolkit.
+**
+** $QT_BEGIN_LICENSE:LGPL$
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
+**
+**
+**
+**
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \example maemo5/menu
+    \title Maemo 5 Menu Example
+
+    The Maemo 5 Menu example shows how to create a menu for a Maemo 5 device.
+
+    The Maemo 5 UI style guide describes a menu that looks very different from the 
+    menus on other targets.
+    The buttons are big to allow finger selection and no sub-menus are allowed.
+    Please read the documentation on maemo.org for further information.
+
+    Actions can be added to widgets via QWidget::addAction() but for Maemo 5 they
+    should be added directly to the menu bar instead. The example shows how to do
+    this:
+
+    \snippet examples/maemo5/menu/main.cpp 1
+
+    The Maemo 5 menus allow so called filters. Those are buttons intended to switch the
+    main ui screen between different views.
+    Those buttons can be displayed via an exclusive QActionGroup with checkable actions:
+
+    \snippet examples/maemo5/menu/main.cpp 0
+
+    Simple checkable actions are also supported by Qt even though the Maemo 5 style guide
+    does not mention them:
+
+    \snippet examples/maemo5/menu/main.cpp 2
+
+    As with normal menus you can also use a QWidgetAction to add widgets to the menu.
+    This is expecially useful for the QMaemo5ValueButton.
+    The example demonstates this by subclassing QWidgetAction to create a
+    \c PickSelectorAction class that returns a QMaemo5ValueButton when its
+    \l{QWidgetAction::}{createWidget()} method is called:
+
+    \snippet examples/maemo5/menu/main.cpp 3
+*/
+
