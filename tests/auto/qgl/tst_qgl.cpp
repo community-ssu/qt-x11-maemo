@@ -845,10 +845,12 @@ void tst_QGL::graphicsViewClipping()
 
     scene.addWidget(widget)->setPos(0, 0);
 
+    QWidget topLevel;
     QGraphicsView view(&scene);
 #ifdef Q_WS_QWS
     view.setWindowFlags(Qt::FramelessWindowHint);
 #endif
+    view.setWindowFlags(view.windowFlags() | Qt::X11BypassWindowManagerHint);
     view.resize(2*size, 2*size);
 
     QGLWidget *viewport = new QGLWidget;
@@ -1815,6 +1817,10 @@ void tst_QGL::clipTest()
     ClipTestGLWidget glw;
 #ifdef Q_WS_QWS
     glw.setWindowFlags(Qt::FramelessWindowHint);
+#endif
+
+#ifdef Q_WS_MAEMO_5
+    glw.setWindowFlags(glw.windowFlags() | Qt::X11BypassWindowManagerHint);
 #endif
     glw.resize(220, 220);
     glw.show();
