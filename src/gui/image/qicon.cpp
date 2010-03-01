@@ -972,7 +972,7 @@ QString QIcon::themeName()
 */
 QIcon QIcon::fromTheme(const QString &name, const QIcon &fallback)
 {
-    QIconCache *iconCache = qtIconCache();
+    IconCache *iconCache = qtIconCache();
     QIcon icon;
 
     if (iconCache->contains(name)) {

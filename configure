@@ -7694,7 +7694,7 @@ if [ "$PLATFORM_X11" = "yes" ]; then
     echo "immodule support ....... $CFG_IM"
     echo "GTK theme support ...... $CFG_QGTKSTYLE"
 fi
-[ "$CFG_MAEMO5" != "no" ] && echo "Maemo 5 support ..... $CFG_MAEMO5"
+[ "$CFG_MAEMO5" != "no" ] && echo "Maemo 5 support ........ $CFG_MAEMO5"
 [ "$CFG_SQL_mysql" != "no" ] && echo "MySQL support .......... $CFG_SQL_mysql"
 [ "$CFG_SQL_psql" != "no" ] && echo "PostgreSQL support ..... $CFG_SQL_psql"
 [ "$CFG_SQL_odbc" != "no" ] && echo "ODBC support ........... $CFG_SQL_odbc"

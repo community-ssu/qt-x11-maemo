@@ -296,9 +296,9 @@ struct QHildonSystemLocaleHelper
         dateFormatShort = posix2QtFormat(hildonDateFormatShort);
 
         if (!timeFormatShort.isNull() && !dateFormatShort.isNull())
-            dateTimeFormatShort = dateFormatShort.toString()
-                                  + QLatin1Char(' ')
-                                  + timeFormatShort.toString();
+            dateTimeFormatShort = QString(dateFormatShort.toString()
+                                          % QLatin1Char(' ')
+                                          % timeFormatShort.toString());
     }
 
     const char *getTimeFormatString(const QTime &time)

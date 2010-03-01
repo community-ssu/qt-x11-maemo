@@ -84,6 +84,7 @@ template <typename T>
 struct QConcatenable<HexString<T> >
 {
     typedef HexString<T> type;
+    enum { ExactSize = true };
     static int size(const HexString<T> &str) { return sizeof(str.val) * 2; }
     static inline void appendTo(const HexString<T> &str, QChar *&out) { str.write(out); }
 };
