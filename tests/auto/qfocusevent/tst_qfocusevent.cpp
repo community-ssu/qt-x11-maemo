@@ -394,6 +394,9 @@ void tst_QFocusEvent::checkReason_focusWidget()
 
 void tst_QFocusEvent::checkReason_ActiveWindow()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Test works, but only without energy saving mode in Maemeo 5", SkipAll);
+#endif
     initWidget();
 
     QDialog* d = new QDialog( testFocusWidget );
