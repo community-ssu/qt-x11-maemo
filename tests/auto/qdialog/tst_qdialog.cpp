@@ -274,7 +274,7 @@ void tst_QDialog::showMaximized()
     dialog.showMaximized();
     QVERIFY(dialog.isMaximized());
     QVERIFY(dialog.isVisible());
-#if !defined(Q_WS_MAC) && !defined(Q_OS_IRIX) && !defined(Q_OS_HPUX)
+#if !defined(Q_WS_MAC) && !defined(Q_OS_IRIX) && !defined(Q_OS_HPUX) && !defined(Q_WS_MAEMO_5)
     QVERIFY(!sizeGrip->isVisible());
 #endif
 
