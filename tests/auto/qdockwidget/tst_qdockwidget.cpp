@@ -760,6 +760,9 @@ void tst_QDockWidget::task165177_deleteFocusWidget()
 
 void tst_QDockWidget::task169808_setFloating()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("No Floating support on Maemo 5", SkipAll);
+#endif
     //we try to test if the sizeHint of the dock widget widget is taken into account
 
     class MyWidget : public QWidget
