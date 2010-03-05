@@ -2558,17 +2558,21 @@ void tst_QGraphicsProxyWidget::popup_subwidget()
 
     QVERIFY(!groupBoxProxy->childItems().isEmpty());
 
+#ifndef Q_WS_MAEMO_5 //On Maemo 5 the ComboBox has a special behaviour, so the Popup does not exist
     QStyleOptionComboBox opt;
     opt.initFrom(box);
     opt.editable = box->isEditable();
     if (box->style()->styleHint(QStyle::SH_ComboBox_Popup, &opt))
         QSKIP("Does not work due to SH_Combobox_Popup", SkipAll);
-    QGraphicsProxyWidget *child = (QGraphicsProxyWidget*)(groupBoxProxy->childItems())[0];
+    QGraphicsProxyWidget *child = dynamic_cast<QGraphicsProxyWidget*>((groupBoxProxy->childItems())[0]);
+    QVERIFY(child);
     QWidget *popup = child->widget();
+    QVERIFY(popup);
     QCOMPARE(popup->parent(), static_cast<QObject*>(box));
     QCOMPARE(popup->x(), box->mapToGlobal(QPoint()).x());
     QCOMPARE(popup->y(), QRect(box->mapToGlobal(QPoint()), box->size()).bottom());
     QCOMPARE(popup->size(), child->size().toSize());
+#endif
 }
 
 void tst_QGraphicsProxyWidget::changingCursor_basic()
