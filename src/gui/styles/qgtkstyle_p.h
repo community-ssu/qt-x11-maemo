@@ -56,6 +56,7 @@
 #include <QtCore/qglobal.h>
 #if !defined(QT_NO_STYLE_GTK)
 
+#include <QtCore/qstring.h>
 #include <QtCore/qstringbuilder.h>
 #include <QtCore/qcoreapplication.h>
 
@@ -74,6 +75,8 @@ typedef unsigned long XID;
 #define Q_GTK_IS_WIDGET(widget) widget && GTK_CHECK_TYPE ((widget), QGtkStylePrivate::gtk_widget_get_type())
 
 #define QLS(x) QLatin1String(x)
+
+QT_BEGIN_NAMESPACE
 
 // ### Qt 4.7 - merge with QLatin1Literal
 class QHashableLatin1Literal
@@ -118,6 +121,8 @@ private:
 bool operator==(const QHashableLatin1Literal &l1, const QHashableLatin1Literal &l2);
 inline bool operator!=(const QHashableLatin1Literal &l1, const QHashableLatin1Literal &l2) { return !operator==(l1, l2); }
 uint qHash(const QHashableLatin1Literal &key);
+
+QT_END_NAMESPACE
 
 class GConf;
 class GConfClient;
