@@ -10296,29 +10296,6 @@ const QPixmap *QWidget::icon() const
 
 #endif // QT3_SUPPORT
 
- /*!
-  \internal
-
-  This just sets the corresponding attribute bit to 1 or 0
- */
-static void setAttribute_internal(Qt::WidgetAttribute attribute, bool on, QWidgetData *data,
-                                  QWidgetPrivate *d)
-{
-    if (attribute < int(8*sizeof(uint))) {
-        if (on)
-            data->widget_attributes |= (1<<attribute);
-        else
-            data->widget_attributes &= ~(1<<attribute);
-    } else {
-        const int x = attribute - 8*sizeof(uint);
-        const int int_off = x / (8*sizeof(uint));
-        if (on)
-            d->high_attributes[int_off] |= (1<<(x-(int_off*8*sizeof(uint))));
-        else
-            d->high_attributes[int_off] &= ~(1<<(x-(int_off*8*sizeof(uint))));
-    }
-}
-
 /*!
   \internal
 
