@@ -2575,6 +2575,7 @@ void QAbstractItemView::updateEditorGeometries()
     QStyleOptionViewItemV4 option = d->viewOptionsV4();
     QList<QEditorInfo>::iterator it = d->editors.begin();
     QWidgetList editorsToRelease;
+    QWidgetList editorsToHide;
     while (it != d->editors.end()) {
         QModelIndex index = it->index;
         QWidget *editor = it->editor;
@@ -2586,7 +2587,7 @@ void QAbstractItemView::updateEditorGeometries()
                 if (delegate)
                     delegate->updateEditorGeometry(editor, option, index);
             } else {
-                editor->hide();
+                editorsToHide << editor;
             }
             ++it;
         } else {
@@ -2595,8 +2596,11 @@ void QAbstractItemView::updateEditorGeometries()
         }
     }
 
-    //we release the editor outside of the loop because it might change the focus and try
+    //we hide and release the editor outside of the loop because it might change the focus and try
     //to change the d->editors list.
+    for (int i = 0; i < editorsToHide.count(); ++i) {
+        editorsToHide.at(i)->hide();
+    }
     for (int i = 0; i < editorsToRelease.count(); ++i) {
         d->releaseEditor(editorsToRelease.at(i));
     }
@@ -3053,6 +3057,7 @@ void QAbstractItemView::setIndexWidget(const QModelIndex &index, QWidget *widget
     if (!d->isIndexValid(index))
         return;
     if (QWidget *oldWidget = indexWidget(index)) {
+        d->persistent.remove(oldWidget);
         d->removeEditor(oldWidget);
         oldWidget->deleteLater();
     }
