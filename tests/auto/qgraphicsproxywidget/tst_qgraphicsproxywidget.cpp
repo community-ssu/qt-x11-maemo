@@ -958,7 +958,7 @@ void tst_QGraphicsProxyWidget::hoverEnterLeaveEvent()
     QFETCH(bool, hasWidget);
     QFETCH(bool, hoverEnabled);
 
-#if defined(Q_OS_WINCE) && (!defined(GWES_ICONCURS) || defined(QT_NO_CURSOR))
+#if (defined(Q_OS_WINCE) && (!defined(GWES_ICONCURS) || defined(QT_NO_CURSOR)) ) || defined(Q_WS_MAEMO_5)
     QSKIP("hover events not supported on this platform", SkipAll);
 #endif
 
@@ -1494,15 +1494,17 @@ void tst_QGraphicsProxyWidget::scrollUpdate()
     QGraphicsScene scene;
     scene.addWidget(widget);
 
-    View view(&scene);
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    QWidget topLevel;
+    View view(&scene,&topLevel);
+    topLevel.show();
+    QTest::qWaitForWindowShown(&topLevel);
     QTRY_VERIFY(view.npaints >= 1);
     QTest::qWait(20);
     widget->paintEventRegion = QRegion();
     widget->npaints = 0;
     view.paintEventRegion = QRegion();
     view.npaints = 0;
+    QTest::qWait(50);
     QTimer::singleShot(0, widget, SLOT(updateScroll()));
     QTest::qWait(50);
     QTRY_COMPARE(view.npaints, 2);
@@ -2501,12 +2503,20 @@ void tst_QGraphicsProxyWidget::popup_basic()
     QTest::qWait(12);
     QTRY_COMPARE(proxy->pos(), QPointF(box->pos()));
     QCOMPARE(child->x(), qreal(box->x()));
+#ifdef Q_WS_MAEMO_5 //The popup is Fullscreen
+    QCOMPARE(child->y(), qreal(0));
+#else
     QCOMPARE(child->y(), qreal(box->rect().bottom()));
+#endif
 #ifndef Q_OS_WIN
     // The popup's coordinates on Windows are in global space,
     // regardless.
     QCOMPARE(child->widget()->x(), box->x());
+#ifdef Q_WS_MAEMO_5 //The popup is Fullscreen
+    QCOMPARE(child->widget()->y(), 0);
+#else
     QCOMPARE(child->widget()->y(), box->rect().bottom());
+#endif
     QCOMPARE(child->geometry().toRect(), child->widget()->geometry());
 #endif
     QTest::qWait(12);
@@ -2658,6 +2668,11 @@ void tst_QGraphicsProxyWidget::childPos()
 #ifdef Q_OS_IRIX
     QSKIP("This test is not reliable on IRIX.", SkipAll);
 #endif
+
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Maemo 5 has a special FullScreen Popup for ComoBoxes", SkipAll);
+#endif
+
     QFETCH(bool, moveCombo);
     QFETCH(QPoint, comboPos);
     QFETCH(QPointF, proxyPos);
