@@ -9455,7 +9455,8 @@ void tst_QWidget::initialPosForDontShowOnScreenWidgets()
 #ifdef Q_WS_X11
 void tst_QWidget::paintOutsidePaintEvent()
 {
-    QWidget widget;
+    QWidget topLevel;
+    QWidget widget(&topLevel);
     widget.resize(200, 200);
 
     QWidget child1(&widget);
@@ -9468,7 +9469,7 @@ void tst_QWidget::paintOutsidePaintEvent()
     child2.setPalette(Qt::blue);
     child2.setAutoFillBackground(true);
 
-    widget.show();
+    topLevel.show();
     QTest::qWaitForWindowShown(&widget);
     QTest::qWait(60);
 
