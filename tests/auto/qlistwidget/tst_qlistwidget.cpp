@@ -1513,6 +1513,9 @@ void tst_QListWidget::fastScroll()
     }
 
     MyListWidget widget;
+#ifdef Q_WS_MAEMO_5
+    widget.setWindowFlags(widget.windowFlags() | Qt::X11BypassWindowManagerHint);
+#endif
     for (int i = 0; i < 50; ++i)
         widget.addItem(QString("Item %1").arg(i));
 
@@ -1530,6 +1533,10 @@ void tst_QListWidget::fastScroll()
     QVERIFY(!itemSize.isEmpty());
 
     QScrollBar *sbar = widget.verticalScrollBar();
+#ifdef Q_WS_MAEMO_5
+    widget.ensurePolished();
+    widget.setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
+#endif
     widget.painted = QRegion();
     sbar->setValue(sbar->value() + sbar->singleStep());
     QApplication::processEvents();
