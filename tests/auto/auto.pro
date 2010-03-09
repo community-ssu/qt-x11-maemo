@@ -1,11 +1,5 @@
 TEMPLATE = subdirs
 
-           rcc \
-           qhelpcontentmodel \
-           qhelpenginecore \
-           qhelpgenerator \
-           qhelpindexmodel \
-           qhelpprojectdata
 SUBDIRS += \
     corelib.pro \
     gui.pro \
