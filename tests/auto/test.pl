@@ -56,6 +56,8 @@ our $timeoutChildren;
 our $totalExecuted;
 our $totalStarted;
 our $totalTimedOut;
+our $totalCrashed;
+our $totalNoExec;
 our $next;
 our $currentDirectory;
 
@@ -134,10 +136,16 @@ $timeoutChildren = 0;
 $totalExecuted = 0;
 $totalStarted = 0;
 $totalTimedOut = 0;
+$totalCrashed = 0;
+$totalNoExec = 0;
 
 # Install signal handlers and pray for the best
 $SIG{'CHLD'} = 'handleDeath';
 $SIG{'ALRM'} = 'handleTimeout';
+
+my @noexecutables;
+my @timedout;
+my @crashed;
 
 while ($next = <$SEARCH_PATH/*>) 
 {
@@ -195,6 +203,7 @@ while ($next = <$SEARCH_PATH/*>)
                     kill 'INT', $myPid;
                     $timeoutChildren = 0;
                     $totalTimedOut++;
+                    @timedout[++$#timedout] = $command;
                 } else {
                     # What?? If we get here we need to abort, this is totally unexpected
                     print "Wrong condition evaluated, aborting to avoid damages\n";
@@ -210,15 +219,64 @@ while ($next = <$SEARCH_PATH/*>)
             } else {
                 print "Problems trying to execute $command";
             }
-        } 
+        } else {
+            print "No executable \n";
+            @noexecutables[++$#noexecutables] = $command;
+            $totalNoExec++;
+        }
     }
     chdir($currentDirectory);
 
 }
+
+# Find empty logs
+# If the test is not in @timedout, the test is crashed
+chdir($REPORTDIR);
+while ($next = <$REPORTDIR/*>)
+{
+    print "Examining $next \n";
+    my @components;
+    my $log;
+    @components = split(/\//, $next);
+    $log = "tst_".$components[1].".xml";
+    # File has zero size ?
+    if( -z $log)
+    {
+        my $found = 0;
+        foreach(@timedout)
+        {
+            if($_ == $log)
+            {
+                $found=1;
+                last;
+            }
+        }
+        if(not($found))
+        {
+            @crashed[++$#crashed] = $log;
+            $totalCrashed++;
+        }
+    }
+}
+
 print " ** Statistics ** \n";
 print " Tests started: $totalStarted \n";
 print " Tests executed: $totalExecuted \n";
+print " No excecutables found: $totalNoExec \n";
+foreach(@noexecutables)
+{
+    print " $_\n";
+}
 print " Tests timed out: $totalTimedOut \n";
+foreach(@timedout)
+{
+    print " $_\n";
+}
+print " Tests crashed: $totalCrashed \n";
+foreach(@crashed)
+{
+    print " $_\n";
+}
 
 # This procedure takes care of handling dead children on due time
 sub handleDeath {
