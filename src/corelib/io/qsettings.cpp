@@ -160,7 +160,13 @@ QT_END_INCLUDE_NAMESPACE
 #  define AUTOFSNG_SUPER_MAGIC  0x7d92b1a0
 # endif
 
-Q_AUTOTEST_EXPORT bool isLikelyToBeNfs(int handle)
+#ifdef Q_AUTOTEST_EXPORT
+#   define Q_NFS_EXPORT Q_AUTOTEST_EXPORT
+#else
+#   define Q_NFS_EXPORT static
+#endif
+
+Q_NFS_EXPORT bool isLikelyToBeNfs(int handle)
 {
     struct statfs buf;
     if (fstatfs(handle, &buf) != 0)
@@ -177,7 +183,7 @@ QT_BEGIN_INCLUDE_NAMESPACE
 # include <sys/statvfs.h>
 QT_END_INCLUDE_NAMESPACE
 
-Q_AUTOTEST_EXPORT bool isLikelyToBeNfs(int handle)
+Q_NFS_EXPORT bool isLikelyToBeNfs(int handle)
 {
     struct statvfs buf;
     if (fstatvfs(handle, &buf) != 0)
@@ -189,7 +195,7 @@ Q_AUTOTEST_EXPORT bool isLikelyToBeNfs(int handle)
 #endif
 }
 #else
-Q_AUTOTEST_EXPORT inline bool isLikelyToBeNfs(int /* handle */)
+Q_NFS_EXPORT bool isLikelyToBeNfs(int /* handle */)
 {
     return true;
 }
