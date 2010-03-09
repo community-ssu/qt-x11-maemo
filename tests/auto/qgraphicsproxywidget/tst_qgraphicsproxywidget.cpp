@@ -1498,6 +1498,9 @@ void tst_QGraphicsProxyWidget::scrollUpdate()
     View view(&scene,&topLevel);
     topLevel.show();
     QTest::qWaitForWindowShown(&topLevel);
+#ifdef Q_WS_MAEMO_5 //The Test is too fast for the Window Manager
+    QApplication::processEvents();
+#endif
     QTRY_VERIFY(view.npaints >= 1);
     QTest::qWait(20);
     widget->paintEventRegion = QRegion();
