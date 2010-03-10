@@ -276,38 +276,32 @@ static void sendKeyEvent(QWidget *widget, QEvent::Type type, uint state, uint ke
     XSync( X11->display, false );
 }
 
-static quint32 dead_key_to_unicode_combining_character(int /*qtkeycode*/)
+static void deadKeyToUnicodeCombiningChar(int qtkeycode, QChar &combiningChar, QChar &plainChar)
 {
-  quint32 combining = 0; //Unicode Hex value
+    plainChar = combiningChar = QChar();
 
-#if 0
-  //TODO Diablo - Not required in Fremantle
-  switch (qtkeycode)
-  {
-    case Qt::Key_Dead_Grave:            combining = 0x0300; break;
-    case Qt::Key_Dead_Acute:            combining = 0x0301; break;
-    case Qt::Key_Dead_Circumflex:       combining = 0x0302; break;
-    case Qt::Key_Dead_Tilde:            combining = 0x0303; break;
-    case Qt::Key_Dead_Macron:           combining = 0x0304; break;
-    case Qt::Key_Dead_Breve:            combining = 0x032e; break;
-    case Qt::Key_Dead_Abovedot:         combining = 0x0307; break;
-    case Qt::Key_Dead_Diaeresis:        combining = 0x0308; break;
-    case Qt::Key_Dead_Abovering:        combining = 0x030a; break;
-    case Qt::Key_Dead_Doubleacute:      combining = 0x030b; break;
-    case Qt::Key_Dead_Caron:            combining = 0x030c; break;
-    case Qt::Key_Dead_Cedilla:          combining = 0x0327; break;
-    case Qt::Key_Dead_Ogonek:           combining = 0x0328; break;
-    case Qt::Key_Dead_Iota:             combining = 0; break; /* Cannot be combined */
-    case Qt::Key_Dead_Voiced_Sound:     combining = 0; break; /* Cannot be combined */
-    case Qt::Key_Dead_Semivoiced_Sound: combining = 0; break; /* Cannot be combined */
-    case Qt::Key_Dead_Belowdot:         combining = 0x0323; break;
-    case Qt::Key_Dead_Hook:             combining = 0x0309; break;
-    case Qt::Key_Dead_Horn:             combining = 0x031b; break;
-    default: combining = 0; break; /* Unknown dead key */
-  }
-#endif
-
-  return combining;
+    switch (qtkeycode) {
+        case Qt::Key_Dead_Grave:            plainChar = QChar(0x0060); combiningChar = QChar(0x0300); break;
+        case Qt::Key_Dead_Acute:            plainChar = QChar(0x00b4); combiningChar = QChar(0x0301); break;
+        case Qt::Key_Dead_Circumflex:       plainChar = QChar(0x005e); combiningChar = QChar(0x0302); break;
+        case Qt::Key_Dead_Tilde:            plainChar = QChar(0x007e); combiningChar = QChar(0x0303); break;
+        case Qt::Key_Dead_Macron:           plainChar = QChar(0x00af); combiningChar = QChar(0x0304); break;
+        case Qt::Key_Dead_Breve:            plainChar = QChar(0x02d8); combiningChar = QChar(0x0306); break;
+        case Qt::Key_Dead_Abovedot:         plainChar = QChar(0x02d9); combiningChar = QChar(0x0307); break;
+        case Qt::Key_Dead_Diaeresis:        plainChar = QChar(0x00a8); combiningChar = QChar(0x0308); break;
+        case Qt::Key_Dead_Abovering:        plainChar = QChar(0x00b0); combiningChar = QChar(0x030a); break;
+        case Qt::Key_Dead_Doubleacute:      plainChar = QChar(0x0022); combiningChar = QChar(0x030b); break;
+        case Qt::Key_Dead_Caron:            plainChar = QChar(0x02c7); combiningChar = QChar(0x030c); break;
+        case Qt::Key_Dead_Cedilla:          plainChar = QChar(0x00b8); combiningChar = QChar(0x0327); break;
+        case Qt::Key_Dead_Ogonek:           plainChar = QChar(0x02db); combiningChar = QChar(0x0328); break;
+        case Qt::Key_Dead_Iota:             break; // Cannot be combined
+        case Qt::Key_Dead_Voiced_Sound:     break; // Cannot be combined
+        case Qt::Key_Dead_Semivoiced_Sound: break; // Cannot be combined
+        case Qt::Key_Dead_Belowdot:         plainChar = QChar(0x02d4); combiningChar = QChar(0x0323); break;
+        case Qt::Key_Dead_Hook:             plainChar = QChar(0x02c0); combiningChar = QChar(0x0309); break;
+        case Qt::Key_Dead_Horn:             combiningChar = QChar(0x031b); break; // no plain char
+        default:                            break; // unknown dead key
+    }
 }
 
 /*! Sends the key as a spontaneous event.
@@ -606,7 +600,8 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     //TODO MOVE
     static QWidget* lastKeywidget = 0;
     static int lastQtkeycode = 0;
-    static qint32 combiningChar = 0; //Unicode rappresentation of the dead key.
+    static QChar combiningChar(0);      // Unicode rappresentation of the dead key (combining)
+    static QChar plainCombiningChar(0); // Unicode rappresentation of the dead key (plain)
 
     QString commitString; //String to commit to the Key Widget
 
@@ -615,21 +610,21 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         mask = 0;
         lastKeywidget = keywidget;
         lastQtkeycode = 0;
-        combiningChar = 0;
+        combiningChar = plainCombiningChar = QChar();
     }
 
     if (!qtkeycode)
         return true;
 
     //1. A dead key will not be immediately commited, but combined with the next key
-    if (qtkeycode >= Qt::Key_Dead_Grave && qtkeycode <= Qt::Key_Dead_Horn)
+    if ((qtkeycode >= Qt::Key_Dead_Grave && qtkeycode <= Qt::Key_Dead_Horn) && (event->type() == QEvent::KeyPress))
         mask |= HILDON_IM_DEAD_KEY_MASK;
     else
         mask &= ~HILDON_IM_DEAD_KEY_MASK;
 
-    if (mask & HILDON_IM_DEAD_KEY_MASK && combiningChar == 0)
+    if (mask & HILDON_IM_DEAD_KEY_MASK && combiningChar.isNull())
     {
-        combiningChar = dead_key_to_unicode_combining_character(qtkeycode);//### WORKS? IMPROVE?
+        deadKeyToUnicodeCombiningChar(qtkeycode, combiningChar, plainCombiningChar);
         return true;
     }
 
@@ -803,24 +798,21 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     /* 8. Pressing a dead key twice, or if followed by a space, inputs
      *    the dead key's character representation
      */
-    if ((mask & HILDON_IM_DEAD_KEY_MASK || qtkeycode == Qt::Key_Space) && combiningChar)
+    if ((mask & HILDON_IM_DEAD_KEY_MASK || qtkeycode == Qt::Key_Space) && !combiningChar.isNull())
     {
-        qint32 last;
-        last = dead_key_to_unicode_combining_character (qtkeycode);
-        if ((last == combiningChar) || qtkeycode == Qt::Key_Space)
-        {
-            commitString = QString(combiningChar);
-        }else{
+        QChar thisChar, dummy;
+        deadKeyToUnicodeCombiningChar(qtkeycode, thisChar, dummy);
+        if ((thisChar == combiningChar) || qtkeycode == Qt::Key_Space)
+            commitString = QString(plainCombiningChar);
+        else
             commitString = QString::fromUtf8(XKeysymToString(keysym));
-        }
-        combiningChar = 0;
-    }else{
+        combiningChar = plainCombiningChar = QChar();
+    } else {
         /* Regular keypress */
-        if (mask & HILDON_IM_COMPOSE_MASK)
-        {
+        if (mask & HILDON_IM_COMPOSE_MASK) {
             sendKeyEvent(keywidget, event->type(),state, keysym, keycode);
             return true;
-        }else{
+        } else {
             if ( commitString.isEmpty() && qtkeycode != Qt::Key_Backspace){
                 //LOGMESSAGE3(" - ", "text sent to IM", event->text())
                 commitString = QString(event->text());
@@ -870,10 +862,10 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         /* Pressing a dead key followed by a regular key combines to form
          * an accented character
          */
-        if (combiningChar){ //FIXME
+        if (!combiningChar.isNull()) {
             commitString.append(combiningChar);//This will be sent to the widget
-            const char *charStr = qPrintable(commitString);
-            keysym = XStringToKeysym(charStr); //This will be sent to the IM
+            commitString = commitString.normalized(QString::NormalizationForm_C);
+            keysym = XStringToKeysym(qPrintable(commitString)); //This will be sent to the IM
         }
 
         //Create the new event with the elaborate information,
@@ -888,11 +880,11 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
 
         //Send the new keysym
         sendKeyEvent(keywidget, event->type(), state, keysym, keycode);
-#if 0
+
         /* Non-printable characters invalidate any previous dead keys */
         if (qtkeycode != Qt::Key_Shift)
-            combiningChar=0;
-#endif
+            combiningChar = plainCombiningChar = QChar();
+
         lastInternalChange = true;
         return true;
     } else {
