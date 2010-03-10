@@ -179,9 +179,9 @@ while ($next = <$SEARCH_PATH/*>)
                 my $outputRedirection = $REPORTDIR."/".$command.".xml";
                 if($EXEC_MODE =~ /^E$/)
                 {
-                    exec($realCommand, "-qws", "-xml", "-o", $outputRedirection);
+                    #exec($realCommand, "-qws", "-xml", "-o", $outputRedirection);
                 } else {
-                    exec($realCommand, "-xml", "-o", $outputRedirection);
+                    #exec($realCommand, "-xml", "-o", $outputRedirection);
                 }
                 exit(0);
             } elsif($myPid > 0 )
@@ -238,9 +238,9 @@ while ($next = <$REPORTDIR/*>)
     my @components;
     my $log;
     @components = split(/\//, $next);
-    $log = "tst_".$components[1].".xml";
+    $log = $components[$#components];
     # File has zero size ?
-    if( -z $log)
+    if( -z $next)
     {
         my $found = 0;
         foreach(@timedout)
