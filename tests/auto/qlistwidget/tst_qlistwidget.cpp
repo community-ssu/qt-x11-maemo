@@ -1523,6 +1523,7 @@ void tst_QListWidget::fastScroll()
     // Make sure the widget gets the first full repaint. On
     // some WMs, we'll get two (first inactive exposure, then
     // active exposure.
+    QTest::qWaitForWindowShown(&widget);
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&widget);
 #endif
