@@ -2041,14 +2041,14 @@ void tst_QHeaderView::QTBUG7833_sectionClicked()
 
 
     QTest::mouseClick(tv.horizontalHeader()->viewport(), Qt::LeftButton, Qt::NoModifier,
-                      QPoint(tv.horizontalHeader()->sectionViewportPosition(11) + 5, 5));
+                      QPoint(tv.horizontalHeader()->sectionViewportPosition(11) + tv.horizontalHeader()->sectionSize(11)/2, 5));
     QCOMPARE(clickedSpy.count(), 1);
     QCOMPARE(pressedSpy.count(), 1);
     QCOMPARE(clickedSpy.at(0).at(0).toInt(), 11);
     QCOMPARE(pressedSpy.at(0).at(0).toInt(), 11);
 
     QTest::mouseClick(tv.horizontalHeader()->viewport(), Qt::LeftButton, Qt::NoModifier,
-                      QPoint(tv.horizontalHeader()->sectionViewportPosition(8) + 5, 5));
+                      QPoint(tv.horizontalHeader()->sectionViewportPosition(8) + tv.horizontalHeader()->sectionSize(0)/2, 5));
 
     QCOMPARE(clickedSpy.count(), 2);
     QCOMPARE(pressedSpy.count(), 2);
@@ -2056,7 +2056,7 @@ void tst_QHeaderView::QTBUG7833_sectionClicked()
     QCOMPARE(pressedSpy.at(1).at(0).toInt(), 8);
 
     QTest::mouseClick(tv.horizontalHeader()->viewport(), Qt::LeftButton, Qt::NoModifier,
-                      QPoint(tv.horizontalHeader()->sectionViewportPosition(0) + 5, 5));
+                      QPoint(tv.horizontalHeader()->sectionViewportPosition(0) + tv.horizontalHeader()->sectionSize(0)/2, 5));
 
     QCOMPARE(clickedSpy.count(), 3);
     QCOMPARE(pressedSpy.count(), 3);
