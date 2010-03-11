@@ -2836,9 +2836,10 @@ void tst_QGraphicsScene::contextMenuEvent_ItemIgnoresTransformations()
     item->setFlag(QGraphicsItem::ItemIgnoresTransformations);
     scene.addItem(item);
 
-    QGraphicsView view(&scene);
+    QWidget topLevel;
+    QGraphicsView view(&scene, &topLevel);
     view.resize(200, 200);
-    view.show();
+    topLevel.show();
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&view);
 #endif
