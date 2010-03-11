@@ -1823,6 +1823,9 @@ void tst_QListView::taskQTBUG_2233_scrollHiddenItems()
     const int rowCount = 200;
 
     QListView view;
+#ifdef Q_WS_MAEMO_5
+    view.setWindowFlags(view.windowFlags() | Qt::X11BypassWindowManagerHint);
+#endif
     QStringListModel model(&view);
     QStringList list;
     for (int i = 0; i < rowCount; ++i)
@@ -1848,6 +1851,11 @@ void tst_QListView::taskQTBUG_2233_scrollHiddenItems()
     //QTBUG-7929  should not crash
     view.show();
     QTest::qWaitForWindowShown(&view);
+#ifdef Q_WS_MAEMO_5
+    view.ensurePolished();
+    view.setHorizontalScrollMode(QAbstractItemView::ScrollPerItem);
+    view.setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
+#endif
     QScrollBar *bar = view.flow() == QListView::TopToBottom
             ? view.verticalScrollBar() : view.horizontalScrollBar();
 
