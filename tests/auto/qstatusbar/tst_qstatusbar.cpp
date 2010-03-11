@@ -266,7 +266,7 @@ void tst_QStatusBar::QTBUG4334_hiddenOnMaximizedWindow()
     main.setStatusBar(&statusbar);
     main.showMaximized();
     QTest::qWaitForWindowShown(&main);
-#ifndef Q_WS_MAC
+#if !defined(Q_WS_MAC) && !defined(Q_WS_MAEMO_5)
     QVERIFY(!statusbar.findChild<QSizeGrip*>()->isVisible());
 #endif
     main.showNormal();
