@@ -1079,7 +1079,7 @@ void tst_QTcpSocket::disconnectWhileLookingUp()
 
     // let anything queued happen
     QEventLoop loop;
-#ifndef Q_OS_SYMBIAN
+#if !defined(Q_OS_SYMBIAN) && !defined(Q_WS_MAEMO_5)
     QTimer::singleShot(50, &loop, SLOT(quit()));
 #else
     QTimer::singleShot(5000, &loop, SLOT(quit()));
