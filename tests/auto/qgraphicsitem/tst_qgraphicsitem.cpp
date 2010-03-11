@@ -258,7 +258,7 @@ class MyGraphicsView : public QGraphicsView
 public:
     int repaints;
     QRegion paintedRegion;
-    MyGraphicsView(QGraphicsScene *scene) : QGraphicsView(scene), repaints(0) {}
+    MyGraphicsView(QGraphicsScene *scene, QWidget *parent=0) : QGraphicsView(scene,parent), repaints(0) {}
     void paintEvent(QPaintEvent *e)
     {
         paintedRegion += e->region();
