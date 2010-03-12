@@ -1605,6 +1605,8 @@ void tst_Gestures::graphicsViewParentPropagation()
     event.hasHotSpot = true;
     sendCustomGesture(&event, item0, &scene);
 
+    QApplication::processEvents();
+
     QCOMPARE(item1_c1_c1->gestureEventsReceived, TotalGestureEventsCount);
     QCOMPARE(item1_c1_c1->gestureOverrideEventsReceived, 1);
     QCOMPARE(item1_c1->gestureEventsReceived, TotalGestureEventsCount-1);
@@ -1664,6 +1666,8 @@ void tst_Gestures::panelPropagation()
     event.hasHotSpot = true;
     sendCustomGesture(&event, item0, &scene);
 
+    QApplication::processEvents();
+
     QCOMPARE(item0->customEventsReceived, TotalCustomEventsCount);
     QCOMPARE(item1_child1_child1->gestureEventsReceived, TotalGestureEventsCount);
     QCOMPARE(item1_child1_child1->gestureOverrideEventsReceived, 1);
@@ -1678,6 +1682,8 @@ void tst_Gestures::panelPropagation()
     event.hotSpot = mapToGlobal(QPointF(5, 5), item1, &view);
     event.hasHotSpot = true;
     sendCustomGesture(&event, item1, &scene);
+
+    QApplication::processEvents();
 
     QCOMPARE(item1_child1_child1->gestureEventsReceived, 0);
     QCOMPARE(item1_child1_child1->gestureOverrideEventsReceived, 0);
@@ -1695,6 +1701,8 @@ void tst_Gestures::panelPropagation()
     event.hotSpot = mapToGlobal(QPointF(5, 5), item1, &view);
     event.hasHotSpot = true;
     sendCustomGesture(&event, item1, &scene);
+
+    QApplication::processEvents();
 
     QCOMPARE(item1_child1_child1->gestureEventsReceived, 0);
     QCOMPARE(item1_child1_child1->gestureOverrideEventsReceived, 0);
@@ -1714,6 +1722,8 @@ void tst_Gestures::panelPropagation()
     event.hasHotSpot = true;
     sendCustomGesture(&event, item1, &scene);
 
+    QApplication::processEvents();
+
     QCOMPARE(item1_child1_child1->gestureEventsReceived, 0);
     QCOMPARE(item1_child1_child1->gestureOverrideEventsReceived, 0);
     QCOMPARE(item1_child1->gestureEventsReceived, 0);
@@ -1730,6 +1740,8 @@ void tst_Gestures::panelPropagation()
     event.hotSpot = mapToGlobal(QPointF(5, 5), item0, &view);
     event.hasHotSpot = true;
     sendCustomGesture(&event, item0, &scene);
+
+    QApplication::processEvents();
 
     QCOMPARE(item1_child1_child1->gestureEventsReceived, 0);
     QCOMPARE(item1_child1_child1->gestureOverrideEventsReceived, 0);
@@ -1775,6 +1787,8 @@ void tst_Gestures::panelStacksBehindParent()
     event.hotSpot = mapToGlobal(QPointF(5, 5), item1, &view);
     event.hasHotSpot = true;
     sendCustomGesture(&event, item1, &scene);
+
+    QApplication::processEvents();
 
     QCOMPARE(item1->gestureEventsReceived, 0);
     QCOMPARE(item1->gestureOverrideEventsReceived, 0);
