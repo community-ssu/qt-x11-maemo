@@ -416,3 +416,44 @@ Description: Qt 4 Maemo5 example applications
  is its rich set of widgets that provide standard GUI functionality.
  .
  A set of example applications for developers of Qt for Maemo 5 applications
+
+Package: libqt4-maemo5-declarative
+Architecture: any
+Section: libs
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-maemo5-core (= ${binary:Version}), libqt4-maemo5-gui (= ${binary:Version}), libqt4-maemo5-svg (= ${binary:Version}), libqt4-maemo5-opengl (= ${binary:Version}), libqt4-maemo5-webkit (= ${binary:Version}), libqt4-maemo5-script (= ${binary:Version}), libqt4-maemo5-network (= ${binary:Version}), libqt4-maemo5-xmlpatterns (= ${binary:Version}), libqt4-maemo5-dbus (= ${binary:Version}), libqt4-maemo5-sql (= ${binary:Version}), libqt4-maemo5-sql-sqlite (= ${binary:Version}) 
+Description: Qt 4 declarative module
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ The QtDeclarative module contains declarative UI functionality.
+
+Package: libqt4-maemo5-declarative-dbg
+Priority: extra
+Architecture: any
+Section: libdevel
+Depends: libqt4-maemo5-declarative (= ${binary:Version})
+Description: Qt 4 library debugging symbols
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This packages contains the debugging symbols for the Qt 4 Declarative libraries.
+
+Package: libqt4-maemo5-declarative-dev
+Architecture: any
+Section: libdevel
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-declarative (= ${binary:Version}), libqt4-maemo5-dev (>= 4.6.1)
+Description: Qt 4 Declarative development files
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package contains the header development files used for building declarative applications.
+
+Package: qt4-maemo5-declarative-qmlviewer
+Architecture: any
+Section: devel
+Depends: libqt4-maemo5-declarative (=${binary:Version})
+Description: Qt 4 declarative module
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ The QtDeclarative viewer allows viewing QML files

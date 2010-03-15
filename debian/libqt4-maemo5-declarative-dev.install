@@ -1,0 +1,4 @@
+./opt/qt4-maemo5/lib/libQtDeclarative.so
+./opt/qt4-maemo5/lib/libQtDeclarative.prl
+./opt/qt4-maemo5/lib/pkgconfig/QtDeclarative.pc
+./opt/qt4-maemo5/include/QtDeclarative

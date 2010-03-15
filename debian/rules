@@ -56,7 +56,7 @@ else
 	EXTRA_HOST_STRIP_ARGS=
 endif
 
-DEB_DH_STRIP_ARGS := --dbg-package=libqt4-maemo5-core --dbg-package=libqt4-maemo5-gui --dbg-package=libqt4-maemo5-network --dbg-package=libqt4-maemo5-script --dbg-package=libqt4-maemo5-sql --dbg-package=libqt4-maemo5-sql-sqlite --dbg-package=libqt4-maemo5-svg --dbg-package=libqt4-maemo5-xml --dbg-package=libqt4-maemo5-dbus --dbg-package=libqt4-maemo5-opengl --dbg-package=libqt4-maemo5-phonon --dbg-package=libqt4-maemo5-multimedia --dbg-package=libqt4-maemo5-xmlpatterns --dbg-package=libqt4-maemo5-webkit --dbg-package=libqt4-maemo5-test --dbg-package=libqt4-maemo5-maemo5 $(EXTRA_STRIP_ARGS)
+DEB_DH_STRIP_ARGS := --dbg-package=libqt4-maemo5-core --dbg-package=libqt4-maemo5-gui --dbg-package=libqt4-maemo5-network --dbg-package=libqt4-maemo5-script --dbg-package=libqt4-maemo5-sql --dbg-package=libqt4-maemo5-sql-sqlite --dbg-package=libqt4-maemo5-svg --dbg-package=libqt4-maemo5-xml --dbg-package=libqt4-maemo5-dbus --dbg-package=libqt4-maemo5-opengl --dbg-package=libqt4-maemo5-phonon --dbg-package=libqt4-maemo5-multimedia --dbg-package=libqt4-maemo5-xmlpatterns --dbg-package=libqt4-maemo5-webkit --dbg-package=libqt4-maemo5-test --dbg-package=libqt4-maemo5-maemo5 --dbg-package=libqt4-maemo5-declarative $(EXTRA_STRIP_ARGS)
 
 DEB_DH_SHLIBDEPS_ARGS_ALL := --exclude=.debug
 
@@ -106,7 +106,7 @@ config.status:
 				-graphicssystem raster \
 				$(EXTRA_CONFIGURE_OPTS)
 
-common-build-arch:: build-dbus-tools build-linguist-tools build-maemo5-examples strip-host-tools build-uitools
+common-build-arch:: build-dbus-tools build-linguist-tools build-maemo5-examples strip-host-tools build-uitools build-qml-tool
 
 strip-host-tools:
 	if [ -n "$(EXTRA_HOST_STRIP_ARGS)" ] ; then host-strip $(EXTRA_HOST_STRIP_ARGS) ; fi
@@ -116,6 +116,10 @@ build-dbus-tools:
 	bin/qmake -o tools/qdbus/qdbuscpp2xml/Makefile tools/qdbus/qdbuscpp2xml/qdbuscpp2xml.pro
 	$(MAKE) -C tools/qdbus/qdbusxml2cpp
 	$(MAKE) -C tools/qdbus/qdbuscpp2xml
+
+build-qml-tool:
+	bin/qmake -o tools/qml/Makefile tools/qml/qml.pro
+	$(MAKE) -C tools/qml
 
 build-linguist-tools:
 	bin/qmake -spec $(CURDIR)/mkspecs/linux-host-g++ -o tools/linguist/lrelease/Makefile tools/linguist/lrelease/lrelease.pro
@@ -132,7 +136,7 @@ build-uitools:
 	bin/qmake -o tools/designer/src/uitools/Makefile tools/designer/src/uitools/uitools.pro
 	$(MAKE) -C tools/designer/src/uitools
 
-common-install-arch:: install-dbus-tools install-linguist-tools install-maemo5-examples install-uitools
+common-install-arch:: install-dbus-tools install-linguist-tools install-maemo5-examples install-uitools install-qml-tool
 
 install-dbus-tools:
 	$(MAKE) -C tools/qdbus/qdbusxml2cpp $(DEB_MAKE_INSTALL_TARGET)
@@ -147,6 +151,9 @@ install-maemo5-examples:
 
 install-uitools:
 	$(MAKE) -C tools/designer/src/uitools $(DEB_MAKE_INSTALL_TARGET)
+
+install-qml-tool:
+	$(MAKE) -C tools/qml $(DEB_MAKE_INSTALL_TARGET)
 
 clean::
 # Extra stuff missed by confclean/distclean

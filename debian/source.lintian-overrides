@@ -333,4 +333,7 @@ qt4-maemo5 source: libqt4-maemo5-xml: dir-or-file-in-opt opt/qt4-maemo5/
 qt4-maemo5 source: libqt4-maemo5-xmlpatterns: dir-or-file-in-opt opt/qt4-maemo5/
 qt4-maemo5 source: libqt4-maemo5-maemo5: dir-or-file-in-opt opt/qt4-maemo5/
 qt4-maemo5 source: libqt4-maemo5-examples: dir-or-file-in-opt opt/qt4-maemo5/
-
+qt4-maemo5 source: correspondent-doc-package-absent Package libqt4-maemo5-declarative-dev
+qt4-maemo5 source: virtual-package-depends-without-real-package-depends build-depends: libgl-dev
+qt4-maemo5 source: libqt4-maemo5-declarative: dir-or-file-in-opt opt/qt4-maemo5/
+qt4-maemo5 source: qt4-maemo5-declarative-qmlviewer: dir-or-file-in-opt opt/qt4-maemo5/
