@@ -39,6 +39,8 @@ opt/qt4-maemo5/lib/libQtMaemo5.prl
 opt/qt4-maemo5/lib/libQtMaemo5.so
 opt/qt4-maemo5/lib/libQtOpenGL.prl
 opt/qt4-maemo5/lib/libQtOpenGL.so
+opt/qt4-maemo5/lib/libQtDeclarative.prl
+opt/qt4-maemo5/lib/libQtDeclarative.so
 opt/qt4-maemo5/lib/libQtUiTools.a
 opt/qt4-maemo5/lib/libQtUiTools.prl
 opt/qt4-maemo5/lib/pkgconfig/phonon.pc
@@ -57,4 +59,5 @@ opt/qt4-maemo5/lib/pkgconfig/QtXmlPatterns.pc
 opt/qt4-maemo5/lib/pkgconfig/QtXml.pc
 opt/qt4-maemo5/lib/pkgconfig/QtMaemo5.pc
 opt/qt4-maemo5/lib/pkgconfig/QtOpenGL.pc
+opt/qt4-maemo5/lib/pkgconfig/QtDeclarative.pc
 opt/qt4-maemo5/mkspecs

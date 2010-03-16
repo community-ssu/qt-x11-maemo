@@ -18,3 +18,4 @@ usr/lib/libQtHelp.la
 usr/lib/libQtCore.la
 usr/lib/libQtDBus.la
 usr/lib/libQtMaemo5.la
+usr/lib/libQtDeclarative.la
