@@ -1,3 +1,9 @@
+qt4-maemo5 (4.7.0~git20100312-0maemo1) unstable; urgency=low
+
+  * Upgrade to Qt 4.7
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Tue, 16 Mar 2010 09:29:01 +0200
+
 qt4-maemo5 (4.6.2~git20100212-0maemo1) unstable; urgency=low
 
   * Pull in latest changes from Qt branch
