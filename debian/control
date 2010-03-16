@@ -300,9 +300,9 @@ Package: libqt4-maemo5-dev
 Architecture: any
 Section: libdevel
 Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-dbus (= ${binary:Version}), libqt4-maemo5-xml (= ${binary:Version}), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-maemo5-network, libqt4-maemo5-gui, libqt4-maemo5-svg, libqt4-maemo5-webkit, libqt4-maemo5-sql, libqt4-maemo5-script, libqt4-maemo5-test, libqt4-maemo5-maemo5, libqt4-maemo5-multimedia, libqt4-maemo5-phonon, libqt4-maemo5-opengl (= ${binary:Version}), libgl-dev [i386], libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libsqlite3-dev
-Conflicts: libqt4-maemo5-opengl-dev (<< 4.6.1)
-Replaces: libqt4-maemo5-opengl-dev (<< 4.6.1)
-Provides: libqt4-maemo5-opengl-dev
+Conflicts: libqt4-maemo5-opengl-dev (<< 4.6.1), libqt4-maemo5-declarative-dev (<< 4.7.0)
+Replaces: libqt4-maemo5-opengl-dev (<< 4.6.1), libqt4-maemo5-declarative-dev (<< 4.7.0)
+Provides: libqt4-maemo5-opengl-dev, libqt4-maemo5-declarative-dev (<< 4.7.0)
 Description: Qt 4 development files
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -441,12 +441,10 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-maemo5-declarative-dev
 Architecture: any
 Section: libdevel
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-declarative (= ${binary:Version}), libqt4-maemo5-dev (>= 4.6.1)
-Description: Qt 4 Declarative development files
- Qt is a cross-platform C++ application framework. Qt's primary feature
- is its rich set of widgets that provide standard GUI functionality.
- .
- This package contains the header development files used for building declarative applications.
+Depends: libqt4-maemo5-dev
+Description: Qt4 Declarative development files
+ This is a transitional package for libqt4-maemo5-declarative-dev, and can be safely removed
+ after the installation is complete.
 
 Package: qt4-maemo5-declarative-qmlviewer
 Architecture: any
