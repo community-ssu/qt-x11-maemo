@@ -1222,7 +1222,7 @@ static int translateKeySym(uint key)
     return code;
 }
 
-#if !defined(QT_NO_XIM)
+#if !defined(QT_NO_XIM) || defined(Q_WS_MAEMO_5)
 static const unsigned short katakanaKeysymsToUnicode[] = {
     0x0000, 0x3002, 0x300C, 0x300D, 0x3001, 0x30FB, 0x30F2, 0x30A1,
     0x30A3, 0x30A5, 0x30A7, 0x30A9, 0x30E3, 0x30E5, 0x30E7, 0x30C3,
@@ -1418,7 +1418,7 @@ static QString translateKeySym(KeySym keysym, uint xmodifiers,
         case 14: // Korean, no mapping
             mib = -1; // manual conversion
             mapper = 0;
-#if !defined(QT_NO_XIM)
+#if !defined(QT_NO_XIM) || defined(Q_WS_MAEMO_5)
             converted = keysymToUnicode(byte3, keysym & 0xff);
 #endif
         case 0x20:

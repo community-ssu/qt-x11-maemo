@@ -589,8 +589,8 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     quint32 keysym= event->nativeVirtualKey();
     const int qtkeycode = event->key();
 
-    //qHimDebug("HIM: filterKeyPress Mask: %x state: %x options: %x keycode: %d keysym: %x QtKey: %x",
-    //          mask, state, options, keycode, keysym, qtkeycode);
+    qHimDebug("HIM: filterKeyPress Mask: %x state: %x options: %x keycode: %d keysym: %x QtKey: %x Text: \"%s\"",
+              mask, state, options, keycode, keysym, qtkeycode, event->text().toUtf8().constData());
 
     //Drop auto repeated keys for COMPOSE_KEY
     if (qtkeycode == COMPOSE_KEY && event->isAutoRepeat()){
@@ -693,9 +693,22 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         KeySym ks = getKeySymForLevel(keycode, LOCKABLE_LEVEL);
         QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
 
-        if (!string.isEmpty()){
-            keysym = ks;
-            commitString = string;
+        qHimDebug("HIM: LOCK_LEVEL: mapped to KeySym: %x Text (%d): \"%s\" (%04x)", int(ks), string.length(), string.toUtf8().constData(), string.length() ? string[0].unicode() : 0xffff);
+
+        if (ks && !string.isEmpty() && string.at(0).unicode()) {
+            KeySym lower = NoSymbol;
+            KeySym upper = NoSymbol;
+            XConvertCase(ks, &lower, &upper);
+
+            if (string.at(0).isPrint()) {
+                if ((mask & (HILDON_IM_SHIFT_LOCK_MASK | HILDON_IM_SHIFT_STICKY_MASK)) || (state & STATE_SHIFT_MASK)) {
+                    commitString = string.toUpper();
+                    keysym = upper;
+                } else {
+                    commitString = string.toLower();
+                    keysym = lower;
+                }
+            }
         }
     }
     //6. Shift lock or holding the shift down forces uppercase, ignoring autocap
@@ -872,9 +885,13 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         //then it adds the event to the events queue
         {
             QEvent::Type type = event->type();
-            Qt::KeyboardModifiers modifiers= event->modifiers();
-            //WARNING the qt keycode has not been updated!!
-            QKeyEventEx *ke= new QKeyEventEx(type, keycode, modifiers, commitString, false, commitString.size(), keycode, keysym, state);
+            Qt::KeyboardModifiers modifiers = event->modifiers();
+
+            // Shift-Backspace is translated to Shift-Delete, which does not work...
+            if (qtkeycode == Qt::Key_Delete && (event->modifiers() & Qt::ShiftModifier))
+                modifiers &= ~Qt::ShiftModifier;
+
+            QKeyEventEx *ke= new QKeyEventEx(type, qtkeycode, modifiers, commitString, false, commitString.size(), keycode, keysym, state);
             QCoreApplication::postEvent(keywidget,ke);
         }
 
