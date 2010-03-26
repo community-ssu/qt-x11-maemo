@@ -1,5 +1,5 @@
 TARGET  = multimedia
-TARGETPATH = $$[QT_INSTALL_IMPORTS]/Qt/multimedia
+TARGETPATH = Qt/multimedia
 include(../qimportbase.pri)
 
 QT += multimedia declarative
@@ -17,10 +17,10 @@ SOURCES += \
         qdeclarativevideo.cpp \
         qmetadatacontrolmetaobject.cpp
 
-QTDIR_build:DESTDIR = $$QT_BUILD_TREE/imports/Qt/multimedia
-target.path = $$TARGETPATH
+QTDIR_build:DESTDIR = $$QT_BUILD_TREE/imports/$$TARGETPATH
+target.path = $$[QT_INSTALL_IMPORTS]/$$TARGETPATH
 
-qmldir.files += $$QT_BUILD_TREE/imports/Qt/multimedia/qmldir
-qmldir.path +=  $$TARGETPATH
+qmldir.files += $$QT_BUILD_TREE/imports/$$TARGETPATH/qmldir
+qmldir.path +=  $$[QT_INSTALL_IMPORTS]/$$TARGETPATH
 
 INSTALLS += target qmldir

@@ -90,7 +90,7 @@ void QDeclarativeCompiledData::dump(QDeclarativeInstruction *instr, int idx)
         qWarning().nospace() << idx << "\t\t" << line << "\t" << "STORE_STRING\t\t" << instr->storeString.propertyIndex << "\t" << instr->storeString.value << "\t\t" << primitives.at(instr->storeString.value);
         break;
     case QDeclarativeInstruction::StoreUrl:
-        qWarning().nospace() << idx << "\t\t" << line << "\t" << "STORE_URL\t\t" << instr->storeUrl.propertyIndex << "\t" << instr->storeUrl.value << "\t\t" << primitives.at(instr->storeUrl.value);
+        qWarning().nospace() << idx << "\t\t" << line << "\t" << "STORE_URL\t\t" << instr->storeUrl.propertyIndex << "\t" << instr->storeUrl.value << "\t\t" << urls.at(instr->storeUrl.value);
         break;
     case QDeclarativeInstruction::StoreColor:
         qWarning().nospace() << idx << "\t\t" << line << "\t" << "STORE_COLOR\t\t" << instr->storeColor.propertyIndex << "\t\t\t" << QString::number(instr->storeColor.value, 16);
@@ -143,6 +143,9 @@ void QDeclarativeCompiledData::dump(QDeclarativeInstruction *instr, int idx)
         break;
     case QDeclarativeInstruction::StoreScript:
         qWarning().nospace() << idx << "\t\t" << line << "\t" << "STORE_SCRIPT\t\t" << instr->storeScript.value;
+        break;
+    case QDeclarativeInstruction::StoreImportedScript:
+        qWarning().nospace() << idx << "\t\t" << line << "\t" << "STORE_IMPORTED_SCRIPT\t" << instr->storeScript.value;
         break;
     case QDeclarativeInstruction::StoreScriptString:
         qWarning().nospace() << idx << "\t\t" << line << "\t" << "STORE_SCRIPT_STRING\t" << instr->storeScriptString.propertyIndex << "\t" << instr->storeScriptString.value << "\t" << instr->storeScriptString.scope;

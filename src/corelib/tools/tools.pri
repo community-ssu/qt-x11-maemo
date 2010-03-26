@@ -42,6 +42,7 @@ HEADERS +=  \
         tools/qstringmatcher.h \
         tools/qtextboundaryfinder.h \
         tools/qtimeline.h \
+        tools/qelapsedtimer.h \
         tools/qunicodetables_p.h \
         tools/qvarlengtharray.h \
         tools/qvector.h \
@@ -56,6 +57,7 @@ SOURCES += \
         tools/qcryptographichash.cpp \
         tools/qdatetime.cpp \
         tools/qeasingcurve.cpp \
+        tools/qelapsedtimer.cpp \
         tools/qhash.cpp \
         tools/qline.cpp \
         tools/qlinkedlist.cpp \
@@ -81,6 +83,12 @@ SOURCES += \
 
 symbian:SOURCES+=tools/qlocale_symbian.cpp
 maemo5:SOURCES += tools/qlocale_maemo5.cpp
+
+mac:SOURCES += tools/qelapsedtimer_mac.cpp
+else:symbian:SOURCES += tools/qelapsedtimer_symbian.cpp
+else:unix:SOURCES += tools/qelapsedtimer_unix.cpp
+else:win32:SOURCES += tools/qelapsedtimer_win.cpp
+else:SOURCES += tools/qelapsedtimer_generic.cpp
 
 #zlib support
 contains(QT_CONFIG, zlib) {

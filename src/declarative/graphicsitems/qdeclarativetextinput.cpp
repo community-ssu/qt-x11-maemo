@@ -220,6 +220,7 @@ void QDeclarativeTextInput::setHAlign(HAlignment align)
     if(align == d->hAlign)
         return;
     d->hAlign = align;
+    updateRect();
     emit horizontalAlignmentChanged(d->hAlign);
 }
 
@@ -636,12 +637,12 @@ int QDeclarativeTextInput::xToPos(int x)
     return d->control->xToPos(x - d->hscroll);
 }
 
-void QDeclarativeTextInput::focusChanged(bool hasFocus)
+void QDeclarativeTextInputPrivate::focusChanged(bool hasFocus)
 {
-    Q_D(QDeclarativeTextInput);
-    d->focused = hasFocus;
-    setCursorVisible(hasFocus);
-    QDeclarativeItem::focusChanged(hasFocus);
+    Q_Q(QDeclarativeTextInput);
+    focused = hasFocus;
+    q->setCursorVisible(hasFocus);
+    QDeclarativeItemPrivate::focusChanged(hasFocus);
 }
 
 void QDeclarativeTextInput::keyPressEvent(QKeyEvent* ev)
@@ -834,6 +835,9 @@ void QDeclarativeTextInputPrivate::init()
     oldValidity = control->hasAcceptableInput();
     lastSelectionStart = 0;
     lastSelectionEnd = 0;
+    QPalette p = control->palette();
+    selectedTextColor = p.color(QPalette::HighlightedText);
+    selectionColor = p.color(QPalette::Highlight);
 }
 
 void QDeclarativeTextInput::cursorPosChanged()

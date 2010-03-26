@@ -41,18 +41,21 @@
 
 #include <QDebug>
 
-#include <private/qgl_p.h>
-#include <private/qegl_p.h>
-#include <private/qeglproperties_p.h>
-#include <private/qeglcontext_p.h>
+#include <QtGui/private/qt_x11_p.h>
+#include <QtGui/private/qegl_p.h>
+#include <QtGui/private/qeglproperties_p.h>
+#include <QtGui/private/qeglcontext_p.h>
 
 #if !defined(QT_OPENGL_ES_1)
-#include <private/qpaintengineex_opengl2_p.h>
+#include <QtOpenGL/private/qpaintengineex_opengl2_p.h>
 #endif
 
 #ifndef QT_OPENGL_ES_2
-#include <private/qpaintengine_opengl_p.h>
+#include <QtOpenGL/private/qpaintengine_opengl_p.h>
 #endif
+
+#include <QtOpenGL/private/qgl_p.h>
+#include <QtOpenGL/private/qgl_egl_p.h>
 
 #include "qpixmapdata_x11gl_p.h"
 
@@ -61,6 +64,10 @@ QT_BEGIN_NAMESPACE
 
 // On 16bpp systems, RGB & ARGB pixmaps are different bit-depths and therefore need
 // different contexts:
+
+Q_GLOBAL_STATIC(QEglContext, qt_x11gl_rgbContext);
+Q_GLOBAL_STATIC(QEglContext, qt_x11gl_argbContext)
+
 QEglContext* QX11GLPixmapData::rgbContext = 0;
 QEglContext* QX11GLPixmapData::argbContext = 0;
 
@@ -75,6 +82,9 @@ bool QX11GLPixmapData::hasX11GLPixmaps()
 
     checkedForX11Pixmaps = true;
 
+    EGLint rgbConfigId;
+    EGLint argbConfigId;
+
     do {
         if (qgetenv("QT_USE_X11GL_PIXMAPS").isEmpty())
             break;
@@ -83,8 +93,11 @@ bool QX11GLPixmapData::hasX11GLPixmaps()
         EGLConfig argbConfig = QEgl::defaultConfig(QInternal::Pixmap, QEgl::OpenGL,
                                                    QEgl::Renderable | QEgl::Translucent);
 
+        eglGetConfigAttrib(QEgl::display(), rgbConfig, EGL_CONFIG_ID, &rgbConfigId);
+        eglGetConfigAttrib(QEgl::display(), argbConfig, EGL_CONFIG_ID, &argbConfigId);
+
         if (!rgbContext) {
-            rgbContext = new QEglContext;
+            rgbContext = qt_x11gl_rgbContext();
             rgbContext->setConfig(rgbConfig);
             rgbContext->createContext();
         }
@@ -97,7 +110,7 @@ bool QX11GLPixmapData::hasX11GLPixmaps()
             argbContext = rgbContext;
 
         if (!argbContext) {
-            argbContext = new QEglContext;
+            argbContext = qt_x11gl_argbContext();
             argbContext->setConfig(argbConfig);
             argbContext->createContext();
         }
@@ -138,6 +151,10 @@ bool QX11GLPixmapData::hasX11GLPixmaps()
                 break;
             }
         }
+
+        // The pixmap surface destruction hooks are installed by QGLTextureCache, so we
+        // must make sure this is instanciated:
+        QGLTextureCache::instance();
     } while (0);
 
     if (!haveX11Pixmaps) {
@@ -152,7 +169,7 @@ bool QX11GLPixmapData::hasX11GLPixmaps()
     }
 
     if (haveX11Pixmaps)
-        qDebug("QX11GLPixmapData is supported");
+        qDebug("Using QX11GLPixmapData with EGL config %d for ARGB and config %d for RGB", argbConfigId, rgbConfigId);
     else
         qDebug("QX11GLPixmapData is *NOT* being used");
 
@@ -167,6 +184,62 @@ QX11GLPixmapData::QX11GLPixmapData()
 
 QX11GLPixmapData::~QX11GLPixmapData()
 {
+    if (ctx)
+        delete ctx;
+}
+
+
+void QX11GLPixmapData::fill(const QColor &color)
+{
+    if (ctx) {
+        ctx->makeCurrent();
+        glFinish();
+        eglWaitClient();
+    }
+
+    QX11PixmapData::fill(color);
+    XSync(X11->display, False);
+
+    if (ctx) {
+        ctx->makeCurrent();
+        eglWaitNative(EGL_CORE_NATIVE_ENGINE);
+    }
+}
+
+void QX11GLPixmapData::copy(const QPixmapData *data, const QRect &rect)
+{
+    if (ctx) {
+        ctx->makeCurrent();
+        glFinish();
+        eglWaitClient();
+    }
+
+    QX11PixmapData::copy(data, rect);
+    XSync(X11->display, False);
+
+    if (ctx) {
+        ctx->makeCurrent();
+        eglWaitNative(EGL_CORE_NATIVE_ENGINE);
+    }
+}
+
+bool QX11GLPixmapData::scroll(int dx, int dy, const QRect &rect)
+{
+    if (ctx) {
+        ctx->makeCurrent();
+        glFinish();
+        eglWaitClient();
+    }
+
+    bool success = QX11PixmapData::scroll(dx, dy, rect);
+    XSync(X11->display, False);
+
+    if (ctx) {
+        ctx->makeCurrent();
+        eglWaitNative(EGL_CORE_NATIVE_ENGINE);
+    }
+
+    return success;
 }
 
 #if !defined(QT_OPENGL_ES_1)
@@ -185,6 +258,8 @@ QPaintEngine* QX11GLPixmapData::paintEngine() const
         ctx = new QGLContext(glFormat());
         Q_ASSERT(ctx->d_func()->eglContext == 0);
         ctx->d_func()->eglContext = hasAlphaChannel() ? argbContext : rgbContext;
+        // Update the glFormat for the QGLContext:
+        qt_glformat_from_eglconfig(ctx->d_func()->glFormat, ctx->d_func()->eglContext->config());
     }
 
     QPaintEngine* engine;
@@ -231,8 +306,16 @@ void QX11GLPixmapData::beginPaint()
     if ((EGLSurface)gl_surface == EGL_NO_SURFACE) {
         QPixmap tmpPixmap(this);
         EGLConfig cfg = ctx->d_func()->eglContext->config();
-        gl_surface = (Qt::HANDLE)QEgl::createSurface(&tmpPixmap, cfg);
-        ctx->d_func()->eglSurface = (EGLSurface)gl_surface;
+        Q_ASSERT(cfg != QEGL_NO_CONFIG);
+
+//        qDebug("QX11GLPixmapData - using EGL Config ID %d", ctx->d_func()->eglContext->configAttrib(EGL_CONFIG_ID));
+        EGLSurface surface = QEgl::createSurface(&tmpPixmap, cfg);
+        if (surface == EGL_NO_SURFACE) {
+            qWarning() << "Error creating EGL surface for pixmap:" << QEgl::errorString();
+            return;
+        }
+        gl_surface = (void*)surface;
+        ctx->d_func()->eglSurface = surface;
         ctx->d_func()->valid = true;
     }
     QGLPaintDevice::beginPaint();

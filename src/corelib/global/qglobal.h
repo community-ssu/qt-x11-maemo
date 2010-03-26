@@ -1064,6 +1064,16 @@ redefine to built-in booleans to make autotests work properly */
 #  define QT_FASTCALL
 #endif
 
+//defines the type for the WNDPROC on windows
+//the alignment needs to be forced for sse2 to not crash with mingw
+#if defined(Q_WS_WIN)
+#  if defined(Q_CC_MINGW)
+#    define QT_WIN_CALLBACK CALLBACK __attribute__ ((force_align_arg_pointer))
+#  else
+#    define QT_WIN_CALLBACK CALLBACK
+#  endif
+#endif
+
 typedef int QNoImplicitBoolCast;
 
 #if defined(QT_ARCH_ARM) || defined(QT_ARCH_ARMV6) || defined(QT_ARCH_AVR32) || (defined(QT_ARCH_MIPS) && (defined(Q_WS_QWS) || defined(Q_OS_WINCE))) || defined(QT_ARCH_SH) || defined(QT_ARCH_SH4A)
@@ -2427,12 +2437,15 @@ QT3_SUPPORT Q_CORE_EXPORT const char *qInstallPathSysconf();
 #define Q_SYMBIAN_FIXED_POINTER_CURSORS
 #define Q_SYMBIAN_HAS_EXTENDED_BITMAP_TYPE
 #define Q_SYMBIAN_WINDOW_SIZE_CACHE
-//enabling new graphics resources
-#define QT_SYMBIAN_SUPPORTS_SGIMAGE
 #define QT_SYMBIAN_SUPPORTS_ADVANCED_POINTER
 
+//enabling new graphics resources
+#ifdef SYMBIAN_GRAPHICS_EGL_SGIMAGELITE
+#  define QT_SYMBIAN_SUPPORTS_SGIMAGE
+#endif
+
 #ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
-#define Q_SYMBIAN_SEMITRANSPARENT_BG_SURFACE
+#  define Q_SYMBIAN_SEMITRANSPARENT_BG_SURFACE
 #endif
 #endif
 

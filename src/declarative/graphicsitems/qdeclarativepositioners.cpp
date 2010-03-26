@@ -46,7 +46,6 @@
 #include <qdeclarativestate_p.h>
 #include <qdeclarativestategroup_p.h>
 #include <qdeclarativestateoperations_p.h>
-#include <qfxperf_p_p.h>
 #include <QtCore/qmath.h>
 
 #include <QDebug>
@@ -164,9 +163,6 @@ void QDeclarativeBasePositioner::componentComplete()
 {
     Q_D(QDeclarativeBasePositioner);
     QDeclarativeItem::componentComplete();
-#ifdef Q_ENABLE_PERFORMANCE_LOG
-    QDeclarativePerfTimer<QDeclarativePerf::BasepositionerComponentComplete> cc;
-#endif
     positionedItems.reserve(d->QGraphicsItemPrivate::children.count());
     prePositioning();
 }
@@ -212,29 +208,33 @@ void QDeclarativeBasePositioner::prePositioning()
     QList<QGraphicsItem *> children = d->QGraphicsItemPrivate::children;
     qSort(children.begin(), children.end(), d->insertionOrder);
 
+    QPODVector<PositionedItem,8> oldItems;
+    positionedItems.copyAndClear(oldItems);
     for (int ii = 0; ii < children.count(); ++ii) {
         QDeclarativeItem *child = qobject_cast<QDeclarativeItem *>(children.at(ii));
         if (!child)
             continue;
         PositionedItem *item = 0;
         PositionedItem posItem(child);
-        int wIdx = positionedItems.find(posItem);
+        int wIdx = oldItems.find(posItem);
         if (wIdx < 0) {
             d->watchChanges(child);
             positionedItems.append(posItem);
             item = &positionedItems[positionedItems.count()-1];
-        } else {
-            item = &positionedItems[wIdx];
-        }
-        if (child->opacity() <= 0.0 || !child->isVisible()) {
-            item->isVisible = false;
-            continue;
-        }
-        if (!item->isVisible) {
-            item->isVisible = true;
             item->isNew = true;
+            if (child->opacity() <= 0.0 || !child->isVisible())
+                item->isVisible = false;
         } else {
-            item->isNew = false;
+            item = &oldItems[wIdx];
+            if (child->opacity() <= 0.0 || !child->isVisible()) {
+                item->isVisible = false;
+            } else if (!item->isVisible) {
+                item->isVisible = true;
+                item->isNew = true;
+            } else {
+                item->isNew = false;
+            }
+            positionedItems.append(*item);
         }
     }
     doPositioning();
@@ -258,11 +258,14 @@ void QDeclarativeBasePositioner::positionX(int x, const PositionedItem &target)
 {
     Q_D(QDeclarativeBasePositioner);
     if(d->type == Horizontal || d->type == Both){
-        if(!d->addTransition && !d->moveTransition){
-            target.item->setX(x);
-        }else{
-            if(target.isNew)
+        if (target.isNew) {
+            if (!d->addTransition)
+                target.item->setX(x);
+            else
                 d->addActions << QDeclarativeAction(target.item, QLatin1String("x"), QVariant(x));
+        } else if (x != target.item->x()) {
+            if (!d->moveTransition)
+                target.item->setX(x);
             else
                 d->moveActions << QDeclarativeAction(target.item, QLatin1String("x"), QVariant(x));
         }
@@ -273,11 +276,14 @@ void QDeclarativeBasePositioner::positionY(int y, const PositionedItem &target)
 {
     Q_D(QDeclarativeBasePositioner);
     if(d->type == Vertical || d->type == Both){
-        if(!d->addTransition && !d->moveTransition){
-            target.item->setY(y);
-        }else{
-            if(target.isNew)
+        if (target.isNew) {
+            if (!d->addTransition)
+                target.item->setY(y);
+            else
                 d->addActions << QDeclarativeAction(target.item, QLatin1String("y"), QVariant(y));
+        } else if (y != target.item->y()) {
+            if (!d->moveTransition)
+                target.item->setY(y);
             else
                 d->moveActions << QDeclarativeAction(target.item, QLatin1String("y"), QVariant(y));
         }
@@ -379,7 +385,7 @@ Column {
     move: Transition {
         NumberAnimation {
             properties: "y"
-            easing: "easeOutBounce"
+            easing.type: "OutBounce"
         }
     }
 }

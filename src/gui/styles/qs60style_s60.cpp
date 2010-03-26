@@ -50,20 +50,20 @@
 #include "qapplication.h"
 
 #include <w32std.h>
-#include <aknsconstants.h>
+#include <AknsConstants.h>
 #include <aknconsts.h>
-#include <aknsitemid.h>
-#include <aknsutils.h>
-#include <aknsdrawutils.h>
-#include <aknsskininstance.h>
-#include <aknsbasicbackgroundcontrolcontext.h>
+#include <AknsItemID.h>
+#include <AknsUtils.h>
+#include <AknsDrawUtils.h>
+#include <AknsSkinInstance.h>
+#include <AknsBasicBackgroundControlContext.h>
 #include <avkon.mbg>
 #include <aknfontaccess.h>
 #include <aknlayoutfont.h>
-#include <aknutils.h>
+#include <AknUtils.h>
 #include <aknnavi.h>
 #include <gulicon.h>
-#include <AknBitmapAnimation.h>
+#include <aknbitmapanimation.h>
 
 #if !defined(QT_NO_STYLE_S60) || defined(QT_PLUGIN)
 
@@ -1121,7 +1121,7 @@ QColor QS60StylePrivate::s60Color(QS60StyleEnums::ColorLists list,
         &KAknsIIDQsnParentColors,
         &KAknsIIDQsnTextColors
     };
-    Q_ASSERT((int)list <= (int)sizeof(idMap)/sizeof(idMap[0]));
+    Q_ASSERT((int)list < (int)sizeof(idMap)/sizeof(idMap[0]));
     const QColor color = QS60StyleModeSpecifics::colorValue(*idMap[(int) list], index - 1);
     return option ? QS60StylePrivate::stateColor(color, option) : color;
 }

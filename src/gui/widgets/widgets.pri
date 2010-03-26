@@ -164,7 +164,7 @@ wince*: {
     !static: QMAKE_WRITE_DEFAULT_RC = 1
 }
 
-symbian*: {
+symbian: {
     SOURCES += widgets/qmenu_symbian.cpp
 }
 

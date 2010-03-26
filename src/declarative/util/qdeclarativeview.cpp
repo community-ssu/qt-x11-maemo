@@ -41,9 +41,6 @@
 
 #include "qdeclarativeview.h"
 
-#include "qperformancelog_p_p.h"
-#include "qfxperf_p_p.h"
-
 #include <qdeclarative.h>
 #include <qdeclarativeitem.h>
 #include <qdeclarativeengine.h>
@@ -132,6 +129,7 @@ class QDeclarativeViewPrivate
 public:
     QDeclarativeViewPrivate(QDeclarativeView *view)
         : q(view), root(0), component(0), resizeMode(QDeclarativeView::SizeViewToRootObject) {}
+    ~QDeclarativeViewPrivate() { delete root; }
 
     void execute();
 
@@ -221,7 +219,7 @@ void QDeclarativeViewPrivate::execute()
 */
 
 /*! \fn void QDeclarativeView::statusChanged(QDeclarativeView::Status status)
-    This signal is emitted when the component's current \l{QDeclarativeView::Status} {status} changes.
+    This signal is emitted when the component's current \a status changes.
 */
 
 /*!
@@ -251,13 +249,6 @@ QDeclarativeView::QDeclarativeView(const QUrl &source, QWidget *parent)
 
 void QDeclarativeViewPrivate::init()
 {
-#ifdef Q_ENABLE_PERFORMANCE_LOG
-    {
-        QDeclarativePerfTimer<QDeclarativePerf::FontDatabase> perf;
-        QFontDatabase database;
-    }
-#endif
-
     q->setScene(&scene);
 
     q->setOptimizationFlags(QGraphicsView::DontSavePainterState);
@@ -280,8 +271,14 @@ void QDeclarativeViewPrivate::init()
  */
 QDeclarativeView::~QDeclarativeView()
 {
-    delete d->root;
+    delete d;
 }
+
+/*! \property QDeclarativeView::source
+  \brief The URL of the source of the QML component.
+
+  Changing this property causes the QML component to be reloaded.
+ */
 
 /*!
     Sets the source to the \a url, loads the QML component and instantiates it.
@@ -292,6 +289,7 @@ QDeclarativeView::~QDeclarativeView()
 void QDeclarativeView::setSource(const QUrl& url)
 {
     d->source = url;
+    d->engine.setBaseUrl(url);
     d->execute();
 }
 
@@ -326,7 +324,6 @@ QDeclarativeContext* QDeclarativeView::rootContext()
     return d->engine.rootContext();
 }
 
-
 /*!
   \enum QDeclarativeView::Status
 
@@ -336,6 +333,14 @@ QDeclarativeContext* QDeclarativeView::rootContext()
     \value Ready This QDeclarativeView has loaded and created the QML component.
     \value Loading This QDeclarativeView is loading network data.
     \value Error An error has occured.  Calling errorDescription() to retrieve a description.
+*/
+
+/*! \enum QDeclarativeView::ResizeMode
+
+  This enum specifies how to resize the view.
+
+  \value SizeViewToRootObject
+  \value SizeRootObjectToView
 */
 
 /*!
@@ -376,8 +381,6 @@ QList<QDeclarativeError> QDeclarativeView::errors() const
     Regardless of this property, the sizeHint of the view
     is the initial size of the root item. Note though that
     since QML may load dynamically, that size may change.
-
-    \sa initialSize()
 */
 
 void QDeclarativeView::setResizeMode(ResizeMode mode)
@@ -443,12 +446,10 @@ void QDeclarativeView::setRootObject(QObject *obj)
     if (QDeclarativeItem *item = qobject_cast<QDeclarativeItem *>(obj)) {
         d->scene.addItem(item);
 
-        QPerformanceLog::displayData();
-        QPerformanceLog::clear();
         d->root = item;
         d->qmlRoot = item;
-        connect(item, SIGNAL(widthChanged()), this, SLOT(sizeChanged()));
-        connect(item, SIGNAL(heightChanged()), this, SLOT(sizeChanged()));
+        connect(item, SIGNAL(widthChanged(qreal)), this, SLOT(sizeChanged()));
+        connect(item, SIGNAL(heightChanged(qreal)), this, SLOT(sizeChanged()));
         if (d->initialSize.height() <= 0 && d->qmlRoot->width() > 0)
             d->initialSize.setWidth(d->qmlRoot->width());
         if (d->initialSize.height() <= 0 && d->qmlRoot->height() > 0)

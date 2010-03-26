@@ -180,7 +180,10 @@ void QIcdEngine::doRequestUpdate()
         ptr->roamingSupported = false;
 
         userChoiceConfigurations.insert(ptr->id, ptr);
+
+        locker.unlock();
         emit configurationAdded(ptr);
+        locker.relock();
     }
 
     /* We return currently configured IAPs in the first run and do the WLAN
@@ -206,14 +209,11 @@ void QIcdEngine::doRequestUpdate()
         QString iap_type = saved_ap.value("type").toString();
         if (iap_type.startsWith("WLAN")) {
             ssid = saved_ap.value("wlan_ssid").toByteArray();
-            if (ssid.isEmpty()) {
-                qWarning() << "Cannot get ssid for" << iap_id;
+            if (ssid.isEmpty())
                 continue;
-            }
 
             QString security_method = saved_ap.value("wlan_security").toString();
         } else if (iap_type.isEmpty()) {
-            qWarning() << "IAP" << iap_id << "network type is not set! Skipping it";
             continue;
         } else {
 #ifdef BEARER_MANAGEMENT_DEBUG
@@ -244,7 +244,10 @@ void QIcdEngine::doRequestUpdate()
 
             QNetworkConfigurationPrivatePointer ptr(cpPriv);
             accessPointConfigurations.insert(iap_id, ptr);
+
+            locker.unlock();
             emit configurationAdded(ptr);
+            locker.relock();
 
 #ifdef BEARER_MANAGEMENT_DEBUG
             qDebug("IAP: %s, name: %s, ssid: %s, added to known list",
@@ -270,7 +273,9 @@ void QIcdEngine::doRequestUpdate()
                                        scanned,
                                        error);
         if (!error.isEmpty()) {
-            qWarning() << "Network scanning failed" << error;
+#ifdef BEARER_MANAGEMENT_DEBUG
+            qDebug() << "Network scanning failed" << error;
+#endif
         } else {
 #ifdef BEARER_MANAGEMENT_DEBUG
             if (!scanned.isEmpty())
@@ -300,6 +305,8 @@ void QIcdEngine::doRequestUpdate()
 
                     bool changed = false;
 
+                    ptr->mutex.lock();
+
                     if (!ptr->isValid) {
                         ptr->isValid = true;
                         changed = true;
@@ -320,10 +327,15 @@ void QIcdEngine::doRequestUpdate()
                            iapid.toAscii().data(), scanned_ssid.data());
 #endif
 
-                    if (changed)
-                        emit configurationChanged(ptr);
+                    ptr->mutex.unlock();
 
-                    if (!ap.scan.network_type.startsWith("WLAN"))
+                    if (changed) {
+                        locker.unlock();
+                        emit configurationChanged(ptr);
+                        locker.relock();
+                    }
+
+                    if (!ap.scan.network_type.startsWith(QLatin1String("WLAN")))
                         continue; // not a wlan AP
                 }
             } else {
@@ -355,7 +367,10 @@ void QIcdEngine::doRequestUpdate()
 
                 QNetworkConfigurationPrivatePointer ptr(cpPriv);
                 accessPointConfigurations.insert(ptr->id, ptr);
+
+                locker.unlock();
                 emit configurationAdded(ptr);
+                locker.relock();
             }
         }
     }
@@ -364,11 +379,15 @@ void QIcdEngine::doRequestUpdate()
         QNetworkConfigurationPrivatePointer ptr =
             accessPointConfigurations.take(previous.takeFirst());
 
+        locker.unlock();
         emit configurationRemoved(ptr);
+        locker.relock();
     }
 
-    if (sender())
+    if (sender()) {
+        locker.unlock();
         emit updateCompleted();
+    }
 }
 
 void QIcdEngine::deleteConfiguration(const QString &iap_id)
@@ -379,19 +398,14 @@ void QIcdEngine::deleteConfiguration(const QString &iap_id)
      * or read all the IAPs from db because it might take too much power
      * (multiple applications would need to scan and read all IAPs from db)
      */
-    if (accessPointConfigurations.contains(iap_id)) {
-        QNetworkConfigurationPrivatePointer ptr = accessPointConfigurations.take(iap_id);
-
-        if (ptr) {
-            ptr->isValid = false;
+    QNetworkConfigurationPrivatePointer ptr = accessPointConfigurations.take(iap_id);
+    if (ptr) {
 #ifdef BEARER_MANAGEMENT_DEBUG
-            qDebug() << "IAP" << iap_id << "was removed from storage.";
+        qDebug() << "IAP" << iap_id << "was removed from storage.";
 #endif
 
-            emit configurationRemoved(ptr);
-        } else {
-            qWarning("Configuration not found for IAP %s", iap_id.toAscii().data());
-        }
+        locker.unlock();
+        emit configurationRemoved(ptr);
     } else {
 #ifdef BEARER_MANAGEMENT_DEBUG
         qDebug("IAP: %s, already missing from the known list", iap_id.toAscii().data());
@@ -403,7 +417,8 @@ QNetworkConfigurationManager::Capabilities QIcdEngine::capabilities() const
 {
     return QNetworkConfigurationManager::CanStartAndStopInterfaces |
            QNetworkConfigurationManager::DataStatistics |
-           QNetworkConfigurationManager::ForcedRoaming;
+           QNetworkConfigurationManager::ForcedRoaming |
+           QNetworkConfigurationManager::NetworkSessionRequired;
 }
 
 QNetworkSessionPrivate *QIcdEngine::createSessionBackend()

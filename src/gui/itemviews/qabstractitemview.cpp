@@ -107,8 +107,10 @@ QAbstractItemViewPrivate::QAbstractItemViewPrivate()
         horizontalScrollMode(QAbstractItemView::ScrollPerItem),
         currentIndexSet(false),
         wrapItemText(false),
-        delayedPendingLayout(false)
+        delayedPendingLayout(true),
+        moveCursorUpdatedView(false)
 {
+    keyboardInputTime.invalidate();
 }
 
 QAbstractItemViewPrivate::~QAbstractItemViewPrivate()
@@ -133,8 +135,6 @@ void QAbstractItemViewPrivate::init()
                      q, SLOT(horizontalScrollbarValueChanged(int)));
 
     viewport->setBackgroundRole(QPalette::Base);
-
-    doDelayedItemsLayout();
 
     q->setAttribute(Qt::WA_InputMethodEnabled);
 
@@ -2097,7 +2097,7 @@ void QAbstractItemView::focusInEvent(QFocusEvent *event)
         bool autoScroll = d->autoScroll;
         d->autoScroll = false;
         QModelIndex index = moveCursor(MoveNext, Qt::NoModifier); // first visible index
-        if (index.isValid() && d->isIndexEnabled(index))
+        if (index.isValid() && d->isIndexEnabled(index) && event->reason() != Qt::MouseFocusReason)
             selectionModel()->setCurrentIndex(index, QItemSelectionModel::NoUpdate);
         d->autoScroll = autoScroll;
     }
@@ -2217,6 +2217,7 @@ void QAbstractItemView::keyPressEvent(QKeyEvent *event)
 #endif
 
     QPersistentModelIndex newCurrent;
+    d->moveCursorUpdatedView = false;
     switch (event->key()) {
     case Qt::Key_Down:
         newCurrent = moveCursor(MoveDown, event->modifiers());
@@ -2273,6 +2274,7 @@ void QAbstractItemView::keyPressEvent(QKeyEvent *event)
                 QRect rect(d->pressedPosition - d->offset(), QSize(1, 1));
                 setSelection(rect, command);
             }
+            event->accept();
             return;
         }
     }
@@ -2304,6 +2306,8 @@ void QAbstractItemView::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Escape:
     case Qt::Key_Shift:
     case Qt::Key_Control:
+    case Qt::Key_Delete:
+    case Qt::Key_Backspace:
         event->ignore();
         break;
     case Qt::Key_Space:
@@ -2368,6 +2372,8 @@ void QAbstractItemView::keyPressEvent(QKeyEvent *event)
         }
         break; }
     }
+    if (d->moveCursorUpdatedView)
+        event->accept();
 }
 
 /*!
@@ -2844,16 +2850,16 @@ void QAbstractItemView::keyboardSearch(const QString &search)
 
     QModelIndex start = currentIndex().isValid() ? currentIndex()
                         : d->model->index(0, 0, d->root);
-    QTime now(QTime::currentTime());
     bool skipRow = false;
-    if (search.isEmpty()
-        || (d->keyboardInputTime.msecsTo(now) > QApplication::keyboardInputInterval())) {
+    bool keyboardTimeWasValid = d->keyboardInputTime.isValid();
+    qint64 keyboardInputTimeElapsed = d->keyboardInputTime.restart();
+    if (search.isEmpty() || !keyboardTimeWasValid
+        || keyboardInputTimeElapsed > QApplication::keyboardInputInterval()) {
         d->keyboardInput = search;
         skipRow = currentIndex().isValid(); //if it is not valid we should really start at QModelIndex(0,0)
     } else {
         d->keyboardInput += search;
     }
-    d->keyboardInputTime = now;
 
     // special case for searches with same key like 'aaaaa'
     bool sameKey = false;

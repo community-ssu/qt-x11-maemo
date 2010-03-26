@@ -6171,6 +6171,8 @@ void QWidget::setFocus(Qt::FocusReason reason)
             previousProxyFocus = topData->proxyWidget->widget()->focusWidget();
             if (previousProxyFocus && previousProxyFocus->focusProxy())
                 previousProxyFocus = previousProxyFocus->focusProxy();
+            if (previousProxyFocus == this && !topData->proxyWidget->d_func()->proxyIsGivingFocus)
+                return;
         }
     }
 #endif
@@ -10550,6 +10552,10 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
         break;
     case Qt::WA_X11OpenGLOverlay:
         d->updateIsOpaque();
+        break;
+    case Qt::WA_X11DoNotAcceptFocus:
+        if (testAttribute(Qt::WA_WState_Created))
+            d->updateX11AcceptFocus();
         break;
 #endif
     case Qt::WA_DontShowOnScreen: {

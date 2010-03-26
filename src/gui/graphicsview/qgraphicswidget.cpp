@@ -384,7 +384,7 @@ void QGraphicsWidget::setGeometry(const QRectF &rect)
     }
     QSizeF oldSize = size();
     QGraphicsLayoutItem::setGeometry(newGeom);
-
+    emit geometryChanged();
     // Send resize event
     bool resized = newGeom.size() != oldSize;
     if (resized) {
@@ -394,6 +394,12 @@ void QGraphicsWidget::setGeometry(const QRectF &rect)
         QApplication::sendEvent(this, &re);
     }
 }
+
+/*!
+  \fn QGraphicsWidget::geometryChanged()
+
+  This signal gets emitted whenever the geometry is changed in setGeometry().
+*/
 
 /*!
     \fn QRectF QGraphicsWidget::rect() const

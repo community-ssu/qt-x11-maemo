@@ -227,6 +227,8 @@ QDeclarativePropertyChangesParser::compileList(QList<QPair<QByteArray, QVariant>
         const QVariant &value = values.at(ii);
 
         if (value.userType() == qMetaTypeId<QDeclarativeCustomParserNode>()) {
+            error(qvariant_cast<QDeclarativeCustomParserNode>(value),
+                  QDeclarativePropertyChanges::tr("PropertyChanges does not support creating state-specific objects."));
             continue;
         } else if(value.userType() == qMetaTypeId<QDeclarativeCustomParserProperty>()) {
 
@@ -439,7 +441,8 @@ QDeclarativePropertyChanges::ActionList QDeclarativePropertyChanges::actions()
             if (d->isExplicit) {
                 a.toValue = d->expressions.at(ii).second->value();
             } else {
-                QDeclarativeBinding *newBinding = new QDeclarativeBinding(d->expressions.at(ii).second->expression(), object(), qmlContext(this));
+                QDeclarativeBinding *newBinding = 
+                    new QDeclarativeBinding(d->expressions.at(ii).second->expression(), object(), qmlContext(this));
                 newBinding->setTarget(prop);
                 a.toBinding = newBinding;
                 a.deletableToBinding = true;

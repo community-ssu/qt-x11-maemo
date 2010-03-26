@@ -67,8 +67,6 @@
 #include "qdeclarativecompiledbindings_p.h"
 #include "qdeclarativeglobalscriptclass_p.h"
 
-#include <qfxperf_p_p.h>
-
 #include <QCoreApplication>
 #include <QColor>
 #include <QDebug>
@@ -77,12 +75,13 @@
 #include <QRectF>
 #include <QAtomicInt>
 #include <QtCore/qdebug.h>
+#include <QtCore/qdatetime.h>
 
 QT_BEGIN_NAMESPACE
 
 DEFINE_BOOL_CONFIG_OPTION(compilerDump, QML_COMPILER_DUMP);
 DEFINE_BOOL_CONFIG_OPTION(compilerStatDump, QML_COMPILER_STATISTICS_DUMP);
-DEFINE_BOOL_CONFIG_OPTION(qmlExperimental, QML_EXPERIMENTAL);
+DEFINE_BOOL_CONFIG_OPTION(bindingsDump, QML_BINDINGS_DUMP);
 
 using namespace QDeclarativeParser;
 
@@ -438,7 +437,7 @@ void QDeclarativeCompiler::genLiteralAssignment(const QMetaProperty &prop,
             bool ok;
             QPointF point =
                 QDeclarativeStringConverters::pointFFromString(string, &ok);
-            float data[] = { point.x(), point.y() };
+            float data[] = { float(point.x()), float(point.y()) };
             int index = output->indexForFloat(data, 2);
             if (type == QVariant::PointF)
                 instr.type = QDeclarativeInstruction::StorePointF;
@@ -453,7 +452,7 @@ void QDeclarativeCompiler::genLiteralAssignment(const QMetaProperty &prop,
             {
             bool ok;
             QSizeF size = QDeclarativeStringConverters::sizeFFromString(string, &ok);
-            float data[] = { size.width(), size.height() };
+            float data[] = { float(size.width()), float(size.height()) };
             int index = output->indexForFloat(data, 2);
             if (type == QVariant::SizeF)
                 instr.type = QDeclarativeInstruction::StoreSizeF;
@@ -468,8 +467,8 @@ void QDeclarativeCompiler::genLiteralAssignment(const QMetaProperty &prop,
             {
             bool ok;
             QRectF rect = QDeclarativeStringConverters::rectFFromString(string, &ok);
-            float data[] = { rect.x(), rect.y(),
-                             rect.width(), rect.height() };
+            float data[] = { float(rect.x()), float(rect.y()),
+                             float(rect.width()), float(rect.height()) };
             int index = output->indexForFloat(data, 4);
             if (type == QVariant::RectF)
                 instr.type = QDeclarativeInstruction::StoreRectF;
@@ -492,7 +491,7 @@ void QDeclarativeCompiler::genLiteralAssignment(const QMetaProperty &prop,
             bool ok;
             QVector3D vector =
                 QDeclarativeStringConverters::vector3DFromString(string, &ok);
-            float data[] = { vector.x(), vector.y(), vector.z() };
+            float data[] = { float(vector.x()), float(vector.y()), float(vector.z()) };
             int index = output->indexForFloat(data, 3);
             instr.type = QDeclarativeInstruction::StoreVector3D;
             instr.storeRealPair.propertyIndex = prop.propertyIndex();
@@ -543,12 +542,9 @@ void QDeclarativeCompiler::reset(QDeclarativeCompiledData *data)
     on a successful compiler.
 */
 bool QDeclarativeCompiler::compile(QDeclarativeEngine *engine,
-                          QDeclarativeCompositeTypeData *unit,
-                          QDeclarativeCompiledData *out)
+                                   QDeclarativeCompositeTypeData *unit,
+                                   QDeclarativeCompiledData *out)
 {
-#ifdef Q_ENABLE_PERFORMANCE_LOG
-    QDeclarativePerfTimer<QDeclarativePerf::Compilation> pc;
-#endif
     exceptions.clear();
 
     Q_ASSERT(out);
@@ -561,9 +557,11 @@ bool QDeclarativeCompiler::compile(QDeclarativeEngine *engine,
         QDeclarativeCompositeTypeData::TypeReference &tref = unit->types[ii];
         QDeclarativeCompiledData::TypeReference ref;
         QDeclarativeScriptParser::TypeReference *parserRef = unit->data.referencedTypes().at(ii);
-        if (tref.type)
+        if (tref.type) {
             ref.type = tref.type;
-        else if (tref.unit) {
+            if (!ref.type->isCreatable()) 
+                COMPILE_EXCEPTION(parserRef->refObjects.first(), QCoreApplication::translate("QDeclarativeCompiler", "Element is not creatable."));
+        } else if (tref.unit) {
             ref.component = tref.unit->toComponent(engine);
 
             if (ref.component->isError()) {
@@ -635,6 +633,37 @@ void QDeclarativeCompiler::compileTree(Object *tree)
         init.init.compiledBinding = output->indexForByteArray(compileState.compiledBindingData);
     output->bytecode << init;
 
+    // Build global import scripts
+    QHash<QString, Object::ScriptBlock> importedScripts;
+    QStringList importedScriptIndexes;
+
+    for (int ii = 0; ii < unit->scripts.count(); ++ii) {
+        QString scriptCode = QString::fromUtf8(unit->scripts.at(ii).resource->data);
+        Object::ScriptBlock::Pragmas pragmas = QDeclarativeScriptParser::extractPragmas(scriptCode);
+
+        if (!scriptCode.isEmpty()) {
+            Object::ScriptBlock &scriptBlock = importedScripts[unit->scripts.at(ii).qualifier];
+
+            scriptBlock.codes.append(scriptCode);
+            scriptBlock.lineNumbers.append(1);
+            scriptBlock.files.append(unit->scripts.at(ii).resource->url);
+            scriptBlock.pragmas.append(pragmas);
+        }
+    }
+
+    for (QHash<QString, Object::ScriptBlock>::Iterator iter = importedScripts.begin(); 
+         iter != importedScripts.end(); ++iter) {
+
+        importedScriptIndexes.append(iter.key());
+
+        QDeclarativeInstruction import;
+        import.type = QDeclarativeInstruction::StoreImportedScript;
+        import.line = 0;
+        import.storeScript.value = output->scripts.count();
+        output->scripts << *iter;
+        output->bytecode << import;
+    }
+
     genObject(tree);
 
     QDeclarativeInstruction def;
@@ -643,7 +672,13 @@ void QDeclarativeCompiler::compileTree(Object *tree)
     output->bytecode << def;
 
     output->imports = unit->imports;
-    output->importCache = output->imports.cache(engine);
+
+    output->importCache = new QDeclarativeTypeNameCache(engine);
+
+    for (int ii = 0; ii < importedScriptIndexes.count(); ++ii) 
+        output->importCache->add(importedScriptIndexes.at(ii), ii);
+
+    output->imports.cache(output->importCache, engine);
 
     Q_ASSERT(tree->metatype);
 
@@ -823,7 +858,9 @@ bool QDeclarativeCompiler::buildObject(Object *obj, const BindingContext &ctxt)
     if (isCustomParser && !customProps.isEmpty()) {
         QDeclarativeCustomParser *cp = output->types.at(obj->type).type->customParser();
         cp->clearErrors();
+        cp->compiler = this;
         obj->custom = cp->compile(customProps);
+        cp->compiler = 0;
         foreach (QDeclarativeError err, cp->errors()) {
             err.setUrl(output->url);
             exceptions << err;
@@ -1153,6 +1190,8 @@ bool QDeclarativeCompiler::buildComponent(QDeclarativeParser::Object *obj,
 
 bool QDeclarativeCompiler::buildScript(QDeclarativeParser::Object *obj, QDeclarativeParser::Object *script)
 {
+    qWarning().nospace() << qPrintable(output->url.toString()) << ":" << obj->location.start.line << ":" << obj->location.start.column << ": Script blocks have been deprecated.  Support will be removed entirely shortly.";
+
     Object::ScriptBlock scriptBlock;
 
     if (script->properties.count() == 1 && 
@@ -1184,6 +1223,7 @@ bool QDeclarativeCompiler::buildScript(QDeclarativeParser::Object *obj, QDeclara
                 scriptBlock.codes.append(scriptCode);
                 scriptBlock.files.append(sourceUrl);
                 scriptBlock.lineNumbers.append(lineNumber);
+                scriptBlock.pragmas.append(Object::ScriptBlock::None);
             }
         }
 
@@ -1226,6 +1266,7 @@ bool QDeclarativeCompiler::buildScript(QDeclarativeParser::Object *obj, QDeclara
             scriptBlock.codes.append(scriptCode);
             scriptBlock.files.append(sourceUrl);
             scriptBlock.lineNumbers.append(lineNumber);
+            scriptBlock.pragmas.append(Object::ScriptBlock::None);
         }
     }
 
@@ -1327,7 +1368,6 @@ bool QDeclarativeCompiler::buildSignal(QDeclarativeParser::Property *prop, QDecl
                                        const BindingContext &ctxt)
 {
     Q_ASSERT(obj->metaObject());
-    Q_ASSERT(!prop->isEmpty());
 
     QByteArray name = prop->name;
     Q_ASSERT(name.startsWith("on"));
@@ -1346,7 +1386,7 @@ bool QDeclarativeCompiler::buildSignal(QDeclarativeParser::Property *prop, QDecl
     }  else {
 
         if (prop->value || prop->values.count() != 1)
-            COMPILE_EXCEPTION(prop, QCoreApplication::translate("QDeclarativeCompiler","Incorrectly specified signal"));
+            COMPILE_EXCEPTION(prop, QCoreApplication::translate("QDeclarativeCompiler","Incorrectly specified signal assignment"));
 
         prop->index = sigIdx;
         obj->addSignalProperty(prop);
@@ -1709,16 +1749,6 @@ bool QDeclarativeCompiler::buildIdProperty(QDeclarativeParser::Property *prop,
 
     COMPILE_CHECK(checkValidId(idValue, val));
 
-    // We disallow id's that conflict with import prefixes and types
-    QDeclarativeEnginePrivate::ImportedNamespace *ns = 0;
-    QDeclarativeType *type = 0;
-    QDeclarativeEnginePrivate::get(engine)->resolveType(unit->imports, val.toUtf8(), 
-                                               &type, 0, 0, 0, &ns);
-    if (type)
-        COMPILE_EXCEPTION(idValue, QCoreApplication::translate("QDeclarativeCompiler","id conflicts with type name"));
-    if (ns)
-        COMPILE_EXCEPTION(idValue, QCoreApplication::translate("QDeclarativeCompiler","id conflicts with namespace prefix"));
-
     if (compileState.ids.contains(val))
         COMPILE_EXCEPTION(prop, QCoreApplication::translate("QDeclarativeCompiler","id is not unique"));
 
@@ -1848,6 +1878,7 @@ bool QDeclarativeCompiler::buildValueTypeProperty(QObject *type,
         QMetaProperty p = type->metaObject()->property(idx);
         prop->index = idx;
         prop->type = p.userType();
+        prop->isValueTypeSubProperty = true;
 
         if (prop->value)
             COMPILE_EXCEPTION(prop, QCoreApplication::translate("QDeclarativeCompiler","Property assignment expected"));
@@ -2099,7 +2130,7 @@ bool QDeclarativeCompiler::buildPropertyOnAssignment(QDeclarativeParser::Propert
             buildDynamicMeta(baseObj, ForceCreation);
         v->type = isPropertyValue ? Value::ValueSource : Value::ValueInterceptor;
     } else {
-        COMPILE_EXCEPTION(v, QCoreApplication::translate("QDeclarativeCompiler","\"%1\" cannot operate on \"%2\"").arg(v->object->typeName.constData()).arg(prop->name.constData()));
+        COMPILE_EXCEPTION(v, QCoreApplication::translate("QDeclarativeCompiler","\"%1\" cannot operate on \"%2\"").arg(QString::fromUtf8(v->object->typeName)).arg(QString::fromUtf8(prop->name.constData())));
     }
 
     return true;
@@ -2181,6 +2212,27 @@ bool QDeclarativeCompiler::testQualifiedEnumAssignment(const QMetaProperty &prop
     return true;
 }
 
+// Similar logic to above, but not knowing target property.
+int QDeclarativeCompiler::evaluateEnum(const QByteArray& script) const
+{
+    int dot = script.indexOf('.');
+    if (dot > 0) {
+        QDeclarativeType *type = 0;
+        QDeclarativeEnginePrivate::get(engine)->resolveType(unit->imports, script.left(dot), &type, 0, 0, 0, 0);
+        if (!type)
+            return -1;
+        const QMetaObject *mo = type->metaObject();
+        const char *key = script.constData() + dot+1;
+        int i = mo->enumeratorCount();
+        while (i--) {
+            int v = mo->enumerator(i).keyToValue(key);
+            if (v >= 0)
+                return v;
+        }
+    }
+    return -1;
+}
+
 // Ensures that the dynamic meta specification on obj is valid
 bool QDeclarativeCompiler::checkDynamicMeta(QDeclarativeParser::Object *obj)
 {
@@ -2202,6 +2254,8 @@ bool QDeclarativeCompiler::checkDynamicMeta(QDeclarativeParser::Object *obj)
         if (propNames.contains(prop.name))
             COMPILE_EXCEPTION(&prop, QCoreApplication::translate("QDeclarativeCompiler","Duplicate property name"));
 
+        if (QString::fromUtf8(prop.name).at(0).isUpper()) 
+            COMPILE_EXCEPTION(&prop, QCoreApplication::translate("QDeclarativeCompiler","Property names cannot begin with an upper case letter"));
         propNames.insert(prop.name);
     }
 
@@ -2209,12 +2263,16 @@ bool QDeclarativeCompiler::checkDynamicMeta(QDeclarativeParser::Object *obj)
         QByteArray name = obj->dynamicSignals.at(ii).name;
         if (methodNames.contains(name))
             COMPILE_EXCEPTION(obj, QCoreApplication::translate("QDeclarativeCompiler","Duplicate signal name"));
+        if (QString::fromUtf8(name).at(0).isUpper()) 
+            COMPILE_EXCEPTION(obj, QCoreApplication::translate("QDeclarativeCompiler","Signal names cannot begin with an upper case letter"));
         methodNames.insert(name);
     }
     for (int ii = 0; ii < obj->dynamicSlots.count(); ++ii) {
         QByteArray name = obj->dynamicSlots.at(ii).name;
         if (methodNames.contains(name))
             COMPILE_EXCEPTION(obj, QCoreApplication::translate("QDeclarativeCompiler","Duplicate method name"));
+        if (QString::fromUtf8(name).at(0).isUpper()) 
+            COMPILE_EXCEPTION(obj, QCoreApplication::translate("QDeclarativeCompiler","Method names cannot begin with an upper case letter"));
         methodNames.insert(name);
     }
 
@@ -2704,7 +2762,9 @@ bool QDeclarativeCompiler::completeComponentBuild()
 
     QDeclarativeBindingCompiler bindingCompiler;
 
-    for (QHash<QDeclarativeParser::Value*,BindingReference>::Iterator iter = compileState.bindings.begin(); iter != compileState.bindings.end(); ++iter) {
+    for (QHash<QDeclarativeParser::Value*,BindingReference>::Iterator iter = compileState.bindings.begin(); 
+         iter != compileState.bindings.end(); ++iter) {
+
         BindingReference &binding = *iter;
 
         expr.context = binding.bindingContext.object;
@@ -2712,18 +2772,13 @@ bool QDeclarativeCompiler::completeComponentBuild()
         expr.expression = binding.expression;
         expr.imports = unit->imports;
 
-        if (qmlExperimental()) {
-            int index = bindingCompiler.compile(expr, QDeclarativeEnginePrivate::get(engine));
-            if (index != -1) {
-                qWarning() << "Accepted for optimization:" << qPrintable(expr.expression.asScript());
-                binding.dataType = BindingReference::Experimental;
-                binding.compiledIndex = index;
-                componentStat.optimizedBindings++;
-                continue;
-            } else {
-                qWarning() << "Rejected for optimization:" << qPrintable(expr.expression.asScript());
-            }
-        }
+        int index = bindingCompiler.compile(expr, QDeclarativeEnginePrivate::get(engine));
+        if (index != -1) {
+            binding.dataType = BindingReference::Experimental;
+            binding.compiledIndex = index;
+            componentStat.optimizedBindings++;
+            continue;
+        } 
 
         binding.dataType = BindingReference::QtScript;
 
@@ -2760,7 +2815,8 @@ bool QDeclarativeCompiler::completeComponentBuild()
 
     if (bindingCompiler.isValid()) {
         compileState.compiledBindingData = bindingCompiler.program();
-        QDeclarativeBindingCompiler::dump(compileState.compiledBindingData);
+        if (bindingsDump()) 
+            QDeclarativeBindingCompiler::dump(compileState.compiledBindingData);
     }
 
     saveComponentState();

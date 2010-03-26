@@ -191,10 +191,15 @@ public:
 
     static QDeclarativeListViewAttached *qmlAttachedProperties(QObject *);
 
+    enum PositionMode { Beginning, Center, End, Visible, Contain };
+    Q_ENUMS(PositionMode);
+
+    Q_INVOKABLE void positionViewAtIndex(int index, int mode);
+    Q_INVOKABLE int indexAt(int x, int y) const;
+
 public Q_SLOTS:
     void incrementCurrentIndex();
     void decrementCurrentIndex();
-    void positionViewAtIndex(int index);
 
 Q_SIGNALS:
     void countChanged();
@@ -219,6 +224,7 @@ Q_SIGNALS:
     void footerChanged();
 
 protected:
+    virtual bool event(QEvent *event);
     virtual void viewportMoved();
     virtual qreal minYExtent() const;
     virtual qreal maxYExtent() const;
@@ -300,10 +306,10 @@ Q_SIGNALS:
 
 public:
     QDeclarativeListView *m_view;
-    bool m_isCurrent;
     mutable QString m_section;
     QString m_prevSection;
-    bool m_delayRemove;
+    bool m_isCurrent : 1;
+    bool m_delayRemove : 1;
 };
 
 

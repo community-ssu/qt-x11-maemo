@@ -49,8 +49,6 @@
 #include <QtCore/qdebug.h>
 #include <QtCore/qmutex.h>
 
-#include <QtNetwork/qnetworkinterface.h>
-
 QT_BEGIN_NAMESPACE
 
 static QBearerEngineImpl *getEngineFromId(const QString &id)
@@ -100,9 +98,6 @@ void QNetworkSessionManagerPrivate::forceSessionClose(const QNetworkConfiguratio
 
 void QNetworkSessionPrivateImpl::syncStateWithInterface()
 {
-    connect(&manager, SIGNAL(updateCompleted()), this, SLOT(networkConfigurationsChanged()));
-    connect(&manager, SIGNAL(configurationChanged(QNetworkConfiguration)),
-            this, SLOT(configurationChanged(QNetworkConfiguration)));
     connect(sessionManager(), SIGNAL(forcedSessionClose(QNetworkConfiguration)),
             this, SLOT(forcedSessionClose(QNetworkConfiguration)));
 
@@ -119,6 +114,10 @@ void QNetworkSessionPrivateImpl::syncStateWithInterface()
         activeConfig = publicConfig;
         engine = getEngineFromId(activeConfig.identifier());
         if (engine) {
+            qRegisterMetaType<QNetworkConfigurationPrivatePointer>("QNetworkConfigurationPrivatePointer");
+            connect(engine, SIGNAL(configurationChanged(QNetworkConfigurationPrivatePointer)),
+                    this, SLOT(configurationChanged(QNetworkConfigurationPrivatePointer)),
+                    Qt::QueuedConnection);
             connect(engine, SIGNAL(connectionError(QString,QBearerEngineImpl::ConnectionError)),
                     this, SLOT(connectionError(QString,QBearerEngineImpl::ConnectionError)),
                     Qt::QueuedConnection);
@@ -203,24 +202,21 @@ void QNetworkSessionPrivateImpl::stop()
 
 void QNetworkSessionPrivateImpl::migrate()
 {
-    qWarning("This platform does not support roaming (%s).", Q_FUNC_INFO);
 }
 
 void QNetworkSessionPrivateImpl::accept()
 {
-    qWarning("This platform does not support roaming (%s).", Q_FUNC_INFO);
 }
 
 void QNetworkSessionPrivateImpl::ignore()
 {
-    qWarning("This platform does not support roaming (%s).", Q_FUNC_INFO);
 }
 
 void QNetworkSessionPrivateImpl::reject()
 {
-    qWarning("This platform does not support roaming (%s).", Q_FUNC_INFO);
 }
 
+#ifndef QT_NO_NETWORKINTERFACE
 QNetworkInterface QNetworkSessionPrivateImpl::currentInterface() const
 {
     if (!publicConfig.isValid() || !engine || state != QNetworkSession::Connected)
@@ -232,14 +228,39 @@ QNetworkInterface QNetworkSessionPrivateImpl::currentInterface() const
         return QNetworkInterface();
     return QNetworkInterface::interfaceFromName(interface);
 }
+#endif
 
-QVariant QNetworkSessionPrivateImpl::sessionProperty(const QString& /*key*/) const
+QVariant QNetworkSessionPrivateImpl::sessionProperty(const QString &key) const
 {
+    if (key == QLatin1String("AutoCloseSessionTimeout")) {
+        if (engine && engine->requiresPolling() &&
+            !(engine->capabilities() & QNetworkConfigurationManager::CanStartAndStopInterfaces)) {
+            if (sessionTimeout >= 0)
+                return sessionTimeout * 10000;
+            else
+                return -1;
+        }
+    }
+
     return QVariant();
 }
 
-void QNetworkSessionPrivateImpl::setSessionProperty(const QString& /*key*/, const QVariant& /*value*/)
+void QNetworkSessionPrivateImpl::setSessionProperty(const QString &key, const QVariant &value)
 {
+    if (key == QLatin1String("AutoCloseSessionTimeout")) {
+        if (engine && engine->requiresPolling() &&
+            !(engine->capabilities() & QNetworkConfigurationManager::CanStartAndStopInterfaces)) {
+            int timeout = value.toInt();
+            if (timeout >= 0) {
+                connect(engine, SIGNAL(updateCompleted()),
+                        this, SLOT(decrementTimeout()), Qt::UniqueConnection);
+                sessionTimeout = timeout / 10000;   // convert to poll intervals
+            } else {
+                disconnect(engine, SIGNAL(updateCompleted()), this, SLOT(decrementTimeout()));
+                sessionTimeout = -1;
+            }
+        }
+    }
 }
 
 QString QNetworkSessionPrivateImpl::errorString() const
@@ -364,12 +385,14 @@ void QNetworkSessionPrivateImpl::networkConfigurationsChanged()
     startTime = engine->startTime(activeConfig.identifier());
 }
 
-void QNetworkSessionPrivateImpl::configurationChanged(const QNetworkConfiguration &config)
+void QNetworkSessionPrivateImpl::configurationChanged(QNetworkConfigurationPrivatePointer config)
 {
-    if (serviceConfig.isValid() && (config == serviceConfig || config == activeConfig))
+    if (serviceConfig.isValid() &&
+        (config->id == serviceConfig.identifier() || config->id == activeConfig.identifier())) {
         updateStateFromServiceNetwork();
-    else if (config == activeConfig)
+    } else if (config->id == activeConfig.identifier()) {
         updateStateFromActiveConfig();
+    }
 }
 
 void QNetworkSessionPrivateImpl::forcedSessionClose(const QNetworkConfiguration &config)
@@ -403,6 +426,15 @@ void QNetworkSessionPrivateImpl::connectionError(const QString &id,
         }
 
         emit QNetworkSessionPrivate::error(lastError);
+    }
+}
+
+void QNetworkSessionPrivateImpl::decrementTimeout()
+{
+    if (--sessionTimeout <= 0) {
+        disconnect(engine, SIGNAL(updateCompleted()), this, SLOT(decrementTimeout()));
+        sessionTimeout = -1;
+        close();
     }
 }
 

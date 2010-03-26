@@ -121,6 +121,7 @@ private slots:
     void castWithPrototypeChain();
     void castWithMultipleInheritance();
     void collectGarbage();
+    void reportAdditionalMemoryCost();
     void gcWithNestedDataStructure();
     void processEventsWhileRunning();
     void throwErrorFromProcessEvents();
@@ -150,11 +151,13 @@ private slots:
     void getSetAgent();
     void reentrancy();
     void incDecNonObjectProperty();
+    void installTranslatorFunctions_data();
     void installTranslatorFunctions();
     void functionScopes();
     void nativeFunctionScopes();
     void evaluateProgram();
     void collectGarbageAfterConnect();
+    void promoteThisObjectToQObjectInConstructor();
 
     void qRegExpInport_data();
     void qRegExpInport();
@@ -2367,6 +2370,24 @@ void tst_QScriptEngine::collectGarbage()
     QVERIFY(ptr == 0);
 }
 
+void tst_QScriptEngine::reportAdditionalMemoryCost()
+{
+    QScriptEngine eng;
+    for (int x = 0; x < 1000; ++x) {
+        eng.reportAdditionalMemoryCost(0);
+        eng.reportAdditionalMemoryCost(10);
+        eng.reportAdditionalMemoryCost(1000);
+        eng.reportAdditionalMemoryCost(10000);
+        eng.reportAdditionalMemoryCost(100000);
+        eng.reportAdditionalMemoryCost(1000000);
+        eng.reportAdditionalMemoryCost(10000000);
+        eng.reportAdditionalMemoryCost(-1);
+        eng.reportAdditionalMemoryCost(-1000);
+        QScriptValue obj = eng.newObject();
+        eng.collectGarbage();
+    }
+}
+
 void tst_QScriptEngine::gcWithNestedDataStructure()
 {
     QScriptEngine eng;
@@ -4118,22 +4139,46 @@ void tst_QScriptEngine:: incDecNonObjectProperty()
     }
 }
 
+void tst_QScriptEngine::installTranslatorFunctions_data()
+{
+    QTest::addColumn<bool>("useCustomGlobalObject");
+
+    QTest::newRow("Default global object") << false;
+    QTest::newRow("Custom global object") << true;
+}
+
 void tst_QScriptEngine::installTranslatorFunctions()
 {
+    QFETCH(bool, useCustomGlobalObject);
+
     QScriptEngine eng;
-    QScriptValue global = eng.globalObject();
+    QScriptValue globalOrig = eng.globalObject();
+    QScriptValue global;
+    if (useCustomGlobalObject) {
+        global = eng.newObject();
+        eng.setGlobalObject(global);
+    } else {
+        global = globalOrig;
+    }
     QVERIFY(!global.property("qsTranslate").isValid());
     QVERIFY(!global.property("QT_TRANSLATE_NOOP").isValid());
     QVERIFY(!global.property("qsTr").isValid());
     QVERIFY(!global.property("QT_TR_NOOP").isValid());
-    QVERIFY(!global.property("String").property("prototype").property("arg").isValid());
+    QVERIFY(!globalOrig.property("String").property("prototype").property("arg").isValid());
 
     eng.installTranslatorFunctions();
     QVERIFY(global.property("qsTranslate").isFunction());
     QVERIFY(global.property("QT_TRANSLATE_NOOP").isFunction());
     QVERIFY(global.property("qsTr").isFunction());
     QVERIFY(global.property("QT_TR_NOOP").isFunction());
-    QVERIFY(global.property("String").property("prototype").property("arg").isFunction());
+    QVERIFY(globalOrig.property("String").property("prototype").property("arg").isFunction());
+
+    if (useCustomGlobalObject) {
+        QVERIFY(!globalOrig.property("qsTranslate").isValid());
+        QVERIFY(!globalOrig.property("QT_TRANSLATE_NOOP").isValid());
+        QVERIFY(!globalOrig.property("qsTr").isValid());
+        QVERIFY(!globalOrig.property("QT_TR_NOOP").isValid());
+    }
 
     {
         QScriptValue ret = eng.evaluate("qsTr('foo')");
@@ -4459,6 +4504,25 @@ void tst_QScriptEngine::collectGarbageAfterConnect()
     engine.evaluate("widget = null;");
     collectGarbage_helper(engine);
     QVERIFY(widget == 0);
+}
+
+static QScriptValue constructQObjectFromThisObject(QScriptContext *ctx, QScriptEngine *eng)
+{
+    Q_ASSERT(ctx->isCalledAsConstructor());
+    return eng->newQObject(ctx->thisObject(), new QObject, QScriptEngine::ScriptOwnership);
+}
+
+void tst_QScriptEngine::promoteThisObjectToQObjectInConstructor()
+{
+    QScriptEngine engine;
+    QScriptValue ctor = engine.newFunction(constructQObjectFromThisObject);
+    engine.globalObject().setProperty("Ctor", ctor);
+    QScriptValue object = engine.evaluate("new Ctor");
+    QVERIFY(!object.isError());
+    QVERIFY(object.isQObject());
+    QVERIFY(object.toQObject() != 0);
+    QVERIFY(object.property("objectName").isString());
+    QVERIFY(object.property("deleteLater").isFunction());
 }
 
 static QRegExp minimal(QRegExp r) { r.setMinimal(true); return r; }

@@ -703,6 +703,7 @@ public:
     void setNetWmWindowTypes();
     void x11UpdateIsOpaque();
     bool isBackgroundInherited() const;
+    void updateX11AcceptFocus();
 #  if defined(Q_WS_MAEMO_5)
     void maemo5ShowProgressIndicator(bool on);
 #  endif

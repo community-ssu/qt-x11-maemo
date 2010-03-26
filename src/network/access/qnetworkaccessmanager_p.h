@@ -58,6 +58,7 @@
 #include "qnetworkaccessbackend_p.h"
 #include "private/qobject_p.h"
 #include "QtNetwork/qnetworkproxy.h"
+#include "QtNetwork/qnetworksession.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -65,7 +66,6 @@ class QAuthenticator;
 class QAbstractNetworkCache;
 class QNetworkAuthenticationCredential;
 class QNetworkCookieJar;
-class QNetworkSession;
 
 class QNetworkAccessManagerPrivate: public QObjectPrivate
 {
@@ -76,7 +76,8 @@ public:
           proxyFactory(0),
 #endif
           networkSession(0),
-          networkAccessEnabled(true),
+          networkAccessible(QNetworkAccessManager::Accessible),
+          online(false),
           initializeSession(true),
           cookieJarCreated(false)
     { }
@@ -105,9 +106,11 @@ public:
 
     void createSession(const QNetworkConfiguration &config);
 
+    void _q_networkSessionClosed();
     void _q_networkSessionNewConfigurationActivated();
     void _q_networkSessionPreferredConfigurationChanged(const QNetworkConfiguration &config,
                                                         bool isSeamless);
+    void _q_networkSessionStateChanged(QNetworkSession::State state);
 
     // this is the cache for storing downloaded files
     QAbstractNetworkCache *networkCache;
@@ -121,7 +124,9 @@ public:
 #endif
 
     QNetworkSession *networkSession;
-    bool networkAccessEnabled;
+    QString networkConfiguration;
+    QNetworkAccessManager::NetworkAccessibility networkAccessible;
+    bool online;
     bool initializeSession;
 
     bool cookieJarCreated;

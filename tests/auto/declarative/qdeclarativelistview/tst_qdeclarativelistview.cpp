@@ -321,7 +321,7 @@ void tst_QDeclarativeListView::items()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -402,7 +402,7 @@ void tst_QDeclarativeListView::changed()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeFlickable *listview = findItem<QDeclarativeFlickable>(canvas->rootObject(), "list");
@@ -438,7 +438,7 @@ void tst_QDeclarativeListView::inserted()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -450,7 +450,7 @@ void tst_QDeclarativeListView::inserted()
     model.insertItem(1, "Will", "9876");
 
     // let transitions settle.
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     QCOMPARE(viewport->childItems().count(), model.count()+1); // assumes all are visible, +1 for the (default) highlight item
 
@@ -470,7 +470,7 @@ void tst_QDeclarativeListView::inserted()
     model.insertItem(0, "Foo", "1111"); // zero index, and current item
 
     // let transitions settle.
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     QCOMPARE(viewport->childItems().count(), model.count()+1); // assumes all are visible, +1 for the (default) highlight item
 
@@ -491,14 +491,14 @@ void tst_QDeclarativeListView::inserted()
 
     for (int i = model.count(); i < 30; ++i)
         model.insertItem(i, "Hello", QString::number(i));
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     listview->setContentY(80);
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     // Insert item outside visible area
     model.insertItem(1, "Hello", "1324");
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     QVERIFY(listview->contentY() == 80);
 
@@ -531,7 +531,7 @@ void tst_QDeclarativeListView::removed(bool animated)
     testObject->setAnimate(animated);
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -543,7 +543,7 @@ void tst_QDeclarativeListView::removed(bool animated)
     model.removeItem(1);
 
     // let transitions settle.
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     QDeclarativeText *name = findItem<QDeclarativeText>(viewport, "textName", 1);
     QVERIFY(name != 0);
@@ -565,7 +565,7 @@ void tst_QDeclarativeListView::removed(bool animated)
     model.removeItem(0);  // post: top item starts at 20
 
     // let transitions settle.
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     name = findItem<QDeclarativeText>(viewport, "textName", 0);
     QVERIFY(name != 0);
@@ -586,7 +586,7 @@ void tst_QDeclarativeListView::removed(bool animated)
     // Remove items not visible
     model.removeItem(18);
     // let transitions settle.
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     // Confirm items positioned correctly
     itemCount = findItems<QDeclarativeItem>(viewport, "wrapper").count();
@@ -603,7 +603,7 @@ void tst_QDeclarativeListView::removed(bool animated)
 
     model.removeItem(1); // post: top item will be at 40
     // let transitions settle.
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     // Confirm items positioned correctly
     for (int i = 2; i < 18; ++i) {
@@ -617,14 +617,14 @@ void tst_QDeclarativeListView::removed(bool animated)
     QVERIFY(listview->currentIndex() == 9);
     QDeclarativeItem *oldCurrent = listview->currentItem();
     model.removeItem(9);
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     QCOMPARE(listview->currentIndex(), 9);
     QVERIFY(listview->currentItem() != oldCurrent);
 
     listview->setContentY(40); // That's the top now
     // let transitions settle.
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     // Confirm items positioned correctly
     itemCount = findItems<QDeclarativeItem>(viewport, "wrapper").count();
@@ -637,20 +637,20 @@ void tst_QDeclarativeListView::removed(bool animated)
 
     // remove current item beyond visible items.
     listview->setCurrentIndex(20);
-    QTest::qWait(500);
+    QTest::qWait(300);
     listview->setContentY(40);
     model.removeItem(20);
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     QCOMPARE(listview->currentIndex(), 20);
     QVERIFY(listview->currentItem() != 0);
 
     // remove item before current, but visible
     listview->setCurrentIndex(8);
-    QTest::qWait(500);
+    QTest::qWait(300);
     oldCurrent = listview->currentItem();
     model.removeItem(6);
-    QTest::qWait(500);
+    QTest::qWait(300);
 
     QCOMPARE(listview->currentIndex(), 7);
     QVERIFY(listview->currentItem() == oldCurrent);
@@ -673,7 +673,7 @@ void tst_QDeclarativeListView::clear()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -710,7 +710,7 @@ void tst_QDeclarativeListView::moved()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -851,7 +851,7 @@ void tst_QDeclarativeListView::spacing()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -925,6 +925,7 @@ void tst_QDeclarativeListView::sections()
 
     // Remove section boundary
     model.removeItem(5);
+    QTest::qWait(100);
 
     // New section header created
     QDeclarativeItem *item = findItem<QDeclarativeItem>(viewport, "wrapper", 5);
@@ -932,6 +933,7 @@ void tst_QDeclarativeListView::sections()
     QCOMPARE(item->height(), 40.0);
 
     model.insertItem(3, "New Item", "0");
+    QTest::qWait(100);
 
     // Section header moved
     item = findItem<QDeclarativeItem>(viewport, "wrapper", 5);
@@ -944,6 +946,7 @@ void tst_QDeclarativeListView::sections()
 
     // insert item which will become a section header
     model.insertItem(6, "Replace header", "1");
+    QTest::qWait(100);
 
     item = findItem<QDeclarativeItem>(viewport, "wrapper", 6);
     QVERIFY(item);
@@ -1029,21 +1032,19 @@ void tst_QDeclarativeListView::currentIndex()
 
     // Test keys
     canvas->show();
+    qApp->setActiveWindow(canvas);
+#ifdef Q_WS_X11
+    // to be safe and avoid failing setFocus with window managers
+    qt_x11_wait_for_window_manager(canvas);
+#endif
+    QVERIFY(canvas->hasFocus());
+    QVERIFY(canvas->scene()->hasFocus());
     qApp->processEvents();
 
-    QEvent wa(QEvent::WindowActivate);
-    QApplication::sendEvent(canvas, &wa);
-    QFocusEvent fe(QEvent::FocusIn);
-    QApplication::sendEvent(canvas, &fe);
-
-    QKeyEvent key(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier, "", false, 1);
-    QApplication::sendEvent(canvas, &key);
-    QVERIFY(key.isAccepted());
+    QTest::keyClick(canvas, Qt::Key_Down);
     QCOMPARE(listview->currentIndex(), 1);
 
-    key = QKeyEvent(QEvent::KeyPress, Qt::Key_Up, Qt::NoModifier, "", false, 1);
-    QApplication::sendEvent(canvas, &key);
-    QVERIFY(key.isAccepted());
+    QTest::keyClick(canvas, Qt::Key_Up);
     QCOMPARE(listview->currentIndex(), 0);
 
     // turn off auto highlight
@@ -1057,6 +1058,11 @@ void tst_QDeclarativeListView::currentIndex()
     listview->setCurrentIndex(4);
     QTest::qWait(500);
     QCOMPARE(listview->highlightItem()->y(), hlPos);
+
+    // insert item before currentIndex
+    listview->setCurrentIndex(28);
+    model.insertItem(0, "Foo", "1111");
+    QCOMPARE(canvas->rootObject()->property("current").toInt(), 29);
 
     delete canvas;
 }
@@ -1116,7 +1122,7 @@ void tst_QDeclarativeListView::cacheBuffer()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -1168,7 +1174,7 @@ void tst_QDeclarativeListView::positionViewAtIndex()
     TestObject *testObject = new TestObject;
     ctxt->setContextProperty("testObject", testObject);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/listviewtest.qml"));
     qApp->processEvents();
 
     QDeclarativeListView *listview = findItem<QDeclarativeListView>(canvas->rootObject(), "list");
@@ -1187,7 +1193,7 @@ void tst_QDeclarativeListView::positionViewAtIndex()
     }
 
     // Position on a currently visible item
-    listview->positionViewAtIndex(3);
+    listview->positionViewAtIndex(3, QDeclarativeListView::Beginning);
     QCOMPARE(listview->contentY(), 60.);
 
     // Confirm items positioned correctly
@@ -1200,7 +1206,7 @@ void tst_QDeclarativeListView::positionViewAtIndex()
     }
 
     // Position on an item beyond the visible items
-    listview->positionViewAtIndex(22);
+    listview->positionViewAtIndex(22, QDeclarativeListView::Beginning);
     QCOMPARE(listview->contentY(), 440.);
 
     // Confirm items positioned correctly
@@ -1213,7 +1219,7 @@ void tst_QDeclarativeListView::positionViewAtIndex()
     }
 
     // Position on an item that would leave empty space if positioned at the top
-    listview->positionViewAtIndex(28);
+    listview->positionViewAtIndex(28, QDeclarativeListView::Beginning);
     QCOMPARE(listview->contentY(), 480.);
 
     // Confirm items positioned correctly
@@ -1226,7 +1232,7 @@ void tst_QDeclarativeListView::positionViewAtIndex()
     }
 
     // Position at the beginning again
-    listview->positionViewAtIndex(0);
+    listview->positionViewAtIndex(0, QDeclarativeListView::Beginning);
     QCOMPARE(listview->contentY(), 0.);
 
     // Confirm items positioned correctly
@@ -1237,6 +1243,47 @@ void tst_QDeclarativeListView::positionViewAtIndex()
         QVERIFY(item);
         QCOMPARE(item->y(), i*20.);
     }
+
+    // Position at End
+    listview->positionViewAtIndex(20, QDeclarativeListView::End);
+    QCOMPARE(listview->contentY(), 100.);
+
+    // Position in Center
+    listview->positionViewAtIndex(15, QDeclarativeListView::Center);
+    QCOMPARE(listview->contentY(), 150.);
+
+    // Ensure at least partially visible
+    listview->positionViewAtIndex(15, QDeclarativeListView::Visible);
+    QCOMPARE(listview->contentY(), 150.);
+
+    listview->setContentY(302);
+    listview->positionViewAtIndex(15, QDeclarativeListView::Visible);
+    QCOMPARE(listview->contentY(), 302.);
+
+    listview->setContentY(320);
+    listview->positionViewAtIndex(15, QDeclarativeListView::Visible);
+    QCOMPARE(listview->contentY(), 300.);
+
+    listview->setContentY(85);
+    listview->positionViewAtIndex(20, QDeclarativeListView::Visible);
+    QCOMPARE(listview->contentY(), 85.);
+
+    listview->setContentY(75);
+    listview->positionViewAtIndex(20, QDeclarativeListView::Visible);
+    QCOMPARE(listview->contentY(), 100.);
+
+    // Ensure completely visible
+    listview->setContentY(120);
+    listview->positionViewAtIndex(20, QDeclarativeListView::Contain);
+    QCOMPARE(listview->contentY(), 120.);
+
+    listview->setContentY(302);
+    listview->positionViewAtIndex(15, QDeclarativeListView::Contain);
+    QCOMPARE(listview->contentY(), 300.);
+
+    listview->setContentY(85);
+    listview->positionViewAtIndex(20, QDeclarativeListView::Contain);
+    QCOMPARE(listview->contentY(), 100.);
 
     delete canvas;
 }
@@ -1286,7 +1333,7 @@ void tst_QDeclarativeListView::propertyChanges()
 {
     QDeclarativeView *canvas = createView();
     QVERIFY(canvas);
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/propertychanges.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/propertychangestest.qml"));
 
     QDeclarativeListView *listView = canvas->rootObject()->findChild<QDeclarativeListView*>("listView");
     QVERIFY(listView);
@@ -1354,7 +1401,7 @@ void tst_QDeclarativeListView::componentChanges()
 {
     QDeclarativeView *canvas = createView();
     QVERIFY(canvas);
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/propertychanges.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/propertychangestest.qml"));
 
     QDeclarativeListView *listView = canvas->rootObject()->findChild<QDeclarativeListView*>("listView");
     QVERIFY(listView);
@@ -1402,7 +1449,7 @@ void tst_QDeclarativeListView::modelChanges()
 {
     QDeclarativeView *canvas = createView();
     QVERIFY(canvas);
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/propertychanges.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/propertychangestest.qml"));
 
     QDeclarativeListView *listView = canvas->rootObject()->findChild<QDeclarativeListView*>("listView");
     QVERIFY(listView);

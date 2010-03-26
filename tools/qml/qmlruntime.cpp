@@ -51,7 +51,6 @@
 #include <qdeclarativeengine.h>
 #include <qdeclarativenetworkaccessmanagerfactory.h>
 #include "qdeclarative.h"
-#include <private/qperformancelog_p_p.h>
 #include <private/qabstractanimation_p.h>
 #include <QAbstractAnimation>
 #include "deviceskin.h"
@@ -351,30 +350,10 @@ private:
 class NetworkAccessManagerFactory : public QDeclarativeNetworkAccessManagerFactory
 {
 public:
-    NetworkAccessManagerFactory() : cookieJar(0), cacheSize(0) {}
-    ~NetworkAccessManagerFactory() {
-        delete cookieJar;
-    }
+    NetworkAccessManagerFactory() : cacheSize(0) {}
+    ~NetworkAccessManagerFactory() {}
 
-    QNetworkAccessManager *create(QObject *parent) {
-        QMutexLocker lock(&mutex);
-        QNetworkAccessManager *manager = new QNetworkAccessManager(parent);
-        if (!cookieJar)
-            cookieJar = new PersistentCookieJar(0);
-        manager->setCookieJar(cookieJar);
-        cookieJar->setParent(0);
-        setupProxy(manager);
-        if (cacheSize > 0) {
-            QNetworkDiskCache *cache = new QNetworkDiskCache;
-            cache->setCacheDirectory(QDir::tempPath()+QLatin1String("/qml-duiviewer-network-cache"));
-            cache->setMaximumCacheSize(cacheSize);
-            manager->setCache(cache);
-        } else {
-            manager->setCache(0);
-        }
-        qDebug() << "created new network access manager for" << parent;
-        return manager;
-    }
+    QNetworkAccessManager *create(QObject *parent);
 
     void setupProxy(QNetworkAccessManager *nam)
     {
@@ -419,11 +398,41 @@ public:
         }
     }
 
-    PersistentCookieJar *cookieJar;
+    static PersistentCookieJar *cookieJar;
     QMutex mutex;
     int cacheSize;
 };
 
+PersistentCookieJar *NetworkAccessManagerFactory::cookieJar = 0;
+
+static void cleanup_cookieJar()
+{
+    delete NetworkAccessManagerFactory::cookieJar;
+    NetworkAccessManagerFactory::cookieJar = 0;
+}
+
+QNetworkAccessManager *NetworkAccessManagerFactory::create(QObject *parent)
+{
+    QMutexLocker lock(&mutex);
+    QNetworkAccessManager *manager = new QNetworkAccessManager(parent);
+    if (!cookieJar) {
+        qAddPostRoutine(cleanup_cookieJar);
+        cookieJar = new PersistentCookieJar(0);
+    }
+    manager->setCookieJar(cookieJar);
+    cookieJar->setParent(0);
+    setupProxy(manager);
+    if (cacheSize > 0) {
+        QNetworkDiskCache *cache = new QNetworkDiskCache;
+        cache->setCacheDirectory(QDir::tempPath()+QLatin1String("/qml-duiviewer-network-cache"));
+        cache->setMaximumCacheSize(cacheSize);
+        manager->setCache(cache);
+    } else {
+        manager->setCache(0);
+    }
+    qDebug() << "created new network access manager for" << parent;
+    return manager;
+}
 
 QString QDeclarativeViewer::getVideoFileName()
 {
@@ -1211,7 +1220,6 @@ void QDeclarativeViewer::keyPressEvent(QKeyEvent *event)
                  << "F5 - reload QML\n"
                  << "F6 - show object tree\n"
                  << "F7 - show timing\n"
-                 << "F8 - show performance (if available)\n"
                  << "F9 - toggle video recording\n"
                  << "F10 - toggle orientation\n"
                  << "device keys: 0=quit, 1..8=F1..F8"
@@ -1223,9 +1231,6 @@ void QDeclarativeViewer::keyPressEvent(QKeyEvent *event)
         takeSnapShot();
     } else if (event->key() == Qt::Key_F5 || (event->key() == Qt::Key_5 && devicemode)) {
         reload();
-    } else if (event->key() == Qt::Key_F8 || (event->key() == Qt::Key_8 && devicemode)) {
-        QPerformanceLog::displayData();
-        QPerformanceLog::clear();
     } else if (event->key() == Qt::Key_F9 || (event->key() == Qt::Key_9 && devicemode)) {
         toggleRecording();
     } else if (event->key() == Qt::Key_F10) {
@@ -1444,10 +1449,15 @@ void QDeclarativeViewer::setUseGL(bool useGL)
 #ifdef GL_SUPPORTED
     if (useGL) {
         QGLFormat format = QGLFormat::defaultFormat();
+#ifdef Q_WS_MAC
+        format.setSampleBuffers(true);
+#else
         format.setSampleBuffers(false);
+#endif
 
         QGLWidget *glWidget = new QGLWidget(format);
         glWidget->setAutoFillBackground(false);
+
         canvas->setViewport(glWidget);
     }
 #endif
@@ -1460,7 +1470,7 @@ void QDeclarativeViewer::setUseNativeFileBrowser(bool use)
 
 void QDeclarativeViewer::registerTypes()
 {
-    QML_REGISTER_TYPE(QDeclarativeViewer, 1, 0, Screen, Screen);
+    qmlRegisterType<Screen>("QDeclarativeViewer", 1, 0, "Screen");
 }
 
 QT_END_NAMESPACE

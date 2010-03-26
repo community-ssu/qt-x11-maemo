@@ -71,6 +71,7 @@ private slots:
     void pathview3();
     void path();
     void pathMoved();
+    void setCurrentIndex();
     void resetModel();
     void propertyChanges();
     void pathChanges();
@@ -207,11 +208,12 @@ void tst_QDeclarativePathView::items()
     model.addItem("Fred", "12345");
     model.addItem("John", "2345");
     model.addItem("Bob", "54321");
+    model.addItem("Bill", "4321");
 
     QDeclarativeContext *ctxt = canvas->rootContext();
     ctxt->setContextProperty("testModel", &model);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/pathview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/pathview0.qml"));
     qApp->processEvents();
 
     QDeclarativePathView *pathview = findItem<QDeclarativePathView>(canvas->rootObject(), "view");
@@ -260,7 +262,7 @@ void tst_QDeclarativePathView::pathview3()
     QVERIFY(obj->delegate() != 0);
     QVERIFY(obj->model() != QVariant());
     QCOMPARE(obj->currentIndex(), 0);
-    QCOMPARE(obj->offset(), 50.); // ???
+    QCOMPARE(obj->offset(), 0.5); // ???
     QCOMPARE(obj->snapPosition(), 0.5); // ???
     QCOMPARE(obj->dragMargin(), 24.);
     QCOMPARE(obj->count(), 8);
@@ -270,7 +272,7 @@ void tst_QDeclarativePathView::pathview3()
 void tst_QDeclarativePathView::path()
 {
     QDeclarativeEngine engine;
-    QDeclarativeComponent c(&engine, QUrl::fromLocalFile(SRCDIR "/data/path.qml"));
+    QDeclarativeComponent c(&engine, QUrl::fromLocalFile(SRCDIR "/data/pathtest.qml"));
     QDeclarativePath *obj = qobject_cast<QDeclarativePath*>(c.create());
 
     QVERIFY(obj != 0);
@@ -405,7 +407,7 @@ void tst_QDeclarativePathView::pathMoved()
     QDeclarativeContext *ctxt = canvas->rootContext();
     ctxt->setContextProperty("testModel", &model);
 
-    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/pathview.qml"));
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/pathview0.qml"));
     qApp->processEvents();
 
     QDeclarativePathView *pathview = findItem<QDeclarativePathView>(canvas->rootObject(), "view");
@@ -420,17 +422,57 @@ void tst_QDeclarativePathView::pathMoved()
     offset.setX(firstItem->width()/2);
     offset.setY(firstItem->height()/2);
     QCOMPARE(firstItem->pos() + offset, start);
-    pathview->setOffset(10);
-    QTest::qWait(1000);//Moving is animated?
+    pathview->setOffset(0.1);
 
     for(int i=0; i<model.count(); i++){
         QDeclarativeRectangle *curItem = findItem<QDeclarativeRectangle>(pathview, "wrapper", i);
         QCOMPARE(curItem->pos() + offset, path->pointAt(0.1 + i*0.25));
     }
 
-    pathview->setOffset(100);
-    QTest::qWait(1000);//Moving is animated?
+    pathview->setOffset(1.0);
     QCOMPARE(firstItem->pos() + offset, start);
+
+    delete canvas;
+}
+
+void tst_QDeclarativePathView::setCurrentIndex()
+{
+    QDeclarativeView *canvas = createView();
+
+    TestModel model;
+    model.addItem("Ben", "12345");
+    model.addItem("Bohn", "2345");
+    model.addItem("Bob", "54321");
+    model.addItem("Bill", "4321");
+
+    QDeclarativeContext *ctxt = canvas->rootContext();
+    ctxt->setContextProperty("testModel", &model);
+
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/pathview0.qml"));
+    qApp->processEvents();
+
+    QDeclarativePathView *pathview = findItem<QDeclarativePathView>(canvas->rootObject(), "view");
+    QVERIFY(pathview != 0);
+
+    QDeclarativeRectangle *firstItem = findItem<QDeclarativeRectangle>(pathview, "wrapper", 0);
+    QVERIFY(firstItem);
+    QDeclarativePath *path = qobject_cast<QDeclarativePath*>(pathview->path());
+    QVERIFY(path);
+    QPointF start = path->pointAt(0.0);
+    QPointF offset;//Center of item is at point, but pos is from corner
+    offset.setX(firstItem->width()/2);
+    offset.setY(firstItem->height()/2);
+    QCOMPARE(firstItem->pos() + offset, start);
+    QCOMPARE(canvas->rootObject()->property("currentA").toInt(), 0);
+    QCOMPARE(canvas->rootObject()->property("currentB").toInt(), 0);
+
+    pathview->setCurrentIndex(2);
+    QTest::qWait(1000);
+
+    firstItem = findItem<QDeclarativeRectangle>(pathview, "wrapper", 2);
+    QCOMPARE(firstItem->pos() + offset, start);
+    QCOMPARE(canvas->rootObject()->property("currentA").toInt(), 2);
+    QCOMPARE(canvas->rootObject()->property("currentB").toInt(), 2);
 
     delete canvas;
 }

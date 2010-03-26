@@ -179,9 +179,16 @@ namespace QDeclarativeParser
 
         // Script blocks that were nested under this object
         struct ScriptBlock {
+            enum Pragma { 
+                None   = 0x00000000,
+                Shared = 0x00000001
+            };
+            Q_DECLARE_FLAGS(Pragmas, Pragma)
+
             QStringList codes;
             QStringList files;
             QList<int> lineNumbers;
+            QList<Pragmas> pragmas;
         };
         QList<ScriptBlock> scripts;
 
@@ -351,12 +358,16 @@ namespace QDeclarativeParser
         // True if the setting of this property will be deferred.  Set by the
         // QDeclarativeCompiler
         bool isDeferred;
+        // True if this property is a value-type psuedo-property
+        bool isValueTypeSubProperty;
 
         LocationSpan location;
         LocationRange listValueRange;
         QList<int> listCommaPositions;
     };
 }
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(QDeclarativeParser::Object::ScriptBlock::Pragmas);
 
 QT_END_NAMESPACE
 

@@ -3884,8 +3884,8 @@ inline void interpolate_pixel_unaligned_2(DST *dest, const SRC *src,
 template <class DST, class SRC>
 inline void interpolate_pixel_2(DST *dest, const SRC *src, quint16 alpha)
 {
-    Q_ASSERT((long(dest) & 0x3) == 0);
-    Q_ASSERT((long(src) & 0x3) == 0);
+    Q_ASSERT((quintptr(dest) & 0x3) == 0);
+    Q_ASSERT((quintptr(src) & 0x3) == 0);
 
     const quint16 a = eff_alpha_2(alpha, dest);
     const quint16 ia = eff_ialpha_2(alpha, dest);
@@ -3958,8 +3958,8 @@ template <class DST, class SRC>
 inline void interpolate_pixel_2(DST *dest, quint8 a,
                                 const SRC *src, quint8 b)
 {
-    Q_ASSERT((long(dest) & 0x3) == 0);
-    Q_ASSERT((long(src) & 0x3) == 0);
+    Q_ASSERT((quintptr(dest) & 0x3) == 0);
+    Q_ASSERT((quintptr(src) & 0x3) == 0);
 
     Q_ASSERT(!SRC::hasAlpha());
 
@@ -4007,8 +4007,8 @@ inline void interpolate_pixel_2(qrgb444 *dest, quint8 a,
 template <class DST, class SRC>
 inline void interpolate_pixel_4(DST *dest, const SRC *src, quint32 alpha)
 {
-    Q_ASSERT((long(dest) & 0x3) == 0);
-    Q_ASSERT((long(src) & 0x3) == 0);
+    Q_ASSERT((quintptr(dest) & 0x3) == 0);
+    Q_ASSERT((quintptr(src) & 0x3) == 0);
 
     const quint32 a = eff_alpha_4(alpha, dest);
     const quint32 ia = eff_ialpha_4(alpha, dest);
@@ -4411,7 +4411,7 @@ void QT_FASTCALL blendUntransformed_dest16(DST *dest, const SRC *src,
 {
     Q_ASSERT(sizeof(DST) == 2);
     Q_ASSERT(sizeof(SRC) == 2);
-    Q_ASSERT((long(dest) & 0x3) == (long(src) & 0x3));
+    Q_ASSERT((quintptr(dest) & 0x3) == (quintptr(src) & 0x3));
     Q_ASSERT(coverage > 0);
 
     const int align = quintptr(dest) & 0x3;
@@ -4479,8 +4479,8 @@ void QT_FASTCALL blendUntransformed_dest16(DST *dest, const SRC *src,
         }
 
         while (length >= 2) {
-            Q_ASSERT((long(dest) & 3) == 0);
-            Q_ASSERT((long(src) & 3) == 0);
+            Q_ASSERT((quintptr(dest) & 3) == 0);
+            Q_ASSERT((quintptr(src) & 3) == 0);
 
             const quint16 a = alpha_2(src);
             if (a == 0xffff) {
@@ -4511,7 +4511,7 @@ template <class DST, class SRC>
 void QT_FASTCALL blendUntransformed_dest24(DST *dest, const SRC *src,
                                            quint8 coverage, int length)
 {
-    Q_ASSERT((long(dest) & 0x3) == (long(src) & 0x3));
+    Q_ASSERT((quintptr(dest) & 0x3) == (quintptr(src) & 0x3));
     Q_ASSERT(sizeof(DST) == 3);
     Q_ASSERT(coverage > 0);
 
@@ -4734,7 +4734,7 @@ static void blend_untransformed_argb8565(int count, const QSpan *spans,
 static void blend_untransformed_rgb565(int count, const QSpan *spans,
                                        void *userData)
 {
-#if defined(QT_QWS_DEPTH_16)
+#if !defined(Q_WS_QWS) || defined(QT_QWS_DEPTH_16)
     QSpanData *data = reinterpret_cast<QSpanData *>(userData);
 
     if (data->texture.format == QImage::Format_ARGB8565_Premultiplied)
@@ -5577,7 +5577,7 @@ static void blend_transformed_bilinear_argb8565(int count, const QSpan *spans, v
 static void blend_transformed_bilinear_rgb565(int count, const QSpan *spans,
                                               void *userData)
 {
-#if defined(QT_QWS_DEPTH_16)
+#if !defined(Q_WS_QWS) || defined(QT_QWS_DEPTH_16)
     QSpanData *data = reinterpret_cast<QSpanData *>(userData);
 
     if (data->texture.format == QImage::Format_RGB16)
@@ -6164,7 +6164,7 @@ static void blend_transformed_argb8565(int count, const QSpan *spans,
 static void blend_transformed_rgb565(int count, const QSpan *spans,
                                        void *userData)
 {
-#if defined(QT_QWS_DEPTH_16)
+#if !defined(Q_WS_QWS) || defined(QT_QWS_DEPTH_16)
     QSpanData *data = reinterpret_cast<QSpanData *>(userData);
 
     if (data->texture.format == QImage::Format_ARGB8565_Premultiplied)
@@ -6577,7 +6577,7 @@ static void blend_transformed_tiled_argb8565(int count, const QSpan *spans,
 static void blend_transformed_tiled_rgb565(int count, const QSpan *spans,
                                            void *userData)
 {
-#if defined(QT_QWS_DEPTH_16)
+#if !defined(Q_WS_QWS) || defined(QT_QWS_DEPTH_16)
     QSpanData *data = reinterpret_cast<QSpanData *>(userData);
 
     if (data->texture.format == QImage::Format_ARGB8565_Premultiplied)
@@ -7175,9 +7175,9 @@ static inline void rgbBlendPixel(quint32 *dst, int coverage, int sr, int sg, int
         ) {
 
         int a = qGray(coverage);
-        sr = qt_div_255(sr * a);
-        sg = qt_div_255(sg * a);
-        sb = qt_div_255(sb * a);
+        sr = qt_div_255(qt_pow_rgb_invgamma[sr] * a);
+        sg = qt_div_255(qt_pow_rgb_invgamma[sg] * a);
+        sb = qt_div_255(qt_pow_rgb_invgamma[sb] * a);
 
         int ia = 255 - a;
         dr = qt_div_255(dr * ia);
@@ -7820,7 +7820,6 @@ void qInitDrawhelperAsm()
     CompositionFunction *functionForModeAsm = 0;
     CompositionFunctionSolid *functionForModeSolidAsm = 0;
 
-#ifdef QT_NO_DEBUG
     const uint features = qDetectCPUFeatures();
     if (false) {
 #ifdef QT_HAVE_SSE2
@@ -7943,8 +7942,6 @@ void qInitDrawhelperAsm()
         qDrawHelper[QImage::Format_ARGB32_Premultiplied].blendColor = qt_blend_color_argb_iwmmxt;
     }
 #endif // IWMMXT
-
-#endif // QT_NO_DEBUG
 
 #if defined(Q_CC_RVCT) && defined(QT_HAVE_ARMV6)
         functionForModeAsm = qt_functionForMode_ARMv6;

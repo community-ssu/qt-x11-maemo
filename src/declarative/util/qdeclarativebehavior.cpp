@@ -83,7 +83,8 @@ public:
         y: 200  // initial value
         Behavior on y {
             NumberAnimation {
-                easing: "easeOutBounce(amplitude:100)"
+                easing.type: "OutBounce"
+                easing.amplitude: 100
                 duration: 200
             }
         }
@@ -157,6 +158,7 @@ void QDeclarativeBehavior::setEnabled(bool enabled)
 void QDeclarativeBehavior::write(const QVariant &value)
 {
     Q_D(QDeclarativeBehavior);
+    qmlExecuteDeferred(this);
     if (!d->animation || !d->enabled) {
         QDeclarativePropertyPrivate::write(d->property, value, QDeclarativePropertyPrivate::BypassInterceptor | QDeclarativePropertyPrivate::DontRemoveBinding);
         return;

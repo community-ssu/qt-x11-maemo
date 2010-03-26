@@ -3,8 +3,6 @@ INCLUDEPATH += $$PWD
 SOURCES += \
     $$PWD/qdeclarativeutilmodule.cpp\
     $$PWD/qdeclarativeview.cpp \
-    $$PWD/qfxperf.cpp \
-    $$PWD/qperformancelog.cpp \
     $$PWD/qdeclarativeconnections.cpp \
     $$PWD/qdeclarativepackage.cpp \
     $$PWD/qdeclarativeanimation.cpp \
@@ -25,18 +23,14 @@ SOURCES += \
     $$PWD/qdeclarativebind.cpp \
     $$PWD/qdeclarativepropertymap.cpp \
     $$PWD/qdeclarativepixmapcache.cpp \
-    $$PWD/qnumberformat.cpp \
-    $$PWD/qdeclarativenumberformatter.cpp \
-    $$PWD/qdeclarativedatetimeformatter.cpp \
     $$PWD/qdeclarativebehavior.cpp \
     $$PWD/qdeclarativefontloader.cpp \
-    $$PWD/qdeclarativestyledtext.cpp
+    $$PWD/qdeclarativestyledtext.cpp \
+    $$PWD/qdeclarativelistmodelworkeragent.cpp
 
 HEADERS += \
     $$PWD/qdeclarativeutilmodule_p.h\
     $$PWD/qdeclarativeview.h \
-    $$PWD/qfxperf_p_p.h \
-    $$PWD/qperformancelog_p_p.h \
     $$PWD/qdeclarativeconnections_p.h \
     $$PWD/qdeclarativepackage_p.h \
     $$PWD/qdeclarativeanimation_p.h \
@@ -52,6 +46,7 @@ HEADERS += \
     $$PWD/qdeclarativestategroup_p.h \
     $$PWD/qdeclarativetransition_p.h \
     $$PWD/qdeclarativelistmodel_p.h\
+    $$PWD/qdeclarativelistmodel_p_p.h\
     $$PWD/qdeclarativelistaccessor_p.h \
     $$PWD/qdeclarativeopenmetaobject_p.h \
     $$PWD/qdeclarativenullablevalue_p_p.h \
@@ -60,12 +55,10 @@ HEADERS += \
     $$PWD/qdeclarativebind_p.h \
     $$PWD/qdeclarativepropertymap.h \
     $$PWD/qdeclarativepixmapcache_p.h \
-    $$PWD/qnumberformat_p.h \
-    $$PWD/qdeclarativenumberformatter_p.h \
-    $$PWD/qdeclarativedatetimeformatter_p.h \
     $$PWD/qdeclarativebehavior_p.h \
     $$PWD/qdeclarativefontloader_p.h \
-    $$PWD/qdeclarativestyledtext_p.h
+    $$PWD/qdeclarativestyledtext_p.h \
+    $$PWD/qdeclarativelistmodelworkeragent_p.h
 
 contains(QT_CONFIG, xmlpatterns) {
     QT+=xmlpatterns

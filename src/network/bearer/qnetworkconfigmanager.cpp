@@ -64,7 +64,7 @@ QNetworkConfigurationManagerPrivate *qNetworkConfigurationManagerPrivate()
     \since 4.7
 
     \inmodule QtNetwork
-    \ingroup bearer
+    \ingroup network
 
     QNetworkConfigurationManager provides access to the network configurations known to the system and
     enables applications to detect the system capabilities (with regards to network sessions) at runtime.
@@ -166,6 +166,8 @@ QNetworkConfigurationManagerPrivate *qNetworkConfigurationManagerPrivate()
                                      sockets.
     \value DataStatistics            If this flag is set QNetworkSession can provide statistics
                                      about transmitted and received data.
+    \value NetworkSessionRequired    If this flag is set the platform requires that a network
+                                     session is created before network operations can be performed.
 */
 
 /*!
@@ -174,7 +176,8 @@ QNetworkConfigurationManagerPrivate *qNetworkConfigurationManagerPrivate()
 QNetworkConfigurationManager::QNetworkConfigurationManager( QObject* parent )
     : QObject(parent)
 {
-    QNetworkConfigurationManagerPrivate* priv = connManager();
+    QNetworkConfigurationManagerPrivate *priv = connManager();
+
     connect(priv, SIGNAL(configurationAdded(QNetworkConfiguration)),
             this, SIGNAL(configurationAdded(QNetworkConfiguration)));
     connect(priv, SIGNAL(configurationRemoved(QNetworkConfiguration)),
@@ -185,6 +188,8 @@ QNetworkConfigurationManager::QNetworkConfigurationManager( QObject* parent )
             this, SIGNAL(onlineStateChanged(bool)));
     connect(priv, SIGNAL(configurationChanged(QNetworkConfiguration)),
             this, SIGNAL(configurationChanged(QNetworkConfiguration)));
+
+    priv->enablePolling();
 }
 
 /*!
@@ -192,6 +197,9 @@ QNetworkConfigurationManager::QNetworkConfigurationManager( QObject* parent )
 */
 QNetworkConfigurationManager::~QNetworkConfigurationManager()
 {
+    QNetworkConfigurationManagerPrivate *priv = connManager();
+
+    priv->disablePolling();
 }
 
 
@@ -206,81 +214,7 @@ QNetworkConfigurationManager::~QNetworkConfigurationManager()
 */
 QNetworkConfiguration QNetworkConfigurationManager::defaultConfiguration() const
 {
-    QNetworkConfigurationManagerPrivate *conPriv = connManager();
-
-    foreach (QBearerEngine *engine, conPriv->engines()) {
-        QNetworkConfigurationPrivatePointer ptr = engine->defaultConfiguration();
-
-        if (ptr) {
-            QNetworkConfiguration config;
-            config.d = ptr;
-            return config;
-        }
-    }
-
-    // Engines don't have a default configuration.
-
-    // Return first active snap
-    QNetworkConfigurationPrivatePointer firstDiscovered;
-
-    foreach (QBearerEngine *engine, conPriv->engines()) {
-        QHash<QString, QNetworkConfigurationPrivatePointer>::Iterator it;
-        QHash<QString, QNetworkConfigurationPrivatePointer>::Iterator end;
-
-        QMutexLocker locker(&engine->mutex);
-
-        for (it = engine->snapConfigurations.begin(), end = engine->snapConfigurations.end();
-             it != end; ++it) {
-            if ((it.value()->state & QNetworkConfiguration::Active) ==
-                QNetworkConfiguration::Active) {
-                QNetworkConfiguration config;
-                config.d = it.value();
-                return config;
-            } else if ((it.value()->state & QNetworkConfiguration::Discovered) ==
-                       QNetworkConfiguration::Discovered) {
-                firstDiscovered = it.value();
-            }
-        }
-    }
-
-    // No Active SNAPs return first Discovered SNAP.
-    if (firstDiscovered) {
-        QNetworkConfiguration config;
-        config.d = firstDiscovered;
-        return config;
-    }
-
-    // No Active or Discovered SNAPs, do same for InternetAccessPoints.
-    firstDiscovered.reset();
-
-    foreach (QBearerEngine *engine, conPriv->engines()) {
-        QHash<QString, QNetworkConfigurationPrivatePointer>::Iterator it;
-        QHash<QString, QNetworkConfigurationPrivatePointer>::Iterator end;
-
-        QMutexLocker locker(&engine->mutex);
-
-        for (it = engine->accessPointConfigurations.begin(),
-             end = engine->accessPointConfigurations.end(); it != end; ++it) {
-            if ((it.value()->state & QNetworkConfiguration::Active) ==
-                QNetworkConfiguration::Active) {
-                QNetworkConfiguration config;
-                config.d = it.value();
-                return config;
-            } else if ((it.value()->state & QNetworkConfiguration::Discovered) ==
-                       QNetworkConfiguration::Discovered) {
-                firstDiscovered = it.value();
-            }
-        }
-    }
-
-    // No Active InternetAccessPoint return first Discovered InternetAccessPoint.
-    if (firstDiscovered) {
-        QNetworkConfiguration config;
-        config.d = firstDiscovered;
-        return config;
-    }
-
-    return QNetworkConfiguration();
+    return connManager()->defaultConfiguration();
 }
 
 /*!
@@ -310,37 +244,7 @@ QNetworkConfiguration QNetworkConfigurationManager::defaultConfiguration() const
 */
 QList<QNetworkConfiguration> QNetworkConfigurationManager::allConfigurations(QNetworkConfiguration::StateFlags filter) const
 {
-    QList<QNetworkConfiguration> result;
-    QNetworkConfigurationManagerPrivate* conPriv = connManager();
-
-    foreach (QBearerEngine *engine, conPriv->engines()) {
-        QHash<QString, QNetworkConfigurationPrivatePointer>::Iterator it;
-        QHash<QString, QNetworkConfigurationPrivatePointer>::Iterator end;
-
-        QMutexLocker locker(&engine->mutex);
-
-        //find all InternetAccessPoints
-        for (it = engine->accessPointConfigurations.begin(),
-             end = engine->accessPointConfigurations.end(); it != end; ++it) {
-            if ((it.value()->state & filter) == filter) {
-                QNetworkConfiguration pt;
-                pt.d = it.value();
-                result << pt;
-            }
-        }
-
-        //find all service networks
-        for (it = engine->snapConfigurations.begin(),
-             end = engine->snapConfigurations.end(); it != end; ++it) {
-            if ((it.value()->state & filter) == filter) {
-                QNetworkConfiguration pt;
-                pt.d = it.value();
-                result << pt;
-            }
-        }
-    }
-
-    return result;
+    return connManager()->allConfigurations(filter);
 }
 
 /*!
@@ -349,28 +253,9 @@ QList<QNetworkConfiguration> QNetworkConfigurationManager::allConfigurations(QNe
 
     \sa QNetworkConfiguration::identifier()
 */
-QNetworkConfiguration QNetworkConfigurationManager::configurationFromIdentifier(const QString& identifier) const
+QNetworkConfiguration QNetworkConfigurationManager::configurationFromIdentifier(const QString &identifier) const
 {
-    QNetworkConfigurationManagerPrivate* conPriv = connManager();
-
-    QNetworkConfiguration item;
-
-    foreach (QBearerEngine *engine, conPriv->engines()) {
-        QMutexLocker locker(&engine->mutex);
-
-        if (engine->accessPointConfigurations.contains(identifier))
-            item.d = engine->accessPointConfigurations.value(identifier);
-        else if (engine->snapConfigurations.contains(identifier))
-            item.d = engine->snapConfigurations.value(identifier);
-        else if (engine->userChoiceConfigurations.contains(identifier))
-            item.d = engine->userChoiceConfigurations.value(identifier);
-        else
-            continue;
-
-        return item;
-    }
-
-    return item;
+    return connManager()->configurationFromIdentifier(identifier);
 }
 
 /*!
@@ -385,10 +270,7 @@ QNetworkConfiguration QNetworkConfigurationManager::configurationFromIdentifier(
 */
 bool QNetworkConfigurationManager::isOnline() const
 {
-    QNetworkConfigurationManagerPrivate* conPriv = connManager();
-    Q_UNUSED(conPriv);
-    QList<QNetworkConfiguration> activeConfigs = allConfigurations(QNetworkConfiguration::Active);
-    return activeConfigs.count() > 0;
+    return connManager()->isOnline();
 }
 
 /*!

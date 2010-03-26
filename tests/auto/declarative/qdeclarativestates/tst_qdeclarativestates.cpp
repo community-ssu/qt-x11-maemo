@@ -106,11 +106,12 @@ private slots:
     void illegalTempState();
     void nonExistantProperty();
     void reset();
+    void illegalObjectCreation();
 };
 
 void tst_qdeclarativestates::initTestCase()
 {
-    QML_REGISTER_TYPE(Qt.test, 1, 0, MyRectangle,MyRect);
+    qmlRegisterType<MyRect>("Qt.test", 1, 0, "MyRectangle");
 }
 
 QByteArray tst_qdeclarativestates::fullDataPath(const QString &path)
@@ -441,7 +442,7 @@ void tst_qdeclarativestates::parentChange()
     QDeclarativeEngine engine;
 
     {
-        QDeclarativeComponent rectComponent(&engine, SRCDIR "/data/parentChange.qml");
+        QDeclarativeComponent rectComponent(&engine, SRCDIR "/data/parentChange1.qml");
         QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(rectComponent.create());
         QVERIFY(rect != 0);
 
@@ -546,7 +547,7 @@ void tst_qdeclarativestates::anchorChanges()
 {
     QDeclarativeEngine engine;
 
-    QDeclarativeComponent rectComponent(&engine, SRCDIR "/data/anchorChanges.qml");
+    QDeclarativeComponent rectComponent(&engine, SRCDIR "/data/anchorChanges1.qml");
     QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(rectComponent.create());
     QVERIFY(rect != 0);
 
@@ -564,7 +565,7 @@ void tst_qdeclarativestates::anchorChanges()
     rect->setState("right");
     QCOMPARE(innerRect->x(), qreal(150));
     QCOMPARE(aChanges->reset(), QString("left"));
-    QCOMPARE(aChanges->object(), innerRect);
+    QCOMPARE(aChanges->object(), qobject_cast<QDeclarativeItem*>(innerRect));
     QCOMPARE(aChanges->right().item, rect->right().item);
     QCOMPARE(aChanges->right().anchorLine, rect->right().anchorLine);
 
@@ -621,7 +622,7 @@ void tst_qdeclarativestates::anchorChanges3()
     QVERIFY(aChanges != 0);
 
     rect->setState("reanchored");
-    QCOMPARE(aChanges->object(), innerRect);
+    QCOMPARE(aChanges->object(), qobject_cast<QDeclarativeItem*>(innerRect));
     QCOMPARE(aChanges->left().item, leftGuideline->left().item);
     QCOMPARE(aChanges->left().anchorLine, leftGuideline->left().anchorLine);
     QCOMPARE(aChanges->right().item, rect->right().item);
@@ -671,7 +672,7 @@ void tst_qdeclarativestates::anchorChanges4()
     QVERIFY(aChanges != 0);
 
     rect->setState("reanchored");
-    QCOMPARE(aChanges->object(), innerRect);
+    QCOMPARE(aChanges->object(), qobject_cast<QDeclarativeItem*>(innerRect));
     QCOMPARE(aChanges->horizontalCenter().item, bottomGuideline->horizontalCenter().item);
     QCOMPARE(aChanges->horizontalCenter().anchorLine, bottomGuideline->horizontalCenter().anchorLine);
     QCOMPARE(aChanges->verticalCenter().item, leftGuideline->verticalCenter().item);
@@ -706,7 +707,7 @@ void tst_qdeclarativestates::anchorChanges5()
     QVERIFY(aChanges != 0);
 
     rect->setState("reanchored");
-    QCOMPARE(aChanges->object(), innerRect);
+    QCOMPARE(aChanges->object(), qobject_cast<QDeclarativeItem*>(innerRect));
     QCOMPARE(aChanges->horizontalCenter().item, bottomGuideline->horizontalCenter().item);
     QCOMPARE(aChanges->horizontalCenter().anchorLine, bottomGuideline->horizontalCenter().anchorLine);
     QCOMPARE(aChanges->baseline().item, leftGuideline->baseline().item);
@@ -955,13 +956,26 @@ void tst_qdeclarativestates::reset()
 
     QDeclarativeText *text = rect->findChild<QDeclarativeText*>();
     QVERIFY(text != 0);
-    QCOMPARE(text->width(), qreal(50.));
+    QCOMPARE(text->width(), qreal(40.));
     QVERIFY(text->width() < text->height());
 
     rect->setState("state1");
 
-    QVERIFY(text->width() > 51);
+    QVERIFY(text->width() > 41);
     QVERIFY(text->width() > text->height());
+}
+
+void tst_qdeclarativestates::illegalObjectCreation()
+{
+    QDeclarativeEngine engine;
+
+    QDeclarativeComponent component(&engine, SRCDIR "/data/illegalObj.qml");
+    QList<QDeclarativeError> errors = component.errors();
+    QVERIFY(errors.count() == 1);
+    const QDeclarativeError &error = errors.at(0);
+    QCOMPARE(error.line(), 9);
+    QCOMPARE(error.column(), 23);
+    QCOMPARE(error.description().toUtf8().constData(), "PropertyChanges does not support creating state-specific objects.");
 }
 
 QTEST_MAIN(tst_qdeclarativestates)

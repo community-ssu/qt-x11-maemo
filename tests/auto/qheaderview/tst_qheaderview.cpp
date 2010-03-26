@@ -192,6 +192,7 @@ private slots:
     void task248050_hideRow();
     void QTBUG6058_reset();
     void QTBUG7833_sectionClicked();
+    void QTBUG8650_crashOnInsertSections();
 
 protected:
     QWidget *topLevel;
@@ -2064,6 +2065,19 @@ void tst_QHeaderView::QTBUG7833_sectionClicked()
     QCOMPARE(pressedSpy.at(2).at(0).toInt(), 0);
 }
 
+void tst_QHeaderView::QTBUG8650_crashOnInsertSections()
+{
+    QStringList headerLabels;
+    QHeaderView view(Qt::Horizontal);
+    QStandardItemModel model(2,2);
+    view.setModel(&model);
+    view.moveSection(1, 0);
+    view.hideSection(0);
+
+    QList<QStandardItem *> items;
+    items << new QStandardItem("c");
+    model.insertColumn(0, items);
+}
 
 QTEST_MAIN(tst_QHeaderView)
 #include "tst_qheaderview.moc"

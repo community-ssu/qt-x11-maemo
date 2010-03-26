@@ -7729,7 +7729,7 @@ void tst_QGraphicsItem::hitTestGraphicsEffectItem()
     QTest::qWait(50);
 
     // Make sure all visible items are repainted.
-    QCOMPARE(item1->repaints, 0);
+    QCOMPARE(item1->repaints, 1);
     QCOMPARE(item2->repaints, 1);
     QCOMPARE(item3->repaints, 1);
 
@@ -9777,6 +9777,9 @@ void tst_QGraphicsItem::scenePosChange()
     child1->setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
     grandChild2->setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
 
+    QVERIFY(child1->flags() & QGraphicsItem::ItemSendsScenePositionChanges);
+    QVERIFY(grandChild2->flags() & QGraphicsItem::ItemSendsScenePositionChanges);
+
     QGraphicsScene scene;
     scene.addItem(root);
 
@@ -9824,6 +9827,16 @@ void tst_QGraphicsItem::scenePosChange()
     QCoreApplication::processEvents(); // QGraphicsScenePrivate::_q_updateScenePosDescendants()
     root->moveBy(1.0, 1.0);
     QCOMPARE(child1->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 4);
+    QCOMPARE(grandChild1->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 1);
+    QCOMPARE(child2->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 0);
+
+    root->setX(1);
+    QCOMPARE(child1->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 5);
+    QCOMPARE(grandChild1->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 1);
+    QCOMPARE(child2->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 0);
+
+    root->setY(1);
+    QCOMPARE(child1->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 6);
     QCOMPARE(grandChild1->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 1);
     QCOMPARE(child2->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 0);
 }

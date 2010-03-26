@@ -43,7 +43,7 @@ SUBDIRS += demos_boxes
 }
 
 mac*: SUBDIRS += demos_macmainwindow
-wince*|symbian|embedded|x11: SUBDIRS += embedded
+wince*|symbian|embedded|x11: SUBDIRS += demos_embedded
 
 !contains(QT_EDITION, Console):!cross_compile:!embedded:!wince*:SUBDIRS += demos_arthurplugin
 
@@ -56,6 +56,7 @@ wince*:SUBDIRS += demos_sqlbrowser
 contains(QT_CONFIG, phonon):!static:SUBDIRS += demos_mediaplayer
 contains(QT_CONFIG, webkit):contains(QT_CONFIG, svg):!symbian:SUBDIRS += demos_browser
 contains(QT_CONFIG, multimedia):SUBDIRS += demos_multimedia
+contains(QT_CONFIG, declarative):SUBDIRS += demos_declarative
 
 # install
 sources.files = README *.pro
@@ -66,6 +67,9 @@ symbian: include($$QT_SOURCE_TREE/demos/symbianpkgrules.pri)
 
 demos_chip.subdir = chip
 demos_embeddeddialogs.subdir = embeddeddialogs
+demos_embedded.subdir = embedded
+# Because of fluidlauncher
+demos_embedded.depends = demos_deform demos_pathstroke
 demos_shared.subdir = shared
 demos_deform.subdir = deform
 demos_gradients.subdir = gradients
@@ -84,6 +88,7 @@ demos_undo.subdir = undo
 demos_qtdemo.subdir = qtdemo
 demos_mediaplayer.subdir = qmediaplayer
 demos_multimedia.subdir = multimedia
+demos_declarative.subdir = declarative
 
 demos_browser.subdir = browser
 

@@ -97,6 +97,8 @@ public:
     typedef QVariant (*StringConverter)(const QString &);
     static void registerCustomStringConverter(int, StringConverter);
     static StringConverter customStringConverter(int);
+
+    static bool isModule(const QByteArray &module, int versionMajor, int versionMinor);
 };
 
 class QDeclarativeTypePrivate;
@@ -111,8 +113,11 @@ public:
     bool availableInVersion(int vmajor, int vminor) const;
 
     QObject *create() const;
+    void create(QObject **, void **, size_t) const;
 
     QDeclarativeCustomParser *customParser() const;
+
+    bool isCreatable() const;
 
     bool isInterface() const;
     int typeId() const;
@@ -133,7 +138,7 @@ public:
     int index() const;
 private:
     friend class QDeclarativeTypePrivate;
-    friend class QDeclarativeMetaTypeData;
+    friend struct QDeclarativeMetaTypeData;
     friend int QDeclarativePrivate::registerType(const QDeclarativePrivate::RegisterInterface &);
     friend int QDeclarativePrivate::registerType(const QDeclarativePrivate::RegisterType &);
     QDeclarativeType(int, const QDeclarativePrivate::RegisterInterface &);

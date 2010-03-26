@@ -183,15 +183,15 @@ void tst_qdeclarativeproperty::qmlmetaproperty()
 class PropertyObject : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(int defaultProperty READ defaultProperty);
-    Q_PROPERTY(QRect rectProperty READ rectProperty);
-    Q_PROPERTY(QRect wrectProperty READ wrectProperty WRITE setWRectProperty);
-    Q_PROPERTY(QUrl url READ url WRITE setUrl);
-    Q_PROPERTY(int resettableProperty READ resettableProperty WRITE setResettableProperty RESET resetProperty);
+    Q_PROPERTY(int defaultProperty READ defaultProperty)
+    Q_PROPERTY(QRect rectProperty READ rectProperty)
+    Q_PROPERTY(QRect wrectProperty READ wrectProperty WRITE setWRectProperty)
+    Q_PROPERTY(QUrl url READ url WRITE setUrl)
+    Q_PROPERTY(int resettableProperty READ resettableProperty WRITE setResettableProperty RESET resetProperty)
     Q_PROPERTY(int propertyWithNotify READ propertyWithNotify WRITE setPropertyWithNotify NOTIFY oddlyNamedNotifySignal)
-    Q_PROPERTY(MyQmlObject *qmlObject READ qmlObject);
+    Q_PROPERTY(MyQmlObject *qmlObject READ qmlObject)
 
-    Q_CLASSINFO("DefaultProperty", "defaultProperty");
+    Q_CLASSINFO("DefaultProperty", "defaultProperty")
 public:
     PropertyObject() : m_resetProperty(9) {}
 
@@ -305,7 +305,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object()
         QCOMPARE(prop.isDesignable(), true);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::Normal);
         QCOMPARE(prop.propertyType(), (int)QVariant::Int);
         QCOMPARE(prop.propertyTypeName(), "int");
@@ -404,7 +404,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string()
         QCOMPARE(prop.isDesignable(), true);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::Normal);
         QCOMPARE(prop.propertyType(), (int)QVariant::Int);
         QCOMPARE(prop.propertyTypeName(), "int");
@@ -452,7 +452,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string()
         QCOMPARE(prop.isDesignable(), false);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::InvalidCategory);
         QCOMPARE(prop.propertyType(), 0);
         QCOMPARE(prop.propertyTypeName(), (const char *)0);
@@ -499,7 +499,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string()
         QCOMPARE(prop.isDesignable(), false);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::InvalidCategory);
         QCOMPARE(prop.propertyType(), 0);
         QCOMPARE(prop.propertyTypeName(), (const char *)0);
@@ -597,7 +597,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_context()
         QCOMPARE(prop.isDesignable(), true);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::Normal);
         QCOMPARE(prop.propertyType(), (int)QVariant::Int);
         QCOMPARE(prop.propertyTypeName(), "int");
@@ -696,7 +696,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string_context()
         QCOMPARE(prop.isDesignable(), true);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::Normal);
         QCOMPARE(prop.propertyType(), (int)QVariant::Int);
         QCOMPARE(prop.propertyTypeName(), "int");
@@ -744,7 +744,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string_context()
         QCOMPARE(prop.isDesignable(), false);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::InvalidCategory);
         QCOMPARE(prop.propertyType(), 0);
         QCOMPARE(prop.propertyTypeName(), (const char *)0);
@@ -791,7 +791,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string_context()
         QCOMPARE(prop.isDesignable(), false);
         QCOMPARE(prop.isResettable(), false);
         QCOMPARE(prop.isValid(), true);
-        QCOMPARE(prop.object(), &dobject);
+        QCOMPARE(prop.object(), qobject_cast<QObject*>(&dobject));
         QCOMPARE(prop.propertyTypeCategory(), QDeclarativeProperty::InvalidCategory);
         QCOMPARE(prop.propertyType(), 0);
         QCOMPARE(prop.propertyTypeName(), (const char *)0);
@@ -1254,7 +1254,7 @@ void tst_qdeclarativeproperty::writeObjectToList()
     QDeclarativeProperty prop(container, "children");
     prop.write(qVariantFromValue(object));
     QCOMPARE(list.count(), 1);
-    QCOMPARE(list.at(0), object);
+    QCOMPARE(list.at(0), qobject_cast<QObject*>(object));
 }
 
 Q_DECLARE_METATYPE(QList<QObject *>);
@@ -1348,9 +1348,9 @@ void tst_qdeclarativeproperty::copy()
 
 void tst_qdeclarativeproperty::initTestCase()
 {
-    QML_REGISTER_TYPE(Test,1,0,MyQmlObject,MyQmlObject);
-    QML_REGISTER_TYPE(Test,1,0,PropertyObject,PropertyObject);
-    QML_REGISTER_TYPE(Test,1,0,MyContainer,MyContainer);
+    qmlRegisterType<MyQmlObject>("Test",1,0,"MyQmlObject");
+    qmlRegisterType<PropertyObject>("Test",1,0,"PropertyObject");
+    qmlRegisterType<MyContainer>("Test",1,0,"MyContainer");
 }
 
 

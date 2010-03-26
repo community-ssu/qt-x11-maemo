@@ -1315,6 +1315,8 @@ void QGraphicsProxyWidget::focusInEvent(QFocusEvent *event)
         return;
     }
 
+    d->proxyIsGivingFocus = true;
+
     switch (event->reason()) {
     case Qt::TabFocusReason: {
 	if (QWidget *focusChild = d->findFocusChild(0, true))
@@ -1333,6 +1335,7 @@ void QGraphicsProxyWidget::focusInEvent(QFocusEvent *event)
         break;
     }
     d->updateProxyInputMethodAcceptanceFromWidget();
+    d->proxyIsGivingFocus = false;
 }
 
 /*!

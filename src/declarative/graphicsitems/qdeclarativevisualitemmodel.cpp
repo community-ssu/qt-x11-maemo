@@ -196,7 +196,7 @@ QVariant QDeclarativeVisualItemModel::evaluate(int index, const QString &express
         return QVariant();
     QDeclarativeContext *ccontext = qmlContext(this);
     QDeclarativeContext *ctxt = new QDeclarativeContext(ccontext);
-    ctxt->addDefaultObject(d->children.at(index));
+    ctxt->setContextObject(d->children.at(index));
     QDeclarativeExpression e(ctxt, expression, objectContext);
     QVariant value = e.value();
     delete ctxt;
@@ -422,6 +422,8 @@ int QDeclarativeVisualDataModelDataMetaObject::createProperty(const char *name, 
         return -1;
 
     QDeclarativeVisualDataModelPrivate *model = QDeclarativeVisualDataModelPrivate::get(data->m_model);
+    if (data->m_index < 0 || data->m_index >= model->modelCount())
+        return -1;
 
     if ((!model->m_listModelInterface || !model->m_abstractItemModel) && model->m_listAccessor) {
         if (model->m_listAccessor->type() == QDeclarativeListAccessor::ListProperty) {
@@ -927,6 +929,8 @@ QDeclarativeVisualDataModel::ReleaseFlags QDeclarativeVisualDataModel::release(Q
         if (inPackage) {
             emit destroyingPackage(qobject_cast<QDeclarativePackage*>(obj));
         } else {
+            if (item->hasFocus())
+                item->clearFocus();
             item->setOpacity(0.0);
             static_cast<QGraphicsItem*>(item)->setParentItem(0);
         }
@@ -989,7 +993,7 @@ QDeclarativeItem *QDeclarativeVisualDataModel::item(int index, const QByteArray 
         QDeclarativeContext *ctxt = new QDeclarativeContext(ccontext);
         QDeclarativeVisualDataModelData *data = new QDeclarativeVisualDataModelData(index, this);
         ctxt->setContextProperty(QLatin1String("model"), data);
-        ctxt->addDefaultObject(data);
+        ctxt->setContextObject(data);
         nobj = d->m_delegate->beginCreate(ctxt);
         if (complete)
             d->m_delegate->completeCreate();
@@ -1102,7 +1106,7 @@ QVariant QDeclarativeVisualDataModel::evaluate(int index, const QString &express
         if (!ccontext) ccontext = qmlContext(this);
         QDeclarativeContext *ctxt = new QDeclarativeContext(ccontext);
         QDeclarativeVisualDataModelData *data = new QDeclarativeVisualDataModelData(index, this);
-        ctxt->addDefaultObject(data);
+        ctxt->setContextObject(data);
         QDeclarativeExpression e(ctxt, expression, objectContext);
         value = e.value();
         delete data;

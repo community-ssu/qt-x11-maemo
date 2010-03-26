@@ -58,7 +58,7 @@ QT_BEGIN_NAMESPACE
     \since 4.7
 
     \inmodule QtNetwork
-    \ingroup bearer
+    \ingroup network
 
     A QNetworkSession enables control over the system's network interfaces. The session's configuration
     parameter are determined via the QNetworkConfiguration object to which it is bound. Depending on the 
@@ -370,6 +370,7 @@ QNetworkConfiguration QNetworkSession::configuration() const
     return d ? d->publicConfig : QNetworkConfiguration();
 }
 
+#ifndef QT_NO_NETWORKINTERFACE
 /*!
     Returns the network interface that is used by this session.
 
@@ -386,6 +387,7 @@ QNetworkInterface QNetworkSession::interface() const
 {
     return d ? d->currentInterface() : QNetworkInterface();
 }
+#endif
 
 /*!
     Returns true if this session is open. If the number of all open sessions is greater than
@@ -492,6 +494,20 @@ QString QNetworkSession::errorString() const
             \o Setting this property to \i true before calling \l open() implies that the connection attempt
             is made but if no connection can be established, the user is not connsulted and asked to select
             a suitable connection. This property is not set by default and support for it depends on the platform.
+
+        \row
+            \o AutoCloseSessionTimeout
+            \o If the session requires polling to keep its state up to date, this property holds
+               the timeout in milliseconds before the session will automatically close. If the
+               value of this property is -1 the session will not automatically close. This property
+               is set to -1 by default.
+
+               The purpose of this property is to minimize resource use on platforms that use
+               polling to update the state of the session. Applications can set the value of this
+               property to the desired timeout before the session is closed. In response to the
+               closed() signal the network session should be deleted to ensure that all polling is
+               stopped. The session can then be recreated once it is required again. This property
+               has no effect for sessions that do not require polling.
     \endtable
 */
 QVariant QNetworkSession::sessionProperty(const QString& key) const

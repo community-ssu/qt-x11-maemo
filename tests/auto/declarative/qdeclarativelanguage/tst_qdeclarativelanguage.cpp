@@ -264,17 +264,24 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("importNamespaceConflict") << "importNamespaceConflict.qml" << "importNamespaceConflict.errors.txt" << false;
     QTest::newRow("importVersionMissing (builtin)") << "importVersionMissingBuiltIn.qml" << "importVersionMissingBuiltIn.errors.txt" << false;
     QTest::newRow("importVersionMissing (installed)") << "importVersionMissingInstalled.qml" << "importVersionMissingInstalled.errors.txt" << false;
+    QTest::newRow("importNonExist (installed)") << "importNonExist.qml" << "importNonExist.errors.txt" << false;
+    QTest::newRow("importNewerVersion (installed)") << "importNewerVersion.qml" << "importNewerVersion.errors.txt" << false;
     QTest::newRow("invalidImportID") << "invalidImportID.qml" << "invalidImportID.errors.txt" << false;
 
     QTest::newRow("signal.1") << "signal.1.qml" << "signal.1.errors.txt" << false;
     QTest::newRow("signal.2") << "signal.2.qml" << "signal.2.errors.txt" << false;
     QTest::newRow("signal.3") << "signal.3.qml" << "signal.3.errors.txt" << false;
+    QTest::newRow("signal.4") << "signal.4.qml" << "signal.4.errors.txt" << false;
+
+    QTest::newRow("method.1") << "method.1.qml" << "method.1.errors.txt" << false;
 
     QTest::newRow("property.1") << "property.1.qml" << "property.1.errors.txt" << false;
     QTest::newRow("property.2") << "property.2.qml" << "property.2.errors.txt" << false;
     QTest::newRow("property.3") << "property.3.qml" << "property.3.errors.txt" << false;
     QTest::newRow("property.4") << "property.4.qml" << "property.4.errors.txt" << false;
     QTest::newRow("property.5") << "property.5.qml" << "property.5.errors.txt" << false;
+    QTest::newRow("property.6") << "property.6.qml" << "property.6.errors.txt" << false;
+    QTest::newRow("property.7") << "property.7.qml" << "property.7.errors.txt" << false;
 
     QTest::newRow("Script.1") << "script.1.qml" << "script.1.errors.txt" << false;
     QTest::newRow("Script.2") << "script.2.qml" << "script.2.errors.txt" << false;
@@ -319,13 +326,16 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("invalidAttachedProperty.10") << "invalidAttachedProperty.10.qml" << "invalidAttachedProperty.10.errors.txt" << false;
     QTest::newRow("invalidAttachedProperty.11") << "invalidAttachedProperty.11.qml" << "invalidAttachedProperty.11.errors.txt" << false;
 
+    QTest::newRow("emptySignal") << "emptySignal.qml" << "emptySignal.errors.txt" << false;
+    QTest::newRow("emptySignal.2") << "emptySignal.2.qml" << "emptySignal.2.errors.txt" << false;
+
     QTest::newRow("nestedErrors") << "nestedErrors.qml" << "nestedErrors.errors.txt" << false;
     QTest::newRow("defaultGrouped") << "defaultGrouped.qml" << "defaultGrouped.errors.txt" << false;
-    QTest::newRow("emptySignal") << "emptySignal.qml" << "emptySignal.errors.txt" << false;
     QTest::newRow("doubleSignal") << "doubleSignal.qml" << "doubleSignal.errors.txt" << false;
     QTest::newRow("invalidRoot") << "invalidRoot.qml" << "invalidRoot.errors.txt" << false;
     QTest::newRow("missingValueTypeProperty") << "missingValueTypeProperty.qml" << "missingValueTypeProperty.errors.txt" << false;
     QTest::newRow("objectValueTypeProperty") << "objectValueTypeProperty.qml" << "objectValueTypeProperty.errors.txt" << false;
+    QTest::newRow("enumTypes") << "enumTypes.qml" << "enumTypes.errors.txt" << false;
 }
 
 
@@ -682,7 +692,7 @@ void tst_qdeclarativelanguage::propertyValueSource()
     MyPropertyValueSource *valueSource = 
         qobject_cast<MyPropertyValueSource *>(valueSources.at(0));
     QVERIFY(valueSource != 0);
-    QCOMPARE(valueSource->prop.object(), object);
+    QCOMPARE(valueSource->prop.object(), qobject_cast<QObject*>(object));
     QCOMPARE(valueSource->prop.name(), QString(QLatin1String("intProperty")));
     }
 
@@ -703,7 +713,7 @@ void tst_qdeclarativelanguage::propertyValueSource()
     MyPropertyValueSource *valueSource = 
         qobject_cast<MyPropertyValueSource *>(valueSources.at(0));
     QVERIFY(valueSource != 0);
-    QCOMPARE(valueSource->prop.object(), object);
+    QCOMPARE(valueSource->prop.object(), qobject_cast<QObject*>(object));
     QCOMPARE(valueSource->prop.name(), QString(QLatin1String("intProperty")));
     }
 }
@@ -1025,12 +1035,12 @@ void tst_qdeclarativelanguage::scriptString()
     MyTypeObject *object = qobject_cast<MyTypeObject*>(component.create());
     QVERIFY(object != 0);
     QCOMPARE(object->scriptProperty().script(), QString("foo + bar"));
-    QCOMPARE(object->scriptProperty().scopeObject(), object);
+    QCOMPARE(object->scriptProperty().scopeObject(), qobject_cast<QObject*>(object));
     QCOMPARE(object->scriptProperty().context(), qmlContext(object));
 
     QVERIFY(object->grouped() != 0);
     QCOMPARE(object->grouped()->script().script(), QString("console.log(1921)"));
-    QCOMPARE(object->grouped()->script().scopeObject(), object);
+    QCOMPARE(object->grouped()->script().scopeObject(), qobject_cast<QObject*>(object));
     QCOMPARE(object->grouped()->script().context(), qmlContext(object));
 }
 
@@ -1236,6 +1246,9 @@ void tst_qdeclarativelanguage::importsRemote_data()
     QTest::newRow("remote import") << "import \""+serverdir+"\"\nTest {}" << "QDeclarativeRectangle";
     QTest::newRow("remote import with subdir") << "import \""+serverdir+"\"\nTestSubDir {}" << "QDeclarativeText";
     QTest::newRow("remote import with local") << "import \""+serverdir+"\"\nTestLocal {}" << "QDeclarativeImage";
+    QTest::newRow("wrong remote import with undeclared local") << "import \""+serverdir+"\"\nWrongTestLocal {}" << "";
+    QTest::newRow("wrong remote import of internal local") << "import \""+serverdir+"\"\nLocalInternal {}" << "";
+    QTest::newRow("wrong remote import of undeclared local") << "import \""+serverdir+"\"\nUndeclaredLocal {}" << "";
 }
 
 #include "testhttpserver.h"
@@ -1412,12 +1425,12 @@ void tst_qdeclarativelanguage::initTestCase()
 {
     registerTypes();
 
-    QML_REGISTER_TYPE(com.nokia.Test, 0, 0, TestTP, TestType);
-    QML_REGISTER_TYPE(com.nokia.Test, 1, 0, Test, TestType);
-    QML_REGISTER_TYPE(com.nokia.Test, 1, 5, Test, TestType);
-    QML_REGISTER_TYPE(com.nokia.Test, 1, 8, Test, TestType2);
-    QML_REGISTER_TYPE(com.nokia.Test, 1, 9, OldTest, TestType);
-    QML_REGISTER_TYPE(com.nokia.Test, 1, 12, Test, TestType2);
+    qmlRegisterType<TestType>("com.nokia.Test", 0, 0, "TestTP");
+    qmlRegisterType<TestType>("com.nokia.Test", 1, 0, "Test");
+    qmlRegisterType<TestType>("com.nokia.Test", 1, 5, "Test");
+    qmlRegisterType<TestType2>("com.nokia.Test", 1, 8, "Test");
+    qmlRegisterType<TestType>("com.nokia.Test", 1, 9, "OldTest");
+    qmlRegisterType<TestType2>("com.nokia.Test", 1, 12, "Test");
 
     // Create locale-specific file
     // For POSIX, this will just be data/I18nType.qml, since POSIX is 7-bit

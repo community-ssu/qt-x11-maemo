@@ -911,6 +911,14 @@ void QApplicationPrivate::initialize()
 {
     QWidgetPrivate::mapper = new QWidgetMapper;
     QWidgetPrivate::allWidgets = new QWidgetSet;
+
+#if !defined(Q_WS_X11) && !defined(Q_WS_QWS)
+    // initialize the graphics system - on X11 this is initialized inside
+    // qt_init() in qapplication_x11.cpp because of several reasons.
+    // On QWS, the graphics system is set by the QScreen plugin.
+    graphics_system = QGraphicsSystemFactory::create(graphics_system_name);
+#endif
+
     if (qt_appType != QApplication::Tty)
         (void) QApplication::style();  // trigger creation of application style
     // trigger registering of QVariant's GUI types
@@ -944,13 +952,7 @@ void QApplicationPrivate::initialize()
 
     // Set up which span functions should be used in raster engine...
     qInitDrawhelperAsm();
-    
-#if !defined(Q_WS_X11) && !defined(Q_WS_QWS)
-    // initialize the graphics system - on X11 this is initialized inside
-    // qt_init() in qapplication_x11.cpp because of several reasons.
-    // On QWS, the graphics system is set by the QScreen plugin.
-    graphics_system = QGraphicsSystemFactory::create(graphics_system_name);
-#endif
+
 #ifndef QT_NO_WHEELEVENT
     QApplicationPrivate::wheel_scroll_lines = 3;
 #endif
@@ -2317,12 +2319,15 @@ static bool qt_detectRTLLanguage()
                          " languages or to 'RTL' in right-to-left languages (such as Hebrew"
                          " and Arabic) to get proper widget layout.") == QLatin1String("RTL"));
 }
-#if defined(QT_MAC_USE_COCOA)
+#if defined(Q_WS_MAC)
 static const char *application_menu_strings[] = {
     QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","Services"),
     QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","Hide %1"),
     QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","Hide Others"),
-    QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","Show All")
+    QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","Show All"),
+    QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","Preferences..."),
+    QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","Quit %1"),
+    QT_TRANSLATE_NOOP("MAC_APPLICATION_MENU","About %1")
     };
 QString qt_mac_applicationmenu_string(int type)
 {

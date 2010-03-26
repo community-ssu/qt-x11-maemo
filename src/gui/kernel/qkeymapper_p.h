@@ -187,7 +187,7 @@ public:
                            const XEvent *,
                            bool grab);
 
-    bool useXKB;
+    int xkb_currentGroup;
     QXCoreDesc coreDesc;
 
 #elif defined(Q_WS_MAC)

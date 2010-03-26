@@ -126,7 +126,9 @@ void QFSFileEnginePrivate::init()
     fileAttrib = INVALID_FILE_ATTRIBUTES;
     fileHandle = INVALID_HANDLE_VALUE;
     mapHandle = INVALID_HANDLE_VALUE;
+#ifndef Q_OS_WINCE
     cachedFd = -1;
+#endif
 #endif
 }
 
@@ -1031,6 +1033,10 @@ bool QFSFileEngine::supportsExtension(Extension extension) const
 /*! \fn QString QFSFileEngine::tempPath()
   Returns the temporary path (i.e., a path in which it is safe
   to store temporary files).
+*/
+
+/*! \fn QAbstractFileEngine::FileFlags QFSFileEnginePrivate::getPermissions(QAbstractFileEngine::FileFlags type) const
+    \internal
 */
 
 QT_END_NAMESPACE

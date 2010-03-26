@@ -228,6 +228,7 @@
 #include <QtCore/qstack.h>
 #include <QtCore/qtimer.h>
 #include <QtCore/qvarlengtharray.h>
+#include <QtCore/QMetaMethod>
 #include <QtGui/qapplication.h>
 #include <QtGui/qdesktopwidget.h>
 #include <QtGui/qevent.h>
@@ -276,8 +277,6 @@ static void _q_hoverFromMouseEvent(QGraphicsSceneHoverEvent *hover, const QGraph
     hover->setModifiers(mouseEvent->modifiers());
     hover->setAccepted(mouseEvent->isAccepted());
 }
-
-int QGraphicsScenePrivate::changedSignalIndex;
 
 /*!
     \internal
@@ -329,9 +328,10 @@ void QGraphicsScenePrivate::init()
     index = new QGraphicsSceneBspTreeIndex(q);
 
     // Keep this index so we can check for connected slots later on.
-    if (!changedSignalIndex) {
-        changedSignalIndex = signalIndex("changed(QList<QRectF>)");
-    }
+    changedSignalIndex = signalIndex("changed(QList<QRectF>)");
+    processDirtyItemsIndex = q->metaObject()->indexOfSlot("_q_processDirtyItems()");
+    polishItemsIndex = q->metaObject()->indexOfSlot("_q_polishItems()");
+
     qApp->d_func()->scene_list.append(q);
     q->update();
 }
@@ -2537,8 +2537,10 @@ void QGraphicsScene::addItem(QGraphicsItem *item)
         return;
     }
 
-    if (d->unpolishedItems.isEmpty())
-        QMetaObject::invokeMethod(this, "_q_polishItems", Qt::QueuedConnection);
+    if (d->unpolishedItems.isEmpty()) {
+        QMetaMethod method = metaObject()->method(d->polishItemsIndex);
+        method.invoke(this, Qt::QueuedConnection);
+    }
     d->unpolishedItems.append(item);
     item->d_ptr->pendingPolish = true;
 
@@ -4300,6 +4302,12 @@ static void _q_paintIntoCache(QPixmap *pix, QGraphicsItem *item, const QRegion &
     if (!subPix.isNull()) {
         // Blit the subpixmap into the main pixmap.
         pixmapPainter.begin(pix);
+        if (item->cacheMode() == QGraphicsItem::DeviceCoordinateCache
+            && itemToPixmap.type() > QTransform::TxTranslate) {
+            pixmapPainter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+        } else {
+            pixmapPainter.setCompositionMode(QPainter::CompositionMode_Source);
+        }
         pixmapPainter.setClipRegion(pixmapExposed);
         pixmapPainter.drawPixmap(br.topLeft(), subPix);
         pixmapPainter.end();
@@ -4714,7 +4722,7 @@ void QGraphicsScenePrivate::drawSubtreeRecursive(QGraphicsItem *item, QPainter *
     if (item->d_ptr->graphicsEffect && item->d_ptr->graphicsEffect->isEnabled()) {
         ENSURE_TRANSFORM_PTR;
         QGraphicsItemPaintInfo info(viewTransform, transformPtr, effectTransform, exposedRegion, widget, &styleOptionTmp,
-                                    painter, opacity, wasDirtyParentSceneTransform, drawItem);
+                                    painter, opacity, wasDirtyParentSceneTransform, itemHasContents && !itemIsFullyTransparent);
         QGraphicsEffectSource *source = item->d_ptr->graphicsEffect->d_func()->source;
         QGraphicsItemEffectSourcePrivate *sourced = static_cast<QGraphicsItemEffectSourcePrivate *>
                                                     (source->d_func());
@@ -4880,7 +4888,9 @@ void QGraphicsScenePrivate::markDirty(QGraphicsItem *item, const QRectF &rect, b
         return;
 
     if (!processDirtyItemsEmitted) {
-        QMetaObject::invokeMethod(q_ptr, "_q_processDirtyItems", Qt::QueuedConnection);
+        QMetaMethod method = q_ptr->metaObject()->method(processDirtyItemsIndex);
+        method.invoke(q_ptr, Qt::QueuedConnection);
+//        QMetaObject::invokeMethod(q_ptr, "_q_processDirtyItems", Qt::QueuedConnection);
         processDirtyItemsEmitted = true;
     }
 

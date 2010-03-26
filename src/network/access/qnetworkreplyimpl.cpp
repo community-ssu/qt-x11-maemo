@@ -67,6 +67,8 @@ inline QNetworkReplyImplPrivate::QNetworkReplyImplPrivate()
 
 void QNetworkReplyImplPrivate::_q_startOperation()
 {
+    Q_Q(QNetworkReplyImpl);
+
     // ensure this function is only being called once
     if (state == Working) {
         qDebug("QNetworkReplyImpl::_q_startOperation was called more than once");
@@ -93,6 +95,9 @@ void QNetworkReplyImplPrivate::_q_startOperation()
         QNetworkSession *session = manager->d_func()->networkSession;
 
         if (session) {
+            QObject::connect(session, SIGNAL(error(QNetworkSession::SessionError)),
+                             q, SLOT(_q_networkSessionFailed()));
+
             if (!session->isOpen())
                 session->open();
         } else {
@@ -227,9 +232,19 @@ void QNetworkReplyImplPrivate::_q_bufferOutgoingData()
     }
 }
 
-void QNetworkReplyImplPrivate::_q_networkSessionOnline()
+void QNetworkReplyImplPrivate::_q_networkSessionConnected()
 {
     Q_Q(QNetworkReplyImpl);
+
+    if (manager.isNull())
+        return;
+
+    QNetworkSession *session = manager->d_func()->networkSession;
+    if (!session)
+        return;
+
+    if (session->state() != QNetworkSession::Connected)
+        return;
 
     switch (state) {
     case QNetworkReplyImplPrivate::Buffering:
@@ -244,6 +259,17 @@ void QNetworkReplyImplPrivate::_q_networkSessionOnline()
         break;
     default:
         ;
+    }
+}
+
+void QNetworkReplyImplPrivate::_q_networkSessionFailed()
+{
+    // Abort waiting replies.
+    if (state == WaitingForSession) {
+        state = Working;
+        error(QNetworkReplyImpl::UnknownNetworkError,
+              QCoreApplication::translate("QNetworkReply", "Network session error."));
+        finished();
     }
 }
 
@@ -292,11 +318,15 @@ void QNetworkReplyImplPrivate::setup(QNetworkAccessManager::Operation op, const 
 
         // for HTTP, we want to send out the request as fast as possible to the network, without
         // invoking methods in a QueuedConnection
+#ifndef QT_NO_HTTP
         if (qobject_cast<QNetworkAccessHttpBackend *>(backend)) {
             _q_startOperation();
         } else {
             QMetaObject::invokeMethod(q, "_q_startOperation", Qt::QueuedConnection);
         }
+#else
+        QMetaObject::invokeMethod(q, "_q_startOperation", Qt::QueuedConnection);
+#endif // QT_NO_HTTP
     }
 
     q->QIODevice::open(QIODevice::ReadOnly);
@@ -707,6 +737,13 @@ void QNetworkReplyImpl::close()
     d->finished();
 }
 
+bool QNetworkReplyImpl::canReadLine () const
+{
+    Q_D(const QNetworkReplyImpl);
+    return QNetworkReply::canReadLine() || d->readBuffer.canReadLine();
+}
+
+
 /*!
     Returns the number of bytes available for reading with
     QIODevice::read(). The number of bytes available may grow until
@@ -839,11 +876,15 @@ bool QNetworkReplyImplPrivate::migrateBackend()
         backend->setResumeOffset(bytesDownloaded);
     }
 
+#ifndef QT_NO_HTTP
     if (qobject_cast<QNetworkAccessHttpBackend *>(backend)) {
         _q_startOperation();
     } else {
         QMetaObject::invokeMethod(q, "_q_startOperation", Qt::QueuedConnection);
     }
+#else
+    QMetaObject::invokeMethod(q, "_q_startOperation", Qt::QueuedConnection);
+#endif // QT_NO_HTTP
 
     return true;
 }

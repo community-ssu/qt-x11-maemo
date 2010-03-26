@@ -140,7 +140,9 @@ static DBusHandlerResult signal_handler(DBusConnection *,
 				    DBUS_TYPE_STRING, &network_type,
 				    DBUS_TYPE_STRING, &state,
 				    DBUS_TYPE_INVALID) == FALSE) {
-	    qWarning() << QString("Failed to parse icd status signal: %1").arg(error.message);
+#ifdef BEARER_MANAGEMENT_DEBUG
+        qDebug() << QString("Failed to parse icd status signal: %1").arg(error.message);
+#endif
         } else {
 	    QString _iap_id(iap_id);
 	    QString _network_type(network_type);
@@ -166,7 +168,6 @@ void IcdListener::setup(QNetworkSessionPrivateImpl *d)
 
 	dbus_connection = get_dbus_conn(&error);
 	if (dbus_error_is_set(&error)) {
-	    qWarning() << "Cannot get dbus connection.";
 	    dbus_error_free(&error);
 	    return;
 	}
@@ -176,7 +177,6 @@ void IcdListener::setup(QNetworkSessionPrivateImpl *d)
 
 	dbus_bus_add_match(dbus_connection, ICD_DBUS_MATCH, &error);
 	if (dbus_error_is_set(&error)) {
-	    qWarning() << "Cannot add match" << ICD_DBUS_MATCH;
 	    dbus_error_free(&error);
 	    return;
 	}
@@ -185,7 +185,6 @@ void IcdListener::setup(QNetworkSessionPrivateImpl *d)
 						    ICD_DBUS_PATH,
 						    &icd_vtable,
 						    (void*)this) == FALSE) {
-	    qWarning() << "Cannot register dbus signal handler, interface"<< ICD_DBUS_INTERFACE << "path" << ICD_DBUS_PATH;
 	    dbus_error_free(&error);
 	    return;
 	}
@@ -313,19 +312,42 @@ void QNetworkSessionPrivateImpl::updateState(QNetworkSession::State newState)
     state = newState;
 
 	if (state == QNetworkSession::Disconnected) {
-            isOpen = false;
+        isOpen = false;
 	    currentNetworkInterface.clear();
-	    if (publicConfig.type() == QNetworkConfiguration::UserChoice)
-        privateConfiguration(activeConfig)->state = QNetworkConfiguration::Defined;
-        privateConfiguration(publicConfig)->state = QNetworkConfiguration::Defined;
+        if (publicConfig.type() == QNetworkConfiguration::UserChoice) {
+            IcdNetworkConfigurationPrivate *icdConfig =
+                toIcdConfig(privateConfiguration(activeConfig));
+
+            icdConfig->mutex.lock();
+            icdConfig->state = QNetworkConfiguration::Defined;
+            icdConfig->mutex.unlock();
+        }
+
+        IcdNetworkConfigurationPrivate *icdConfig =
+            toIcdConfig(privateConfiguration(publicConfig));
+
+        icdConfig->mutex.lock();
+        icdConfig->state = QNetworkConfiguration::Defined;
+        icdConfig->mutex.unlock();
 
 	} else if (state == QNetworkSession::Connected) {
-            isOpen = true;
+        isOpen = true;
 	    if (publicConfig.type() == QNetworkConfiguration::UserChoice) {
-        privateConfiguration(activeConfig)->state = QNetworkConfiguration::Active;
-        privateConfiguration(activeConfig)->type = QNetworkConfiguration::InternetAccessPoint;
+            IcdNetworkConfigurationPrivate *icdConfig =
+                toIcdConfig(privateConfiguration(activeConfig));
+
+            icdConfig->mutex.lock();
+            icdConfig->state = QNetworkConfiguration::Active;
+            icdConfig->type = QNetworkConfiguration::InternetAccessPoint;
+            icdConfig->mutex.unlock();
 	    }
-        privateConfiguration(publicConfig)->state = QNetworkConfiguration::Active;
+
+        IcdNetworkConfigurationPrivate *icdConfig =
+            toIcdConfig(privateConfiguration(publicConfig));
+
+        icdConfig->mutex.lock();
+        icdConfig->state = QNetworkConfiguration::Active;
+        icdConfig->mutex.unlock();
 	}
 
     emit stateChanged(newState);
@@ -335,15 +357,22 @@ void QNetworkSessionPrivateImpl::updateState(QNetworkSession::State newState)
 void QNetworkSessionPrivateImpl::updateIdentifier(QString &newId)
 {
     if (publicConfig.type() == QNetworkConfiguration::UserChoice) {
-    toIcdConfig(privateConfiguration(activeConfig))->network_attrs |= ICD_NW_ATTR_IAPNAME;
-    privateConfiguration(activeConfig)->id = newId;
+        IcdNetworkConfigurationPrivate *icdConfig =
+            toIcdConfig(privateConfiguration(activeConfig));
+
+        icdConfig->mutex.lock();
+        icdConfig->network_attrs |= ICD_NW_ATTR_IAPNAME;
+        icdConfig->id = newId;
+        icdConfig->mutex.unlock();
     } else {
-    toIcdConfig(privateConfiguration(publicConfig))->network_attrs |= ICD_NW_ATTR_IAPNAME;
-    if (privateConfiguration(publicConfig)->id != newId) {
-        qWarning() << "Your config id changed from" << privateConfiguration(publicConfig)->id
-                   << "to" << newId;
-        privateConfiguration(publicConfig)->id = newId;
-	}
+        IcdNetworkConfigurationPrivate *icdConfig =
+            toIcdConfig(privateConfiguration(publicConfig));
+
+        icdConfig->mutex.lock();
+        icdConfig->network_attrs |= ICD_NW_ATTR_IAPNAME;
+        if (icdConfig->id != newId)
+            icdConfig->id = newId;
+        icdConfig->mutex.unlock();
     }
 }
 
@@ -362,7 +391,7 @@ quint64 QNetworkSessionPrivateImpl::getStatistics(bool sent) const
 	return 0;
     }
 
-    foreach (Maemo::IcdStatisticsResult res, stats_results) {
+    foreach (const Maemo::IcdStatisticsResult &res, stats_results) {
 	if (res.params.network_attrs & ICD_NW_ATTR_IAPNAME) {
 	    /* network_id is the IAP UUID */
 	    if (QString(res.params.network_id.data()) == activeConfig.identifier()) {
@@ -371,10 +400,15 @@ quint64 QNetworkSessionPrivateImpl::getStatistics(bool sent) const
 	    }
 	} else {
 	    /* We probably will never get to this branch */
-        if (res.params.network_id == toIcdConfig(privateConfiguration(activeConfig))->network_id) {
-		counter_tx = res.bytes_sent;
-		counter_rx = res.bytes_received;
+        IcdNetworkConfigurationPrivate *icdConfig =
+            toIcdConfig(privateConfiguration(activeConfig));
+
+        icdConfig->mutex.lock();
+        if (res.params.network_id == icdConfig->network_id) {
+            counter_tx = res.bytes_sent;
+            counter_rx = res.bytes_received;
 	    }
+        icdConfig->mutex.unlock();
 	}
     }
 
@@ -416,20 +450,25 @@ QNetworkConfiguration& QNetworkSessionPrivateImpl::copyConfig(QNetworkConfigurat
         cpPriv = toIcdConfig(privateConfiguration(toConfig));
     }
 
-    cpPriv->name = privateConfiguration(fromConfig)->name;
-    cpPriv->isValid = privateConfiguration(fromConfig)->isValid;
+    IcdNetworkConfigurationPrivate *fromPriv = toIcdConfig(privateConfiguration(fromConfig));
+
+    QMutexLocker toLocker(&cpPriv->mutex);
+    QMutexLocker fromLocker(&fromPriv->mutex);
+
+    cpPriv->name = fromPriv->name;
+    cpPriv->isValid = fromPriv->isValid;
     // Note that we do not copy id field here as the publicConfig does
     // not contain a valid IAP id.
-    cpPriv->state = privateConfiguration(fromConfig)->state;
-    cpPriv->type = privateConfiguration(fromConfig)->type;
-    cpPriv->roamingSupported = privateConfiguration(fromConfig)->roamingSupported;
-    cpPriv->purpose = privateConfiguration(fromConfig)->purpose;
-    cpPriv->network_id = toIcdConfig(privateConfiguration(fromConfig))->network_id;
-    cpPriv->iap_type = toIcdConfig(privateConfiguration(fromConfig))->iap_type;
-    cpPriv->network_attrs = toIcdConfig(privateConfiguration(fromConfig))->network_attrs;
-    cpPriv->service_type = toIcdConfig(privateConfiguration(fromConfig))->service_type;
-    cpPriv->service_id = toIcdConfig(privateConfiguration(fromConfig))->service_id;
-    cpPriv->service_attrs = toIcdConfig(privateConfiguration(fromConfig))->service_attrs;
+    cpPriv->state = fromPriv->state;
+    cpPriv->type = fromPriv->type;
+    cpPriv->roamingSupported = fromPriv->roamingSupported;
+    cpPriv->purpose = fromPriv->purpose;
+    cpPriv->network_id = fromPriv->network_id;
+    cpPriv->iap_type = fromPriv->iap_type;
+    cpPriv->network_attrs = fromPriv->network_attrs;
+    cpPriv->service_type = fromPriv->service_type;
+    cpPriv->service_id = fromPriv->service_id;
+    cpPriv->service_attrs = fromPriv->service_attrs;
 
     return toConfig;
 }
@@ -514,18 +553,30 @@ void QNetworkSessionPrivateImpl::syncStateWithInterface()
 	     * then do not update current state etc.
 	     */
 	    if (publicConfig.type() == QNetworkConfiguration::UserChoice ||
-            privateConfiguration(publicConfig)->id == state_results.first().params.network_id) {
+            publicConfig.identifier() == state_results.first().params.network_id) {
 
 		switch (state_results.first().state) {
 		case ICD_STATE_DISCONNECTED:
 		    state = QNetworkSession::Disconnected;
-            if (privateConfiguration(activeConfig))
-            privateConfiguration(activeConfig)->isValid = true;
+            {
+                QNetworkConfigurationPrivatePointer ptr = privateConfiguration(activeConfig);
+                if (ptr) {
+                    ptr->mutex.lock();
+                    ptr->isValid = true;
+                    ptr->mutex.unlock();
+                }
+            }
 		    break;
 		case ICD_STATE_CONNECTING:
 		    state = QNetworkSession::Connecting;
-            if (privateConfiguration(activeConfig))
-            privateConfiguration(activeConfig)->isValid = true;
+            {
+                QNetworkConfigurationPrivatePointer ptr = privateConfiguration(activeConfig);
+                if (ptr) {
+                    ptr->mutex.lock();
+                    ptr->isValid = true;
+                    ptr->mutex.unlock();
+                }
+            }
 		    break;
 		case ICD_STATE_CONNECTED:
 		    {
@@ -543,6 +594,8 @@ void QNetworkSessionPrivateImpl::syncStateWithInterface()
 
             QNetworkConfigurationPrivatePointer ptr = privateConfiguration(activeConfig);
 
+            QMutexLocker configLocker(&ptr->mutex);
+
 			state = QNetworkSession::Connected;
             toIcdConfig(ptr)->network_id = state_results.first().params.network_id;
             ptr->id = toIcdConfig(ptr)->network_id;
@@ -556,26 +609,35 @@ void QNetworkSessionPrivateImpl::syncStateWithInterface()
             ptr->isValid = true;
 			currentNetworkInterface = get_network_interface();
 
-            Maemo::IAPConf iap_name(privateConfiguration(activeConfig)->id);
+            Maemo::IAPConf iap_name(ptr->id);
 			QString name_value = iap_name.value("name").toString();
 			if (!name_value.isEmpty())
-                privateConfiguration(activeConfig)->name = name_value;
+                ptr->name = name_value;
 			else
-                privateConfiguration(activeConfig)->name = privateConfiguration(activeConfig)->id;
+                ptr->name = ptr->id;
 
 
 			// Add the new active configuration to manager or update the old config
-            if (!engine->hasIdentifier(privateConfiguration(activeConfig)->id))
-                engine->addSessionConfiguration(privateConfiguration(activeConfig));
-            else
-                engine->changedSessionConfiguration(privateConfiguration(activeConfig));
-		    }
+            if (!engine->hasIdentifier(ptr->id)) {
+                configLocker.unlock();
+                engine->addSessionConfiguration(ptr);
+            } else {
+                configLocker.unlock();
+                engine->changedSessionConfiguration(ptr);
+            }
+            }
 		    break;
 
 		case ICD_STATE_DISCONNECTING:
 		    state = QNetworkSession::Closing;
-            if (privateConfiguration(activeConfig))
-            privateConfiguration(activeConfig)->isValid = true;
+            {
+                QNetworkConfigurationPrivatePointer ptr = privateConfiguration(activeConfig);
+                if (ptr) {
+                    ptr->mutex.lock();
+                    ptr->isValid = true;
+                    ptr->mutex.unlock();
+                }
+            }
 		    break;
 		default:
 		    break;
@@ -637,12 +699,16 @@ void QNetworkSessionPrivateImpl::updateStateFromServiceNetwork()
 
 void QNetworkSessionPrivateImpl::clearConfiguration(QNetworkConfiguration &config)
 {
-    toIcdConfig(privateConfiguration(config))->network_id.clear();
-    toIcdConfig(privateConfiguration(config))->iap_type.clear();
-    toIcdConfig(privateConfiguration(config))->network_attrs = 0;
-    toIcdConfig(privateConfiguration(config))->service_type.clear();
-    toIcdConfig(privateConfiguration(config))->service_id.clear();
-    toIcdConfig(privateConfiguration(config))->service_attrs = 0;
+    IcdNetworkConfigurationPrivate *icdConfig = toIcdConfig(privateConfiguration(config));
+
+    QMutexLocker locker(&icdConfig->mutex);
+
+    icdConfig->network_id.clear();
+    icdConfig->iap_type.clear();
+    icdConfig->network_attrs = 0;
+    icdConfig->service_type.clear();
+    icdConfig->service_id.clear();
+    icdConfig->service_attrs = 0;
 }
 
 
@@ -652,8 +718,8 @@ void QNetworkSessionPrivateImpl::updateStateFromActiveConfig()
 
     bool newActive = false;
 
-    if (!privateConfiguration(activeConfig))
-	return;
+    if (!activeConfig.isValid())
+        return;
 
     if (!activeConfig.isValid()) {
         state = QNetworkSession::Invalid;
@@ -840,16 +906,21 @@ void QNetworkSessionPrivateImpl::do_open()
 
 	QList<Maemo::ConnectParams> params;
 	Maemo::ConnectParams param;
-    param.connect.service_type = toIcdConfig(privateConfiguration(config))->service_type;
-    param.connect.service_attrs = toIcdConfig(privateConfiguration(config))->service_attrs;
-    param.connect.service_id = toIcdConfig(privateConfiguration(config))->service_id;
-    param.connect.network_type = toIcdConfig(privateConfiguration(config))->iap_type;
-    param.connect.network_attrs = toIcdConfig(privateConfiguration(config))->network_attrs;
-    if (toIcdConfig(privateConfiguration(config))->network_attrs & ICD_NW_ATTR_IAPNAME)
+
+    IcdNetworkConfigurationPrivate *icdConfig = toIcdConfig(privateConfiguration(config));
+
+    icdConfig->mutex.lock();
+    param.connect.service_type = icdConfig->service_type;
+    param.connect.service_attrs = icdConfig->service_attrs;
+    param.connect.service_id = icdConfig->service_id;
+    param.connect.network_type = icdConfig->iap_type;
+    param.connect.network_attrs = icdConfig->network_attrs;
+    if (icdConfig->network_attrs & ICD_NW_ATTR_IAPNAME)
 	    param.connect.network_id = QByteArray(iap.toLatin1());
 	else
-        param.connect.network_id = toIcdConfig(privateConfiguration(config))->network_id;
+        param.connect.network_id = icdConfig->network_id;
 	params.append(param);
+    icdConfig->mutex.unlock();
 
 #ifdef BEARER_MANAGEMENT_DEBUG
 	qDebug("connecting to %s/%s/0x%x/%s/0x%x/%s",
@@ -890,26 +961,30 @@ void QNetworkSessionPrivateImpl::do_open()
 	    return;
 	}
 
+    IcdNetworkConfigurationPrivate *icdConfig = toIcdConfig(privateConfiguration(config));
 
 	/* Did we connect to non saved IAP? */
-    if (!(toIcdConfig(privateConfiguration(config))->network_attrs & ICD_NW_ATTR_IAPNAME)) {
+    icdConfig->mutex.lock();
+    if (!(icdConfig->network_attrs & ICD_NW_ATTR_IAPNAME)) {
 	    /* Because the connection succeeded, the IAP is now known.
 	     */
-        toIcdConfig(privateConfiguration(config))->network_attrs |= ICD_NW_ATTR_IAPNAME;
-        privateConfiguration(config)->id = connected_iap;
+        icdConfig->network_attrs |= ICD_NW_ATTR_IAPNAME;
+        icdConfig->id = connected_iap;
 	}
 
 	/* User might have changed the IAP name when a new IAP was saved */
-    Maemo::IAPConf iap_name(privateConfiguration(config)->id);
+    Maemo::IAPConf iap_name(icdConfig->id);
 	QString name = iap_name.value("name").toString();
 	if (!name.isEmpty())
-        privateConfiguration(config)->name = name;
+        icdConfig->name = name;
 
-    toIcdConfig(privateConfiguration(config))->iap_type = connect_result.connect.network_type;
+    icdConfig->iap_type = connect_result.connect.network_type;
 
-    privateConfiguration(config)->isValid = true;
-    privateConfiguration(config)->state = QNetworkConfiguration::Active;
-    privateConfiguration(config)->type = QNetworkConfiguration::InternetAccessPoint;
+    icdConfig->isValid = true;
+    icdConfig->state = QNetworkConfiguration::Active;
+    icdConfig->type = QNetworkConfiguration::InternetAccessPoint;
+
+    icdConfig->mutex.unlock();
 
 	startTime = QDateTime::currentDateTime();
 	updateState(QNetworkSession::Connected);
@@ -998,8 +1073,11 @@ void QNetworkSessionPrivateImpl::stop()
 	     * configurationChanged is emitted (below).
 	     */
 
-        privateConfiguration(activeConfig)->state = QNetworkConfiguration::Discovered;
-        engine->changedSessionConfiguration(privateConfiguration(activeConfig));
+        QNetworkConfigurationPrivatePointer ptr = privateConfiguration(activeConfig);
+        ptr->mutex.lock();
+        ptr->state = QNetworkConfiguration::Discovered;
+        ptr->mutex.unlock();
+        engine->changedSessionConfiguration(ptr);
 
 	    opened = false;
 	    isOpen = false;
@@ -1015,28 +1093,24 @@ void QNetworkSessionPrivateImpl::stop()
 
 void QNetworkSessionPrivateImpl::migrate()
 {
-    qWarning("This platform does not support roaming (%s).", __FUNCTION__);
 }
 
 
 void QNetworkSessionPrivateImpl::accept()
 {
-    qWarning("This platform does not support roaming (%s).", __FUNCTION__);
 }
 
 
 void QNetworkSessionPrivateImpl::ignore()
 {
-    qWarning("This platform does not support roaming (%s).", __FUNCTION__);
 }
 
 
 void QNetworkSessionPrivateImpl::reject()
 {
-    qWarning("This platform does not support roaming (%s).", __FUNCTION__);
 }
 
-
+#ifndef QT_NO_NETWORKINTERFACE
 QNetworkInterface QNetworkSessionPrivateImpl::currentInterface() const
 {
     if (!publicConfig.isValid() || state != QNetworkSession::Connected)
@@ -1047,7 +1121,7 @@ QNetworkInterface QNetworkSessionPrivateImpl::currentInterface() const
 
     return QNetworkInterface::interfaceFromName(currentNetworkInterface);
 }
-
+#endif
 
 void QNetworkSessionPrivateImpl::setSessionProperty(const QString& key, const QVariant& value)
 {

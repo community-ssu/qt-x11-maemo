@@ -132,7 +132,7 @@ QDeclarativeAbstractAnimation::QDeclarativeAbstractAnimation(QDeclarativeAbstrac
     using the \c start() and \c stop() methods.
 
     By default, animations are not running. Though, when the animations are assigned to properties,
-    as property value sources, they are set to running by default.
+    as property value sources using the \e on syntax, they are set to running by default.
 */
 bool QDeclarativeAbstractAnimation::isRunning() const
 {
@@ -190,9 +190,13 @@ void QDeclarativeAbstractAnimation::setRunning(bool r)
 
     d->running = r;
     if (d->running) {
-        if (d->alwaysRunToEnd && d->repeat
+        if (d->alwaysRunToEnd && d->loopCount != 1
             && qtAnimation()->state() == QAbstractAnimation::Running) {
-            qtAnimation()->setLoopCount(-1);
+            //we've restarted before the final loop finished; restore proper loop count
+            if (d->loopCount == -1)
+                qtAnimation()->setLoopCount(d->loopCount);
+            else
+                qtAnimation()->setLoopCount(qtAnimation()->currentLoop() + d->loopCount);
         }
 
         if (!d->connectedTimeLine) {
@@ -204,8 +208,8 @@ void QDeclarativeAbstractAnimation::setRunning(bool r)
         emit started();
     } else {
         if (d->alwaysRunToEnd) {
-            if (d->repeat)
-                qtAnimation()->setLoopCount(qtAnimation()->currentLoop()+1);
+            if (d->loopCount != 1)
+                qtAnimation()->setLoopCount(qtAnimation()->currentLoop()+1);    //finish the current loop
         } else
             qtAnimation()->stop();
 
@@ -300,10 +304,12 @@ void QDeclarativeAbstractAnimation::setAlwaysRunToEnd(bool f)
 }
 
 /*!
-    \qmlproperty bool Animation::repeat
-    This property holds whether the animation should repeat.
+    \qmlproperty int Animation::loops
+    This property holds the number of times the animation should play.
 
-    If set, the animation will continuously repeat until it is explicitly
+    By default, \c loops is 1: the animation will play through once and then stop.
+
+    If set to Animation.Infinite, the animation will continuously repeat until it is explicitly
     stopped - either by setting the \c running property to false, or by calling
     the \c stop() method.
 
@@ -311,27 +317,35 @@ void QDeclarativeAbstractAnimation::setAlwaysRunToEnd(bool f)
 
     \code
     Rectangle {
-        NumberAnimation on rotation { running: true; repeat: true; from: 0 to: 360 }
+        width: 100; height: 100; color: "green"
+        RotationAnimation on rotation {
+            loops: Animation.Infinite
+            from: 0
+            to: 360
+        }
     }
     \endcode
 */
-bool QDeclarativeAbstractAnimation::repeat() const
+int QDeclarativeAbstractAnimation::loops() const
 {
     Q_D(const QDeclarativeAbstractAnimation);
-    return d->repeat;
+    return d->loopCount;
 }
 
-void QDeclarativeAbstractAnimation::setRepeat(bool r)
+void QDeclarativeAbstractAnimation::setLoops(int loops)
 {
     Q_D(QDeclarativeAbstractAnimation);
-    if (r == d->repeat)
+    if (loops < 0)
+        loops = -1;
+
+    if (loops == d->loopCount)
         return;
 
-    d->repeat = r;
-    int lc = r ? -1 : 1;
-    qtAnimation()->setLoopCount(lc);
-    emit repeatChanged(r);
+    d->loopCount = loops;
+    qtAnimation()->setLoopCount(loops);
+    emit loopCountChanged(loops);
 }
+
 
 int QDeclarativeAbstractAnimation::currentTime()
 {
@@ -509,8 +523,9 @@ void QDeclarativeAbstractAnimation::timelineComplete()
 {
     Q_D(QDeclarativeAbstractAnimation);
     setRunning(false);
-    if (d->alwaysRunToEnd && d->repeat) {
-        qtAnimation()->setLoopCount(-1);
+    if (d->alwaysRunToEnd && d->loopCount != 1) {
+        //restore the proper loopCount for the next run
+        qtAnimation()->setLoopCount(d->loopCount);
     }
 }
 
@@ -658,6 +673,37 @@ void QDeclarativeColorAnimation::setTo(const QColor &t)
     \inherits Animation
     \brief The ScriptAction element allows scripts to be run during an animation.
 
+    ScriptAction can be used to run script at a specific point in an animation.
+
+    \qml
+    SequentialAnimation {
+        NumberAnimation { ... }
+        ScriptAction { script: doSomething(); }
+        NumberAnimation { ... }
+    }
+    \endqml
+
+    When used as part of a Transition, you can also target a specific
+    StateChangeScript to run using the \c scriptName property.
+
+    \qml
+    State {
+        StateChangeScript {
+            name: "myScript"
+            script: doStateStuff();
+        }
+    }
+    ...
+    Transition {
+        SequentialAnimation {
+            NumberAnimation { ... }
+            ScriptAction { scriptName: "myScript" }
+            NumberAnimation { ... }
+        }
+    }
+    \endqml
+
+    \sa StateChangeScript
 */
 /*!
     \internal
@@ -698,11 +744,14 @@ void QDeclarativeScriptAction::setScript(const QDeclarativeScriptString &script)
 }
 
 /*!
-    \qmlproperty QString ScriptAction::stateChangeScriptName
+    \qmlproperty QString ScriptAction::scriptName
     This property holds the the name of the StateChangeScript to run.
 
     This property is only valid when ScriptAction is used as part of a transition.
-    If both script and stateChangeScriptName are set, stateChangeScriptName will be used.
+    If both script and scriptName are set, scriptName will be used.
+
+    \note When using scriptName in a reversible transition, the script will only
+    be run when the transition is being run forwards.
 */
 QString QDeclarativeScriptAction::stateChangeScriptName() const
 {
@@ -718,6 +767,9 @@ void QDeclarativeScriptAction::setStateChangeScriptName(const QString &name)
 
 void QDeclarativeScriptActionPrivate::execute()
 {
+    if (hasRunScriptScript && reversing)
+        return;
+
     QDeclarativeScriptString scriptStr = hasRunScriptScript ? runScriptScript : script;
 
     const QString &str = scriptStr.script();
@@ -733,19 +785,18 @@ void QDeclarativeScriptAction::transition(QDeclarativeStateActions &actions,
 {
     Q_D(QDeclarativeScriptAction);
     Q_UNUSED(modified);
-    Q_UNUSED(direction);
 
     d->hasRunScriptScript = false;
+    d->reversing = (direction == Backward);
     for (int ii = 0; ii < actions.count(); ++ii) {
         QDeclarativeAction &action = actions[ii];
 
         if (action.event && action.event->typeName() == QLatin1String("StateChangeScript")
             && static_cast<QDeclarativeStateChangeScript*>(action.event)->name() == d->name) {
-            //### how should we handle reverse direction?
             d->runScriptScript = static_cast<QDeclarativeStateChangeScript*>(action.event)->script();
             d->hasRunScriptScript = true;
             action.actionDone = true;
-            break;  //assumes names are unique
+            break;  //only match one (names should be unique)
         }
     }
 }
@@ -838,10 +889,10 @@ void QDeclarativePropertyAction::setProperty(const QString &n)
 }
 
 /*!
+    \qmlproperty list<Object> PropertyAction::targets
     \qmlproperty string PropertyAction::property
     \qmlproperty string PropertyAction::properties
     \qmlproperty Object PropertyAction::target
-    \qmlproperty list<Object> PropertyAction::targets
 
     These properties are used as a set to determine which properties should be
     affected by this action.
@@ -876,6 +927,7 @@ QDeclarativeListProperty<QObject> QDeclarativePropertyAction::targets()
 /*!
     \qmlproperty list<Object> PropertyAction::exclude
     This property holds the objects not to be affected by this animation.
+
     \sa targets
 */
 QDeclarativeListProperty<QObject> QDeclarativePropertyAction::exclude()
@@ -1004,212 +1056,6 @@ void QDeclarativePropertyAction::transition(QDeclarativeStateActions &actions,
         delete data;
     }
 }
-
-
-
-/*!
-    \qmlclass ParentAction QDeclarativeParentAction
-    \since 4.7
-    \inherits Animation
-    \brief The ParentAction element allows parent changes during animation.
-
-    ParentAction provides a way to specify at what point in a Transition a ParentChange should
-    occur.
-    \qml
-    State {
-        ParentChange {
-            target: myItem
-            parent: newParent
-        }
-    }
-    Transition {
-        SequentialAnimation {
-            PropertyAnimation { ... }
-            ParentAction {}   //reparent myItem now
-            PropertyAnimation { ... }
-        }
-    }
-    \endqml
-
-    It also provides a way to explicitly reparent an item during an animation.
-    \qml
-    SequentialAnimation {
-        ParentAction { target: myItem; parent: newParent }
-        PropertyAnimation {}
-    }
-    \endqml
-
-    The ParentAction is immediate - it is not animated in any way.
-*/
-
-QDeclarativeParentAction::QDeclarativeParentAction(QObject *parent)
-: QDeclarativeAbstractAnimation(*(new QDeclarativeParentActionPrivate), parent)
-{
-    Q_D(QDeclarativeParentAction);
-    d->init();
-}
-
-QDeclarativeParentAction::~QDeclarativeParentAction()
-{
-}
-
-void QDeclarativeParentActionPrivate::init()
-{
-    Q_Q(QDeclarativeParentAction);
-    cpa = new QActionAnimation;
-    QDeclarative_setParent_noEvent(cpa, q);
-}
-
-/*!
-    \qmlproperty Item ParentAction::target
-
-    This property holds a target item to reparent.
-
-    In the following example, \c myItem will be reparented by the ParentAction, while
-    \c myOtherItem will not.
-    \qml
-    State {
-        ParentChange {
-            target: myItem
-            parent: newParent
-        }
-        ParentChange {
-            target: myOtherItem
-            parent: otherNewParent
-        }
-    }
-    Transition {
-        SequentialAnimation {
-            PropertyAnimation { ... }
-            ParentAction { target: myItem }
-            PropertyAnimation { ... }
-        }
-    }
-    \endqml
-
- */
-QDeclarativeItem *QDeclarativeParentAction::object() const
-{
-    Q_D(const QDeclarativeParentAction);
-    return d->pcTarget;
-}
-
-void QDeclarativeParentAction::setObject(QDeclarativeItem *target)
-{
-    Q_D(QDeclarativeParentAction);
-    d->pcTarget = target;
-}
-
-/*!
-    \qmlproperty Item ParentAction::parent
-
-    The item to reparent to (i.e. the new parent).
- */
-QDeclarativeItem *QDeclarativeParentAction::parent() const
-{
-    Q_D(const QDeclarativeParentAction);
-    return d->pcParent;
-}
-
-void QDeclarativeParentAction::setParent(QDeclarativeItem *parent)
-{
-    Q_D(QDeclarativeParentAction);
-    d->pcParent = parent;
-}
-
-void QDeclarativeParentActionPrivate::doAction()
-{
-    QDeclarativeParentChange pc;
-    pc.setObject(pcTarget);
-    pc.setParent(pcParent);
-    pc.execute();
-}
-
-QAbstractAnimation *QDeclarativeParentAction::qtAnimation()
-{
-    Q_D(QDeclarativeParentAction);
-    return d->cpa;
-}
-
-void QDeclarativeParentAction::transition(QDeclarativeStateActions &actions,
-                                       QDeclarativeProperties &modified,
-                                       TransitionDirection direction)
-{
-    Q_D(QDeclarativeParentAction);
-    Q_UNUSED(modified);
-    Q_UNUSED(direction);
-
-    struct QDeclarativeParentActionData : public QAbstractAnimationAction
-    {
-        QDeclarativeParentActionData(): pc(0) {}
-        ~QDeclarativeParentActionData() { delete pc; }
-
-        QDeclarativeStateActions actions;
-        bool reverse;
-        QDeclarativeParentChange *pc;
-        virtual void doAction()
-        {
-            for (int ii = 0; ii < actions.count(); ++ii) {
-                const QDeclarativeAction &action = actions.at(ii);
-                if (reverse)
-                    action.event->reverse();
-                else
-                    action.event->execute();
-            }
-        }
-    };
-
-    QDeclarativeParentActionData *data = new QDeclarativeParentActionData;
-
-    //### need to correctly handle modified/done
-
-    bool hasExplicit = false;
-    if (d->pcTarget && d->pcParent) {
-        data->reverse = false;
-        QDeclarativeAction myAction;
-        QDeclarativeParentChange *pc = new QDeclarativeParentChange;
-        pc->setObject(d->pcTarget);
-        pc->setParent(d->pcParent);
-        myAction.event = pc;
-        data->pc = pc;
-        data->actions << myAction;
-        hasExplicit = true;
-    }
-
-    if (!hasExplicit)
-    for (int ii = 0; ii < actions.count(); ++ii) {
-        QDeclarativeAction &action = actions[ii];
-
-        if (action.event && action.event->typeName() == QLatin1String("ParentChange")
-            && (!d->pcTarget || static_cast<QDeclarativeParentChange*>(action.event)->object() == d->pcTarget)) {
-            QDeclarativeAction myAction = action;
-            data->reverse = action.reverseEvent;
-            //### this logic differs from PropertyAnimation
-            //    (probably a result of modified vs. done)
-            if (d->pcParent) {
-                //### should we disallow this case?
-                QDeclarativeParentChange *pc = new QDeclarativeParentChange;
-                pc->setObject(d->pcTarget);
-                pc->setParent(static_cast<QDeclarativeParentChange*>(action.event)->parent());
-                myAction.event = pc;
-                data->pc = pc;
-                data->actions << myAction;
-                break;  //only match one
-            } else {
-                action.actionDone = true;
-                data->actions << myAction;
-            }
-        }
-    }
-
-    if (data->actions.count()) {
-        d->cpa->setAnimAction(data, QAbstractAnimation::DeleteWhenStopped);
-    } else {
-        delete data;
-    }
-}
-
-
 
 /*!
     \qmlclass NumberAnimation QDeclarativeNumberAnimation
@@ -1341,24 +1187,27 @@ void QDeclarativeVector3dAnimation::setTo(QVector3D t)
     \brief The RotationAnimation element allows you to animate rotations.
 
     RotationAnimation is a specialized PropertyAnimation that gives control
-    over the direction of rotation.
+    over the direction of rotation. By default, it will rotate in the direction
+    of the numerical change; a rotation from 0 to 240 will rotate 220 degrees
+    clockwise, while a rotation from 240 to 0 will rotate 220 degrees
+    counterclockwise.
 
-    The RotationAnimation in the following example ensures that we always take
-    the shortest rotation path when switching between our states.
+    When used in a transition RotationAnimation will rotate all
+    properties named "rotation" or "angle". You can override this by providing
+    your own properties via \c properties or \c property.
+
+    In the following example we use RotationAnimation to animate the rotation
+    between states via the shortest path.
     \qml
     states: {
         State { name: "180"; PropertyChanges { target: myItem; rotation: 180 } }
-        State { name: "-180"; PropertyChanges { target: myItem; rotation: -180 } }
-        State { name: "180"; PropertyChanges { target: myItem; rotation: 270 } }
+        State { name: "90"; PropertyChanges { target: myItem; rotation: 90 } }
+        State { name: "-90"; PropertyChanges { target: myItem; rotation: -90 } }
     }
     transition: Transition {
         RotationAnimation { direction: RotationAnimation.Shortest }
     }
     \endqml
-
-    By default, when used in a transition RotationAnimation will rotate all
-    properties named "rotation" or "angle". You can override this by providing
-    your own properties via \c properties or \c property.
 */
 
 /*!
@@ -1408,7 +1257,7 @@ QDeclarativeRotationAnimation::QDeclarativeRotationAnimation(QObject *parent)
 {
     Q_D(QDeclarativeRotationAnimation);
     d->interpolatorType = QMetaType::QReal;
-    d->interpolator = reinterpret_cast<QVariantAnimation::Interpolator>(&_q_interpolateShortestRotation);
+    d->interpolator = QVariantAnimationPrivate::getInterpolator(d->interpolatorType);
     d->defaultProperties = QLatin1String("rotation,angle");
 }
 
@@ -1471,7 +1320,7 @@ void QDeclarativeRotationAnimation::setTo(qreal t)
            A rotation from 10 to 350 will rotate 20 degrees counterclockwise.
     \endtable
 
-    The default direction is Shortest.
+    The default direction is Numerical.
 */
 QDeclarativeRotationAnimation::RotationDirection QDeclarativeRotationAnimation::direction() const
 {
@@ -1520,8 +1369,8 @@ void QDeclarativeAnimationGroupPrivate::append_animation(QDeclarativeListPropert
 {
     QDeclarativeAnimationGroup *q = qobject_cast<QDeclarativeAnimationGroup *>(list->object);
     if (q) {
-        q->d_func()->animations.append(a);
         a->setGroup(q);
+        QDeclarative_setParent_noEvent(a->qtAnimation(), q->d_func()->ag);
         q->d_func()->ag->addAnimation(a->qtAnimation());
     }
 }
@@ -1752,7 +1601,7 @@ void QDeclarativePropertyAnimationPrivate::convertVariant(QVariant &variant, int
     \qml
     Rectangle {
         SequentialAnimation on x {
-            repeat: true
+            loops: Animation.Infinite
             PropertyAnimation { to: 50 }
             PropertyAnimation { to: 0 }
         }
@@ -1874,13 +1723,17 @@ void QDeclarativePropertyAnimation::setTo(const QVariant &t)
 }
 
 /*!
-    \qmlproperty QEasingCurve PropertyAnimation::easing
-    \brief the easing curve used for the transition.
+    \qmlproperty enum PropertyAnimation::easing.type
+    \qmlproperty real PropertyAnimation::easing.amplitude
+    \qmlproperty real PropertyAnimation::easing.overshoot
+    \qmlproperty real PropertyAnimation::easing.period
+    \brief the easing curve used for the animation.
 
-    For the easing you can specify the following parameters: type, amplitude, period and overshoot.
+    To specify an easing curve you need to specify at least the type. For some curves you can also specify
+    amplitude, period and/or overshoot (more details provided after the table).
 
     \qml
-    PropertyAnimation { properties: "y"; easing.type: "InOutElastc"; easing.amplitude: 2.0; easing.period: 1.5 }
+    PropertyAnimation { properties: "y"; easing.type: "InOutElastic"; easing.amplitude: 2.0; easing.period: 1.5 }
     \endqml
 
     Available types are:
@@ -2128,10 +1981,10 @@ void QDeclarativePropertyAnimation::setProperties(const QString &prop)
 }
 
 /*!
-    \qmlproperty string PropertyAnimation::property
     \qmlproperty string PropertyAnimation::properties
-    \qmlproperty Object PropertyAnimation::target
     \qmlproperty list<Object> PropertyAnimation::targets
+    \qmlproperty string PropertyAnimation::property
+    \qmlproperty Object PropertyAnimation::target
 
     These properties are used as a set to determine which properties should be animated.
     The singular and plural forms are functionally identical, e.g.
@@ -2157,7 +2010,7 @@ void QDeclarativePropertyAnimation::setProperties(const QString &prop)
            id: theRect
            width: 100; height: 100
            color: Qt.rgba(0,0,1)
-           NumberAnimation on x { to: 500; repeat: true } //animate theRect's x property
+           NumberAnimation on x { to: 500; loops: Animation.Infinite } //animate theRect's x property
            Behavior on y { NumberAnimation {} } //animate theRect's y property
        }
        \endqml
@@ -2218,7 +2071,7 @@ QDeclarativeListProperty<QObject> QDeclarativePropertyAnimation::targets()
 /*!
     \qmlproperty list<Object> PropertyAnimation::exclude
     This property holds the items not to be affected by this animation.
-    \sa targets
+    \sa PropertyAnimation::targets
 */
 QDeclarativeListProperty<QObject> QDeclarativePropertyAnimation::exclude()
 {
@@ -2389,6 +2242,53 @@ void QDeclarativePropertyAnimation::transition(QDeclarativeStateActions &actions
     }
 }
 
+/*!
+    \qmlclass ParentAnimation QDeclarativeParentAnimation
+    \since 4.7
+    \inherits Animation
+    \brief The ParentAnimation element allows you to animate parent changes.
+
+    ParentAnimation is used in conjunction with NumberAnimation to smoothly
+    animate changing an item's parent. In the following example,
+    ParentAnimation wraps a NumberAnimation which animates from the
+    current position in the old parent to the new position in the new
+    parent.
+
+    \qml
+    ...
+    State {
+        //reparent myItem to newParent. myItem's final location
+        //should be 10,10 in newParent.
+        ParentChange {
+            target: myItem
+            parent: newParent
+            x: 10; y: 10
+        }
+    }
+    ...
+    Transition {
+        //smoothly reparent myItem and move into new position
+        ParentAnimation {
+            target: theItem
+            NumberAnimation { properties: "x,y" }
+        }
+    }
+    \endqml
+
+    ParentAnimation can wrap any number of animations -- those animations will
+    be run in parallel (like those in a ParallelAnimation group).
+
+    In some cases, such as reparenting between items with clipping, it's useful
+    to animate the parent change via another item with no clipping.
+
+    When used in a transition, ParentAnimation will by default animate
+    all ParentChanges.
+*/
+
+/*!
+    \internal
+    \class QDeclarativeParentAnimation
+*/
 QDeclarativeParentAnimation::QDeclarativeParentAnimation(QObject *parent)
     : QDeclarativeAnimationGroup(*(new QDeclarativeParentAnimationPrivate), parent)
 {
@@ -2397,12 +2297,15 @@ QDeclarativeParentAnimation::QDeclarativeParentAnimation(QObject *parent)
     QDeclarative_setParent_noEvent(d->topLevelGroup, this);
 
     d->startAction = new QActionAnimation;
+    QDeclarative_setParent_noEvent(d->startAction, d->topLevelGroup);
     d->topLevelGroup->addAnimation(d->startAction);
 
     d->ag = new QParallelAnimationGroup;
+    QDeclarative_setParent_noEvent(d->ag, d->topLevelGroup);
     d->topLevelGroup->addAnimation(d->ag);
 
     d->endAction = new QActionAnimation;
+    QDeclarative_setParent_noEvent(d->endAction, d->topLevelGroup);
     d->topLevelGroup->addAnimation(d->endAction);
 }
 
@@ -2410,6 +2313,13 @@ QDeclarativeParentAnimation::~QDeclarativeParentAnimation()
 {
 }
 
+/*!
+    \qmlproperty item ParentAnimation::target
+    The item to reparent.
+
+    When used in a transition, if no target is specified all
+    ParentChanges will be animated by the ParentAnimation.
+*/
 QDeclarativeItem *QDeclarativeParentAnimation::target() const
 {
     Q_D(const QDeclarativeParentAnimation);
@@ -2419,9 +2329,19 @@ QDeclarativeItem *QDeclarativeParentAnimation::target() const
 void QDeclarativeParentAnimation::setTarget(QDeclarativeItem *target)
 {
     Q_D(QDeclarativeParentAnimation);
+    if (target == d->target)
+        return;
+
     d->target = target;
+    emit targetChanged();
 }
 
+/*!
+    \qmlproperty item ParentAnimation::newParent
+    The new parent to animate to.
+
+    If not set, then the parent defined in the end state of the transition.
+*/
 QDeclarativeItem *QDeclarativeParentAnimation::newParent() const
 {
     Q_D(const QDeclarativeParentAnimation);
@@ -2431,9 +2351,26 @@ QDeclarativeItem *QDeclarativeParentAnimation::newParent() const
 void QDeclarativeParentAnimation::setNewParent(QDeclarativeItem *newParent)
 {
     Q_D(QDeclarativeParentAnimation);
+    if (newParent == d->newParent)
+        return;
+
     d->newParent = newParent;
+    emit newParentChanged();
 }
 
+/*!
+    \qmlproperty item ParentAnimation::via
+    The item to reparent via. This provides a way to do an unclipped animation
+    when both the old parent and new parent are clipped
+
+    \qml
+    ParentAnimation {
+        target: myItem
+        via: topLevelItem
+        ...
+    }
+    \endqml
+*/
 QDeclarativeItem *QDeclarativeParentAnimation::via() const
 {
     Q_D(const QDeclarativeParentAnimation);
@@ -2443,7 +2380,11 @@ QDeclarativeItem *QDeclarativeParentAnimation::via() const
 void QDeclarativeParentAnimation::setVia(QDeclarativeItem *via)
 {
     Q_D(QDeclarativeParentAnimation);
+    if (via == d->via)
+        return;
+
     d->via = via;
+    emit viaChanged();
 }
 
 //### mirrors same-named function in QDeclarativeItem
@@ -2478,14 +2419,15 @@ void QDeclarativeParentAnimation::transition(QDeclarativeStateActions &actions,
 {
     Q_D(QDeclarativeParentAnimation);
 
-    struct QDeclarativeParentActionData : public QAbstractAnimationAction
+    struct QDeclarativeParentAnimationData : public QAbstractAnimationAction
     {
-        QDeclarativeParentActionData(): pc(0) {}
-        ~QDeclarativeParentActionData() { delete pc; }
+        QDeclarativeParentAnimationData() {}
+        ~QDeclarativeParentAnimationData() { qDeleteAll(pc); }
 
         QDeclarativeStateActions actions;
+        //### reverse should probably apply on a per-action basis
         bool reverse;
-        QDeclarativeParentChange *pc;
+        QList<QDeclarativeParentChange *> pc;
         virtual void doAction()
         {
             for (int ii = 0; ii < actions.count(); ++ii) {
@@ -2498,8 +2440,35 @@ void QDeclarativeParentAnimation::transition(QDeclarativeStateActions &actions,
         }
     };
 
-    QDeclarativeParentActionData *data = new QDeclarativeParentActionData;
-    QDeclarativeParentActionData *viaData = new QDeclarativeParentActionData;
+    QDeclarativeParentAnimationData *data = new QDeclarativeParentAnimationData;
+    QDeclarativeParentAnimationData *viaData = new QDeclarativeParentAnimationData;
+
+    bool hasExplicit = false;
+    if (d->target && d->newParent) {
+        data->reverse = false;
+        QDeclarativeAction myAction;
+        QDeclarativeParentChange *pc = new QDeclarativeParentChange;
+        pc->setObject(d->target);
+        pc->setParent(d->newParent);
+        myAction.event = pc;
+        data->pc << pc;
+        data->actions << myAction;
+        hasExplicit = true;
+        if (d->via) {
+            viaData->reverse = false;
+            QDeclarativeAction myVAction;
+            QDeclarativeParentChange *vpc = new QDeclarativeParentChange;
+            vpc->setObject(d->target);
+            vpc->setParent(d->via);
+            myVAction.event = vpc;
+            viaData->pc << vpc;
+            viaData->actions << myVAction;
+        }
+        //### once actions have concept of modified,
+        //    loop to match appropriate ParentChanges and mark as modified
+    }
+
+    if (!hasExplicit)
     for (int i = 0; i < actions.size(); ++i) {
         QDeclarativeAction &action = actions[i];
         if (action.event && action.event->typeName() == QLatin1String("ParentChange")
@@ -2508,8 +2477,21 @@ void QDeclarativeParentAnimation::transition(QDeclarativeStateActions &actions,
             QDeclarativeParentChange *pc = static_cast<QDeclarativeParentChange*>(action.event);
             QDeclarativeAction myAction = action;
             data->reverse = action.reverseEvent;
-            action.actionDone = true;
-            data->actions << myAction;
+
+            //### this logic differs from PropertyAnimation
+            //    (probably a result of modified vs. done)
+            if (d->newParent) {
+                QDeclarativeParentChange *epc = new QDeclarativeParentChange;
+                epc->setObject(static_cast<QDeclarativeParentChange*>(action.event)->object());
+                epc->setParent(d->newParent);
+                myAction.event = epc;
+                data->pc << epc;
+                data->actions << myAction;
+                pc = epc;
+            } else {
+                action.actionDone = true;
+                data->actions << myAction;
+            }
 
             if (d->via) {
                 viaData->reverse = false;
@@ -2518,7 +2500,7 @@ void QDeclarativeParentAnimation::transition(QDeclarativeStateActions &actions,
                 vpc->setObject(pc->object());
                 vpc->setParent(d->via);
                 myAction.event = vpc;
-                viaData->pc = vpc;
+                viaData->pc << vpc;
                 viaData->actions << myAction;
                 QDeclarativeAction dummyAction;
                 QDeclarativeAction &xAction = pc->xIsSet() ? actions[++i] : dummyAction;
@@ -2624,6 +2606,102 @@ QAbstractAnimation *QDeclarativeParentAnimation::qtAnimation()
 {
     Q_D(QDeclarativeParentAnimation);
     return d->topLevelGroup;
+}
+
+/*!
+    \qmlclass AnchorAnimation QDeclarativeAnchorAnimation
+    \since 4.7
+    \inherits Animation
+    \brief The AnchorAnimation element allows you to animate anchor changes.
+
+    AnchorAnimation will animated any changes specified by a state's AnchorChanges.
+    In the following snippet we animate the addition of a right anchor to our item.
+    \qml
+    Item {
+        id: myItem
+        width: 100
+    }
+    ...
+    State {
+        AnchorChanges {
+            target: myItem
+            anchors.right: container.right
+        }
+    }
+    ...
+    Transition {
+        //smoothly reanchor myItem and move into new position
+        AnchorAnimation {}
+    }
+    \endqml
+
+    \sa AnchorChanges
+*/
+
+QDeclarativeAnchorAnimation::QDeclarativeAnchorAnimation(QObject *parent)
+: QDeclarativeAbstractAnimation(*(new QDeclarativeAnchorAnimationPrivate), parent)
+{
+    Q_D(QDeclarativeAnchorAnimation);
+    d->va = new QDeclarativeBulkValueAnimator;
+    QDeclarative_setParent_noEvent(d->va, this);
+}
+
+QDeclarativeAnchorAnimation::~QDeclarativeAnchorAnimation()
+{
+}
+
+QAbstractAnimation *QDeclarativeAnchorAnimation::qtAnimation()
+{
+    Q_D(QDeclarativeAnchorAnimation);
+    return d->va;
+}
+
+/*!
+    \qmlproperty list<Item> AnchorAnimation::targets
+    The items to reanchor.
+
+    If no targets are specified all AnchorChanges will be
+    animated by the AnchorAnimation.
+*/
+QDeclarativeListProperty<QDeclarativeItem> QDeclarativeAnchorAnimation::targets()
+{
+    Q_D(QDeclarativeAnchorAnimation);
+    return QDeclarativeListProperty<QDeclarativeItem>(this, d->targets);
+}
+
+void QDeclarativeAnchorAnimation::transition(QDeclarativeStateActions &actions,
+                        QDeclarativeProperties &modified,
+                        TransitionDirection direction)
+{
+    Q_UNUSED(modified);
+    Q_D(QDeclarativeAnchorAnimation);
+    PropertyUpdater *data = new PropertyUpdater;
+    data->interpolatorType = QMetaType::QReal;
+    data->interpolator = d->interpolator;
+
+    data->reverse = direction == Backward ? true : false;
+    data->fromSourced = false;
+    data->fromDefined = false;
+
+    for (int ii = 0; ii < actions.count(); ++ii) {
+        QDeclarativeAction &action = actions[ii];
+        if (action.event && action.event->typeName() == QLatin1String("AnchorChanges")
+            && (d->targets.isEmpty() || d->targets.contains(static_cast<QDeclarativeAnchorChanges*>(action.event)->object()))) {
+            data->actions << static_cast<QDeclarativeAnchorChanges*>(action.event)->additionalActions();
+        }
+    }
+
+    if (data->actions.count()) {
+        if (!d->rangeIsSet) {
+            d->va->setStartValue(qreal(0));
+            d->va->setEndValue(qreal(1));
+            d->rangeIsSet = true;
+        }
+        d->va->setAnimValue(data, QAbstractAnimation::DeleteWhenStopped);
+        d->va->setFromSourcedValue(&data->fromSourced);
+    } else {
+        delete data;
+    }
 }
 
 QT_END_NAMESPACE

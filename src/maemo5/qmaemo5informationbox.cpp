@@ -148,12 +148,11 @@ QMaemo5InformationBox::QMaemo5InformationBox(QWidget *parent)
     d_ptr->q_ptr = this;
 
     setAttribute(Qt::WA_X11NetWmWindowTypeNotification);
-    setAttribute(Qt::WA_ShowWithoutActivating);
+    setAttribute(Qt::WA_X11DoNotAcceptFocus);
     setFocusPolicy(Qt::NoFocus);
     d->m_layout = new QHBoxLayout(this);
     d->m_layout->setContentsMargins(8, 0, 8, 0); // 8 == HILDON_MARGIN_DEFAULT
     setFixedWidth(QApplication::desktop()->screenGeometry().width());
-    //move(0, 56 /*HILDON_WINDOW_TITLEBAR_HEIGHT*/);
 }
 
 /*!

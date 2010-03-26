@@ -61,6 +61,7 @@
 #include "qdeclarative.h"
 #include "qdeclarativevaluetype_p.h"
 #include "qdeclarativecontext.h"
+#include "qdeclarativecontext_p.h"
 #include "qdeclarativeexpression.h"
 #include "qdeclarativeproperty_p.h"
 #include "qdeclarativepropertycache_p.h"
@@ -68,6 +69,7 @@
 #include "qdeclarativecontextscriptclass_p.h"
 #include "qdeclarativevaluetypescriptclass_p.h"
 #include "qdeclarativemetatype_p.h"
+#include "qdeclarativedirparser_p.h"
 
 #include <QtScript/QScriptClass>
 #include <QtScript/QScriptValue>
@@ -144,10 +146,13 @@ public:
 
     struct CapturedProperty {
         CapturedProperty(QObject *o, int c, int n)
-            : object(o), coreIndex(c), notifyIndex(n) {}
+            : object(o), coreIndex(c), notifier(0), notifyIndex(n) {}
+        CapturedProperty(QDeclarativeNotifier *n)
+            : object(0), coreIndex(-1), notifier(n), notifyIndex(-1) {}
 
         QObject *object;
         int coreIndex;
+        QDeclarativeNotifier *notifier;
         int notifyIndex;
     };
     bool captureProperties;
@@ -159,7 +164,7 @@ public:
 
     struct ImportedNamespace;
     QDeclarativeContextScriptClass *contextClass;
-    QDeclarativeContext *sharedContext;
+    QDeclarativeContextData *sharedContext;
     QObject *sharedScope;
     QDeclarativeObjectScriptClass *objectClass;
     QDeclarativeValueTypeScriptClass *valueTypeClass;
@@ -259,7 +264,7 @@ public:
         void setBaseUrl(const QUrl& url);
         QUrl baseUrl() const;
 
-        QDeclarativeTypeNameCache *cache(QDeclarativeEngine *) const;
+        void cache(QDeclarativeTypeNameCache *cache, QDeclarativeEngine *) const;
 
     private:
         friend class QDeclarativeEnginePrivate;
@@ -276,7 +281,10 @@ public:
     QString resolvePlugin(const QDir &dir, const QString &baseName);
 
 
-    bool addToImport(Imports*, const QString& qmlDirContent,const QString& uri, const QString& prefix, int vmaj, int vmin, QDeclarativeScriptParser::Import::Type importType) const;
+    bool addToImport(Imports*, const QDeclarativeDirComponents &qmldircomponentsnetwork, 
+                     const QString& uri, const QString& prefix, int vmaj, int vmin, 
+                     QDeclarativeScriptParser::Import::Type importType,
+                     QString *errorString) const;
     bool resolveType(const Imports&, const QByteArray& type,
                      QDeclarativeType** type_return, QUrl* url_return,
                      int *version_major, int *version_minor,
@@ -298,6 +306,8 @@ public:
     QHash<int, int> m_qmlLists;
     QHash<int, QDeclarativeCompiledData *> m_compositeTypes;
 
+    QHash<QString, QScriptValue> m_sharedScriptImports;
+
     QScriptValue scriptValueFromVariant(const QVariant &);
     QVariant scriptValueToVariant(const QScriptValue &);
 
@@ -318,7 +328,6 @@ public:
     static QScriptValue darker(QScriptContext*, QScriptEngine*);
     static QScriptValue tint(QScriptContext*, QScriptEngine*);
 
-    static QScriptValue closestAngle(QScriptContext*, QScriptEngine*);
     static QScriptValue desktopOpenUrl(QScriptContext*, QScriptEngine*);
     static QScriptValue md5(QScriptContext*, QScriptEngine*);
     static QScriptValue btoa(QScriptContext*, QScriptEngine*);
@@ -334,9 +343,10 @@ public:
     static QDeclarativeEngine *getEngine(QScriptEngine *e) { return static_cast<QDeclarativeScriptEngine*>(e)->p->q_func(); }
     static QDeclarativeEnginePrivate *get(QDeclarativeEngine *e) { return e->d_func(); }
     static QDeclarativeEnginePrivate *get(QDeclarativeContext *c) { return (c && c->engine()) ? QDeclarativeEnginePrivate::get(c->engine()) : 0; }
+    static QDeclarativeEnginePrivate *get(QDeclarativeContextData *c) { return (c && c->engine) ? QDeclarativeEnginePrivate::get(c->engine) : 0; }
     static QDeclarativeEnginePrivate *get(QScriptEngine *e) { return static_cast<QDeclarativeScriptEngine*>(e)->p; }
     static QDeclarativeEngine *get(QDeclarativeEnginePrivate *p) { return p->q_func(); }
-    QDeclarativeContext *getContext(QScriptContext *);
+    QDeclarativeContextData *getContext(QScriptContext *);
 
     static void defineModule();
 };

@@ -66,7 +66,6 @@ private slots:
     void lighter();
     void darker();
     void tint();
-    void closestAngle();
     void openUrlExternally();
     void md5();
     void createComponent();
@@ -254,27 +253,10 @@ void tst_qdeclarativeqt::tint()
 
     QCOMPARE(qvariant_cast<QColor>(object->property("test1")), QColor::fromRgbF(0, 0, 1));
     QCOMPARE(qvariant_cast<QColor>(object->property("test2")), QColor::fromRgbF(1, 0, 0));
-    QEXPECT_FAIL("", "QT-2424",Continue);
-    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor::fromRgbF(1, 0, 0)); 
+    QColor test3 = qvariant_cast<QColor>(object->property("test3"));
+    QCOMPARE(test3.rgba(), 0xFF7F0080);
     QCOMPARE(qvariant_cast<QColor>(object->property("test4")), QColor());
     QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor());
-
-    delete object;
-}
-
-void tst_qdeclarativeqt::closestAngle()
-{
-    QDeclarativeComponent component(&engine, TEST_FILE("closestangle.qml"));
-    QObject *object = component.create();
-    QVERIFY(object != 0);
-
-    QCOMPARE(qvariant_cast<qreal>(object->property("testSame")), 1.0);
-    QCOMPARE(qvariant_cast<qreal>(object->property("testLess")), 1.0);
-    QCOMPARE(qvariant_cast<qreal>(object->property("testMore")), 1.0);
-    QCOMPARE(qvariant_cast<qreal>(object->property("testFail")), 0.0);
-    QCOMPARE(qvariant_cast<qreal>(object->property("test5")), 1.0);
-    QCOMPARE(qvariant_cast<qreal>(object->property("test6")), 1.11);
-    QCOMPARE(qvariant_cast<qreal>(object->property("test7")), 1.11);
 
     delete object;
 }
@@ -319,15 +301,17 @@ void tst_qdeclarativeqt::createQmlObject()
 
     QString warning1 = "QDeclarativeEngine::createQmlObject():";
     QString warning2 = "    " + TEST_FILE("main.qml").toString() + ":4:1: Duplicate property name";
-    QString warning3 = "QDeclarativeEngine::createQmlObject(): Component is not ready";
-    QString warning4 = "QDeclarativeEngine::createQmlObject():";
-    QString warning5 = "    " + TEST_FILE("inline").toString() + ":3: Cannot assign object type QObject with no default method";
+    QString warning3 = "QDeclarativeEngine::createQmlObject():";
+    QString warning4 = "    " + TEST_FILE("inline").toString() + ":2:10: Blah is not a type";
+    QString warning5 = "QDeclarativeEngine::createQmlObject():";
+    QString warning6 = "    " + TEST_FILE("inline").toString() + ":3: Cannot assign object type QObject with no default method";
 
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning3));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning4));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning5));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning6));
 
     QObject *object = component.create();
     QVERIFY(object != 0);
@@ -337,7 +321,7 @@ void tst_qdeclarativeqt::createQmlObject()
     QCOMPARE(object->property("emptyArg").toBool(), true);
     QCOMPARE(object->property("errors").toBool(), true);
     QCOMPARE(object->property("noParent").toBool(), true);
-    QCOMPARE(object->property("notReady").toBool(), true);
+    QCOMPARE(object->property("notAvailable").toBool(), true);
     QCOMPARE(object->property("runtimeError").toBool(), true);
     QCOMPARE(object->property("success").toBool(), true);
 

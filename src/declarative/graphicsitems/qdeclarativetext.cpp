@@ -43,8 +43,6 @@
 #include "qdeclarativetext_p_p.h"
 #include <qdeclarativestyledtext_p.h>
 
-#include <qfxperf_p_p.h>
-
 #include <QTextLayout>
 #include <QTextLine>
 #include <QTextDocument>
@@ -110,8 +108,6 @@ QT_BEGIN_NAMESPACE
 QDeclarativeText::QDeclarativeText(QDeclarativeItem *parent)
   : QDeclarativeItem(*(new QDeclarativeTextPrivate), parent)
 {
-    setAcceptedMouseButtons(Qt::LeftButton);
-    setFlag(QGraphicsItem::ItemHasNoContents, false);
 }
 
 QDeclarativeText::~QDeclarativeText()
@@ -154,9 +150,6 @@ void QDeclarativeText::setFont(const QFont &font)
 
 void QDeclarativeText::setText(const QString &n)
 {
-#ifdef Q_ENABLE_PERFORMANCE_LOG
-    QDeclarativePerfTimer<QDeclarativePerf::QDeclarativeText_setText> st;
-#endif
     Q_D(QDeclarativeText);
     if (d->text == n)
         return;
@@ -878,9 +871,6 @@ void QDeclarativeText::paint(QPainter *p, const QStyleOptionGraphicsItem *, QWid
 void QDeclarativeText::componentComplete()
 {
     Q_D(QDeclarativeText);
-#ifdef Q_ENABLE_PERFORMANCE_LOG
-    QDeclarativePerfTimer<QDeclarativePerf::TextComponentComplete> cc;
-#endif
     QDeclarativeItem::componentComplete();
     if (d->dirty) {
         d->updateLayout();
