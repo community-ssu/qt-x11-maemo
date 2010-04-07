@@ -39,10 +39,10 @@
 **
 ****************************************************************************/
 
-#include "qdeclarativebehavior_p.h"
+#include "private/qdeclarativebehavior_p.h"
 
-#include "qdeclarativeanimation_p.h"
-#include "qdeclarativetransition_p.h"
+#include "private/qdeclarativeanimation_p.h"
+#include "private/qdeclarativetransition_p.h"
 
 #include <qdeclarativecontext.h>
 #include <qdeclarativeinfo.h>
@@ -163,7 +163,8 @@ void QDeclarativeBehavior::write(const QVariant &value)
 
     d->currentValue = d->property.read();
 
-    d->animation->qtAnimation()->stop();
+    if (d->animation->qtAnimation()->duration() != -1)
+        d->animation->qtAnimation()->stop();
 
     QDeclarativeStateOperation::ActionList actions;
     QDeclarativeAction action;

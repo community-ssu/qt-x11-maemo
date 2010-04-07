@@ -53,10 +53,10 @@
 // We mean it.
 //
 
-#include "qdeclarativeanimation_p.h"
+#include "private/qdeclarativeanimation_p.h"
 
-#include "qdeclarativenullablevalue_p_p.h"
-#include "qdeclarativetimeline_p_p.h"
+#include "private/qdeclarativenullablevalue_p_p.h"
+#include "private/qdeclarativetimeline_p_p.h"
 
 #include <qdeclarative.h>
 #include <qdeclarativeitem.h>
@@ -304,7 +304,7 @@ class QDeclarativePropertyAnimationPrivate : public QDeclarativeAbstractAnimatio
 public:
     QDeclarativePropertyAnimationPrivate()
     : QDeclarativeAbstractAnimationPrivate(), target(0), fromSourced(false), fromIsDefined(false), toIsDefined(false),
-      rangeIsSet(false), defaultToInterpolatorType(0), interpolatorType(0), interpolator(0), va(0) {}
+      rangeIsSet(false), defaultToInterpolatorType(0), interpolatorType(0), interpolator(0), va(0), actions(0) {}
 
     void init();
 
@@ -329,6 +329,9 @@ public:
     QVariantAnimation::Interpolator interpolator;
 
     QDeclarativeBulkValueAnimator *va;
+
+    // for animations that dont use the QDeclarativeBulkValueAnimator
+    QDeclarativeStateActions *actions;
 
     static QVariant interpolateVariant(const QVariant &from, const QVariant &to, qreal progress);
     static void convertVariant(QVariant &variant, int type);

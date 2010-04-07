@@ -53,10 +53,10 @@
 // We mean it.
 //
 
-#include "qdeclarativepathview_p.h"
+#include "private/qdeclarativepathview_p.h"
 
-#include "qdeclarativeitem_p.h"
-#include "qdeclarativevisualitemmodel_p.h"
+#include "private/qdeclarativeitem_p.h"
+#include "private/qdeclarativevisualitemmodel_p.h"
 
 #include <qdeclarative.h>
 #include <qdeclarativeanimation_p_p.h>
@@ -79,9 +79,9 @@ public:
         , stealMouse(false), ownModel(false), interactive(true), haveHighlightRange(true)
         , autoHighlight(true), highlightUp(false), dragMargin(0), deceleration(100)
         , moveOffset(this, &QDeclarativePathViewPrivate::setOffset)
-        , moveHighlight(this, &QDeclarativePathViewPrivate::setHighlightPosition)
         , firstIndex(-1), pathItems(-1), requestedIndex(-1)
         , moveReason(Other), attType(0), highlightComponent(0), highlightItem(0)
+        , moveHighlight(this, &QDeclarativePathViewPrivate::setHighlightPosition)
         , highlightPosition(0)
         , highlightRangeStart(0), highlightRangeEnd(0)
         , highlightRangeMode(QDeclarativePathView::StrictlyEnforceRange)

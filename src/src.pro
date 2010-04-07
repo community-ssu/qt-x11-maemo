@@ -20,6 +20,7 @@ wince*:{
 win32:SRC_SUBDIRS += src_activeqt
 maemo5:SRC_SUBDIRS += src_maemo5
 
+!symbian:contains(QT_CONFIG, dbus):SRC_SUBDIRS += src_dbus
 contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles1)|contains(QT_CONFIG, opengles2): SRC_SUBDIRS += src_opengl
 contains(QT_CONFIG, openvg): SRC_SUBDIRS += src_openvg
 contains(QT_CONFIG, xmlpatterns): SRC_SUBDIRS += src_xmlpatterns
