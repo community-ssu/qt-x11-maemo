@@ -63,10 +63,10 @@ void QWebViewPrivate::_q_pageDestroyed()
 #include "qabstractkineticscroller.h"
 #include "qapplication.h"
 
-// QCoreApplication::sendSpontaneousEvent() is private, hence this friend wrapper
-bool qt_sendSpontaneousEvent(QObject* receiver, QEvent* ev)
+
+bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event)
 {
-    return QCoreApplication::sendSpontaneousEvent(receiver, ev);
+    return QCoreApplication::sendSpontaneousEvent(receiver, event);
 }
 
 class QWebViewKineticScroller : public QObject, public QAbstractKineticScroller {
@@ -94,19 +94,11 @@ public:
     }
 
 protected:
-            frame->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAlwaysOff);
-            frame->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAlwaysOff);
-            m_view->installEventFilter(this);
-        }
-    }
-
-protected:
     bool eventFilter(QObject* o, QEvent* ev)
     {
         bool res = false;
 
         if (m_view && (o == m_view) && !m_ignoreEvents && m_view->isEnabled() && isEnabled()) {
-
             switch (ev->type()) {
             case QEvent::MouseButtonPress: {
                 // re-install the event filter so that we get the mouse release before all other filters.
@@ -130,13 +122,6 @@ protected:
             }
         }
         return res ? true : QObject::eventFilter(o, ev);
-
-    void cancelLeftMouseButtonPress(const QPoint& /* globalPressPos */)
-    {
-        QMouseEvent cmem(QEvent::MouseMove, QPoint(-INT_MAX, -INT_MAX), Qt::LeftButton, QApplication::mouseButtons() | Qt::LeftButton, QApplication::keyboardModifiers());
-        sendEvent(m_view, &cmem);
-        QMouseEvent cmer(QEvent::MouseButtonRelease, QPoint(-INT_MAX, -INT_MAX), Qt::LeftButton, QApplication::mouseButtons() & ~Qt::LeftButton, QApplication::keyboardModifiers());
-        sendEvent(m_view, &cmer);
     }
 
     void cancelLeftMouseButtonPress(const QPoint & /*globalPressPos*/)
@@ -180,7 +165,10 @@ protected:
     QSize viewportSize() const
     {
         return m_view ? m_view->page()->viewportSize() : QSize();
+    }
+
     QPoint maximumScrollPosition() const
+    {
         QWebFrame* frame = currentFrame();
         QSize s = frame ? frame->contentsSize() - frame->geometry().size() : QSize(0, 0);
         return QPoint(qMax(0, s.width()), qMax(0, s.height()));
@@ -207,9 +195,6 @@ protected:
     }
 
     QWebView *m_view;
-    bool m_ignoreEvents;
-
-    QWebView* m_view;
     bool m_ignoreEvents;
     QPointer<QWebFrame> m_frame;
     Qt::ScrollBarPolicy m_oldVerticalScrollBarPolicy;
