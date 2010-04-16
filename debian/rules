@@ -104,6 +104,7 @@ config.status:
 				-openssl \
 				-gtkstyle \
 				-graphicssystem raster \
+				-phonon \
 				$(EXTRA_CONFIGURE_OPTS)
 
 common-build-arch:: build-dbus-tools build-linguist-tools build-maemo5-examples strip-host-tools build-uitools build-qml-tool
