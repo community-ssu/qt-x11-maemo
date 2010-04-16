@@ -5300,9 +5300,9 @@ QInputContext *QApplication::inputContext() const
         QApplication *that = const_cast<QApplication *>(this);
         const QStringList keys = QInputContextFactory::keys();
         // Try hbim and coefep first, then try others.
-        if (keys.contains("hbim")) {
+        if (keys.contains(QLatin1String("hbim"))) {
             that->d_func()->inputContext = QInputContextFactory::create(QLatin1String("hbim"), that);
-        } else if (keys.contains("coefep")) {
+        } else if (keys.contains(QLatin1String("coefep"))) {
             that->d_func()->inputContext = QInputContextFactory::create(QLatin1String("coefep"), that);
         } else {
             for (int c = 0; c < keys.size() && !d->inputContext; ++c) {
@@ -5946,6 +5946,7 @@ static const char * const link_xpm[] = {
 
 QPixmap QApplicationPrivate::getPixmapCursor(Qt::CursorShape cshape)
 {
+#if defined(Q_WS_X11) || defined(Q_WS_WIN)
     if (!move_cursor) {
         move_cursor = new QPixmap((const char **)move_xpm);
         copy_cursor = new QPixmap((const char **)copy_xpm);
@@ -5969,6 +5970,7 @@ QPixmap QApplicationPrivate::getPixmapCursor(Qt::CursorShape cshape)
     default:
         break;
     }
+#endif
     return QPixmap();
 }
 

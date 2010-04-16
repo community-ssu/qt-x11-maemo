@@ -1436,7 +1436,7 @@ void QGraphicsProxyWidget::paint(QPainter *painter, const QStyleOptionGraphicsIt
         return;
 
     // Filter out repaints on the window frame.
-    const QRect exposedWidgetRect = (option->exposedRect & rect()).toRect();
+    const QRect exposedWidgetRect = (option->exposedRect & rect()).toAlignedRect();
     if (exposedWidgetRect.isEmpty())
         return;
 

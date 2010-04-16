@@ -104,6 +104,8 @@ private slots:
     void getSetGlobalObject();
     void globalObjectProperties();
     void globalObjectGetterSetterProperty();
+    void customGlobalObjectWithPrototype();
+    void globalObjectWithCustomPrototype();
     void builtinFunctionNames_data();
     void builtinFunctionNames();
     void checkSyntax_data();
@@ -153,6 +155,7 @@ private slots:
     void incDecNonObjectProperty();
     void installTranslatorFunctions_data();
     void installTranslatorFunctions();
+    void translateScript();
     void functionScopes();
     void nativeFunctionScopes();
     void evaluateProgram();
@@ -1175,6 +1178,131 @@ void tst_QScriptEngine::globalObjectGetterSetterProperty()
     engine.evaluate("__defineGetter__('baz', function() { return 789; })");
     QVERIFY(engine.evaluate("baz").equals(789));
     QVERIFY(global.property("baz").equals(789));
+}
+
+void tst_QScriptEngine::customGlobalObjectWithPrototype()
+{
+    for (int x = 0; x < 2; ++x) {
+        QScriptEngine engine;
+        QScriptValue wrap = engine.newObject();
+        QScriptValue global = engine.globalObject();
+        QScriptValue originalGlobalProto = global.prototype();
+        if (!x) {
+            // Set prototype before setting global object
+            wrap.setPrototype(global);
+            QVERIFY(wrap.prototype().strictlyEquals(global));
+            engine.setGlobalObject(wrap);
+        } else {
+            // Set prototype after setting global object
+            engine.setGlobalObject(wrap);
+            wrap.setPrototype(global);
+            QVERIFY(wrap.prototype().strictlyEquals(global));
+        }
+        {
+            QScriptValue ret = engine.evaluate("print");
+            QVERIFY(ret.isFunction());
+            QVERIFY(ret.strictlyEquals(wrap.property("print")));
+        }
+        {
+            QScriptValue ret = engine.evaluate("this.print");
+            QVERIFY(ret.isFunction());
+            QVERIFY(ret.strictlyEquals(wrap.property("print")));
+        }
+        {
+            QScriptValue ret = engine.evaluate("hasOwnProperty('print')");
+            QVERIFY(ret.isBool());
+            QVERIFY(!ret.toBool());
+        }
+        {
+            QScriptValue ret = engine.evaluate("this.hasOwnProperty('print')");
+            QVERIFY(ret.isBool());
+            QVERIFY(!ret.toBool());
+        }
+
+        QScriptValue anotherProto = engine.newObject();
+        anotherProto.setProperty("anotherProtoProperty", 123);
+        global.setPrototype(anotherProto);
+        {
+            QScriptValue ret = engine.evaluate("print");
+            QVERIFY(ret.isFunction());
+            QVERIFY(ret.strictlyEquals(wrap.property("print")));
+        }
+        {
+            QScriptValue ret = engine.evaluate("anotherProtoProperty");
+            QVERIFY(ret.isNumber());
+            QVERIFY(ret.strictlyEquals(wrap.property("anotherProtoProperty")));
+        }
+        {
+            QScriptValue ret = engine.evaluate("this.anotherProtoProperty");
+            QVERIFY(ret.isNumber());
+            QVERIFY(ret.strictlyEquals(wrap.property("anotherProtoProperty")));
+        }
+
+        wrap.setPrototype(anotherProto);
+        {
+            QScriptValue ret = engine.evaluate("print");
+            QVERIFY(ret.isError());
+            QCOMPARE(ret.toString(), QString::fromLatin1("ReferenceError: Can't find variable: print"));
+        }
+        {
+            QScriptValue ret = engine.evaluate("anotherProtoProperty");
+            QVERIFY(ret.isNumber());
+            QVERIFY(ret.strictlyEquals(wrap.property("anotherProtoProperty")));
+        }
+        QVERIFY(global.prototype().strictlyEquals(anotherProto));
+
+        global.setPrototype(originalGlobalProto);
+        engine.setGlobalObject(global);
+        {
+            QScriptValue ret = engine.evaluate("anotherProtoProperty");
+            QVERIFY(ret.isError());
+            QCOMPARE(ret.toString(), QString::fromLatin1("ReferenceError: Can't find variable: anotherProtoProperty"));
+        }
+        {
+            QScriptValue ret = engine.evaluate("print");
+            QVERIFY(ret.isFunction());
+            QVERIFY(ret.strictlyEquals(global.property("print")));
+        }
+        QVERIFY(!anotherProto.property("print").isValid());
+    }
+}
+
+void tst_QScriptEngine::globalObjectWithCustomPrototype()
+{
+    QScriptEngine engine;
+    QScriptValue proto = engine.newObject();
+    proto.setProperty("protoProperty", 123);
+    QScriptValue global = engine.globalObject();
+    QScriptValue originalProto = global.prototype();
+    global.setPrototype(proto);
+    {
+        QScriptValue ret = engine.evaluate("protoProperty");
+        QVERIFY(ret.isNumber());
+        QVERIFY(ret.strictlyEquals(global.property("protoProperty")));
+    }
+    {
+        QScriptValue ret = engine.evaluate("this.protoProperty");
+        QVERIFY(ret.isNumber());
+        QVERIFY(ret.strictlyEquals(global.property("protoProperty")));
+    }
+    {
+        QScriptValue ret = engine.evaluate("hasOwnProperty('protoProperty')");
+        QVERIFY(ret.isBool());
+        QVERIFY(!ret.toBool());
+    }
+    {
+        QScriptValue ret = engine.evaluate("this.hasOwnProperty('protoProperty')");
+        QVERIFY(ret.isBool());
+        QVERIFY(!ret.toBool());
+    }
+
+    // Custom prototype set from JS
+    {
+        QScriptValue ret = engine.evaluate("this.__proto__ = { 'a': 123 }; a");
+        QVERIFY(ret.isNumber());
+        QEXPECT_FAIL("", "QTBUG-9737", Continue);
+        QVERIFY(ret.strictlyEquals(global.property("a")));
+    }
 }
 
 void tst_QScriptEngine::builtinFunctionNames_data()
@@ -4206,6 +4334,45 @@ void tst_QScriptEngine::installTranslatorFunctions()
         QVERIFY(ret.isString());
         QCOMPARE(ret.toString(), QString::fromLatin1("foobar"));
     }
+}
+
+void tst_QScriptEngine::translateScript()
+{
+    QScriptEngine engine;
+
+    QTranslator translator;
+    translator.load(":/translations/translatable_la");
+    QCoreApplication::instance()->installTranslator(&translator);
+    engine.installTranslatorFunctions();
+
+    QString fileName = QString::fromLatin1("translatable.js");
+    // Top-level
+    QCOMPARE(engine.evaluate("qsTr('One')", fileName).toString(), QString::fromLatin1("En"));
+    QCOMPARE(engine.evaluate("qsTr('Hello')", fileName).toString(), QString::fromLatin1("Hallo"));
+    // From function
+    QCOMPARE(engine.evaluate("(function() { return qsTr('One'); })()", fileName).toString(), QString::fromLatin1("En"));
+    QCOMPARE(engine.evaluate("(function() { return qsTr('Hello'); })()", fileName).toString(), QString::fromLatin1("Hallo"));
+    // From eval
+    QCOMPARE(engine.evaluate("eval('qsTr(\\'One\\')')", fileName).toString(), QString::fromLatin1("En"));
+    QCOMPARE(engine.evaluate("eval('qsTr(\\'Hello\\')')", fileName).toString(), QString::fromLatin1("Hallo"));
+
+    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'Two')", fileName).toString(), QString::fromLatin1("To"));
+    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'Goodbye')", fileName).toString(), QString::fromLatin1("Farvel"));
+    // From eval
+    QCOMPARE(engine.evaluate("eval('qsTranslate(\\'FooContext\\', \\'Two\\')')", fileName).toString(), QString::fromLatin1("To"));
+    QCOMPARE(engine.evaluate("eval('qsTranslate(\\'FooContext\\', \\'Goodbye\\')')", fileName).toString(), QString::fromLatin1("Farvel"));
+
+    // Don't exist in translation
+    QCOMPARE(engine.evaluate("qsTr('Three')", fileName).toString(), QString::fromLatin1("Three"));
+    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'So long')", fileName).toString(), QString::fromLatin1("So long"));
+    QCOMPARE(engine.evaluate("qsTranslate('BarContext', 'Goodbye')", fileName).toString(), QString::fromLatin1("Goodbye"));
+
+    // From C++
+    // There is no context, but it shouldn't crash
+    QCOMPARE(engine.globalObject().property("qsTr").call(
+                 QScriptValue(), QScriptValueList() << "One").toString(), QString::fromLatin1("One"));
+
+    QCoreApplication::instance()->removeTranslator(&translator);
 }
 
 void tst_QScriptEngine::functionScopes()

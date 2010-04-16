@@ -276,6 +276,7 @@ static const int layouts[2][NUMBER_OF_LAYOUTS][14] =
     }
 };
 
+#if defined(QT_SOFTKEYS_ENABLED) && !defined(QT_NO_ACTION)
 class QDialogButtonEnabledProxy : public QObject
 {
 public:
@@ -299,7 +300,7 @@ private:
     QWidget *source;
     QAction *target;
 };
-
+#endif
 
 class QDialogButtonBoxPrivate : public QWidgetPrivate
 {
@@ -332,7 +333,7 @@ public:
     void addButtonsToLayout(const QList<QAbstractButton *> &buttonList, bool reverse);
     void retranslateStrings();
     const char *standardButtonText(QDialogButtonBox::StandardButton sbutton) const;
-#ifdef QT_SOFTKEYS_ENABLED
+#if defined(QT_SOFTKEYS_ENABLED) && !defined(QT_NO_ACTION)
     QAction *createSoftKey(QAbstractButton *button, QDialogButtonBox::ButtonRole role);
 #endif
 };
@@ -602,7 +603,7 @@ void QDialogButtonBoxPrivate::addButton(QAbstractButton *button, QDialogButtonBo
     QObject::connect(button, SIGNAL(clicked()), q, SLOT(_q_handleButtonClicked()));
     QObject::connect(button, SIGNAL(destroyed()), q, SLOT(_q_handleButtonDestroyed()));
     buttonLists[role].append(button);
-#ifdef QT_SOFTKEYS_ENABLED
+#if defined(QT_SOFTKEYS_ENABLED) && !defined(QT_NO_ACTION)
     QAction *action = createSoftKey(button, role);
     softKeyActions.insert(button, action);
     new QDialogButtonEnabledProxy(action, button, action);
@@ -611,7 +612,7 @@ void QDialogButtonBoxPrivate::addButton(QAbstractButton *button, QDialogButtonBo
         layoutButtons();
 }
 
-#ifdef QT_SOFTKEYS_ENABLED
+#if defined(QT_SOFTKEYS_ENABLED) && !defined(QT_NO_ACTION)
 QAction* QDialogButtonBoxPrivate::createSoftKey(QAbstractButton *button, QDialogButtonBox::ButtonRole role)
 {
     Q_Q(QDialogButtonBox);
@@ -753,7 +754,7 @@ void QDialogButtonBoxPrivate::retranslateStrings()
         if (buttonText) {
             QPushButton *button = it.key();
             button->setText(QDialogButtonBox::tr(buttonText));
-#ifdef QT_SOFTKEYS_ENABLED
+#if defined(QT_SOFTKEYS_ENABLED) && !defined(QT_NO_ACTION)
             QAction *action = softKeyActions.value(button, 0);
             if (action)
                 action->setText(button->text());
@@ -1032,7 +1033,7 @@ void QDialogButtonBox::removeButton(QAbstractButton *button)
             }
         }
     }
-#ifdef QT_SOFTKEYS_ENABLED
+#if defined(QT_SOFTKEYS_ENABLED) && !defined(QT_NO_ACTION)
     QAction *action = d->softKeyActions.value(button, 0);
     if (action) {
         d->softKeyActions.remove(button);
@@ -1278,7 +1279,7 @@ bool QDialogButtonBox::event(QEvent *event)
     } else if (event->type() == QEvent::LanguageChange) {
         d->retranslateStrings();
     }
-#ifdef QT_SOFTKEYS_ENABLED
+#if defined(QT_SOFTKEYS_ENABLED) && !defined(QT_NO_ACTION)
     else if (event->type() == QEvent::ParentChange) {
         QWidget *dialog = 0;
         QWidget *p = this;
