@@ -1,4 +1,4 @@
-QT      +=  webkit network
+QT      +=  webkit network multimedia
 HEADERS =   mainwindow.h
 SOURCES =   main.cpp \
             mainwindow.cpp

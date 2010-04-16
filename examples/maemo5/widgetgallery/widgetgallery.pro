@@ -17,7 +17,7 @@ maemo5:QT += maemo5
 no-webkit {
     DEFINES += QT_NO_WEBKIT
 } else {
-    QT += webkit
+    QT += webkit multimedia
 }
 
 # install
