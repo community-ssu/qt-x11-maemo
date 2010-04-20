@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -39,57 +39,37 @@
 **
 ****************************************************************************/
 
-#ifndef WINDOW_H
-#define WINDOW_H
+#include <QMainWindow>
+#include <QWebPage>
 
-#include <QWidget>
+QT_BEGIN_NAMESPACE
+class QLineEdit;
+class QGraphicsWebView;
+class QToolBar;
+QT_END_NAMESPACE
 
-class QAbstractKineticScroller;
-class QTableView;
-class QLabel;
-class QGridLayout;
-
-
-class ScrollerWindow : public QWidget
+//![0]
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    ScrollerWindow();
+    MainWindow();
 
 protected slots:
-    void setLowFrictionEnabled(bool);
 
-    void setAutoMode();
-    void setPushMode();
-    void setAccelerationMode();
+    void adjustLocation();
+    void changeLocation();
+    void adjustTitle();
+    void setProgress(int p);
+    void finishLoading(bool);
 
-    void setDragInertia(int);
-    void setDirectionErrorMargin(int);
-    void setPanningThreshold(int);
-    void setDecelerationFactor(int);
-    void setFastVelocityFactor(int);
-    void setMinimumVelocity(int);
-    void setMaximumVelocity(int);
-    void setOvershootWhenScrollable();
-    void setOvershootAlwaysOn();
-    void setOvershootAlwaysOff();
-    void setAxisLockThreshold(int);
-    void setFPS(int);
+private:
+    void addToolBarAction(QToolBar *toolBar, QWebPage::WebAction webaction, const char *iconname);
 
-    void scrollToRandom();
-
-protected:
-
-    void updateNumberLabels();
-    void setupSlider( const char* text, int min, int max, int value, const char* slot, int *row, QGridLayout *layout);
-
-    QTableView *table;
-    QAbstractKineticScroller *scroller1;
-    QAbstractKineticScroller *scroller2;
-
-    QLabel *numberLabels[9];
+private:
+    QGraphicsWebView *view;
+    QLineEdit *locationEdit;
 };
+//![0]
 
-
-#endif

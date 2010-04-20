@@ -39,34 +39,72 @@
 **
 ****************************************************************************/
 
-#include <QMainWindow>
-#include <QWebPage>
+#ifndef QWEBVIEWSELECTIONSUPPRESSOR_H
+#define QWEBVIEWSELECTIONSUPPRESSOR_H
 
-QT_BEGIN_NAMESPACE
-class QLineEdit;
-class QGraphicsWebView;
-class QToolBar;
-QT_END_NAMESPACE
+#include <QtWebKit/qwebview.h>
+#include <QtGui/qevent.h>
 
-class MainWindow : public QMainWindow
+class QWebViewSelectionSuppressor : public QObject
 {
     Q_OBJECT
-
 public:
-    MainWindow();
+    QWebViewSelectionSuppressor(QWebView *v)
+        : QObject(v), view(v), enabled(false), mousePressed(false)
+    {
+        Q_ASSERT(view);
+        enable();
+    }
 
-protected slots:
+    inline void enable()
+    {
+        if (enabled)
+            return;
+        view->installEventFilter(this);
+        enabled = true;
+    }
+ 
+    inline void disable()
+    {
+        if (!enabled)
+            return;
+        view->removeEventFilter(this);
+        enabled = false;
+    }
 
-    void adjustLocation();
-    void changeLocation();
-    void adjustTitle();
-    void setProgress(int p);
-    void finishLoading(bool);
+    inline bool isEnabled() const
+    {
+        return enabled;
+    }
+    
+protected:
+    inline bool eventFilter(QObject *, QEvent *e);
 
 private:
-    void addToolBarAction(QToolBar *toolBar, QWebPage::WebAction webaction, const char *iconname);
-
-private:
-    QGraphicsWebView *view;
-    QLineEdit *locationEdit;
+    QWebView *view;
+    bool enabled;
+    bool mousePressed;
 };
+
+bool QWebViewSelectionSuppressor::eventFilter(QObject *, QEvent *e)
+{
+    switch (e->type()) {
+    case QEvent::MouseButtonPress:
+        if (static_cast<QMouseEvent *>(e)->button() == Qt::LeftButton)
+            mousePressed = true;
+        break;
+    case QEvent::MouseButtonRelease:
+        if (static_cast<QMouseEvent *>(e)->button() == Qt::LeftButton)
+            mousePressed = false;
+        break;
+    case QEvent::MouseMove:
+        if (mousePressed)
+            return true;
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+#endif

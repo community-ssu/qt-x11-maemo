@@ -1500,6 +1500,7 @@ void tst_QGraphicsProxyWidget::scrollUpdate()
     view.paintEventRegion = QRegion();
     view.npaints = 0;
     QTest::qWait(50);
+    QTest::qWait(50);
     QTimer::singleShot(0, widget, SLOT(updateScroll()));
     QTRY_COMPARE(view.npaints, 2);
     // QRect(0, 0, 200, 12) is the first update, expanded (-2, -2, 2, 2)

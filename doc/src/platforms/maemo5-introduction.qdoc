@@ -124,21 +124,24 @@
     Note that Maemo 5 does not execute binaries from memory cards. Applications
     must be copied to the internal memory first.
 
-    \section1 Installing Your Own Applications
+    \section1 Deploying Your Applications
 
-    Maemo 5 uses the Debian package format for installation. Qt applications install
-    like all other Maemo 5 applications. Please refer to the Maemo 5 packaging
-    documentation for information on how to create Debian packages.
+    Maemo 5 uses the Debian package format for installation.  Please refer to the Maemo 5
+    packaging documentation (\l{http://wiki.maemo.org/Maemo_packaging}) for information
+    on how to create Debian packages.
 
-    As with all applications, the dependencies of a Qt application need to be specified
-    by adding the respective libraries to the "Depends" field in the package's control file.
-    Every Qt library is shipped in its own package. The package name starts with "libqt4-"
-    followed by the library name in lowercase.
+    After generating the \c{debian/} packaging directory with \c{dh_make}, the Qt dependency
+    should be specified by adding \c{libqt4-dev (>= 4.6.1)} to the \c{Build-Depends} line
+    of the \c{debian/control} file. This ensures that the Qt development headers must be
+    available in order to build the package.
 
-    Example: If your application requires QtCore, QtGui, QtSql and QtOpenGL, your "Depends" line
-    should contain "libqt4-core, libqt4-gui, libqt4-sql, libqt4-opengl".
-
-    If your application is open source, add "libqt4-dev" to the "Build-Depends" settings
-    in the control file. The "libqt4-dev" package contains headers for all Qt libraries.
+    For qmake based projects, edit the \c{debian/rules} file and search for the
+    \c{configure-stamp:} section. There should be a comment in that section stating
+    \c{# Add here commands to configure the package}. After that line, add
+    \c{qmake myproject.pro} (replace \c{myproject.pro} with the name of your qmake
+    project file). This ensures that qmake is invoked instead of running a configure script.
+    Since qmake uses the environment variable \c{INSTALL_ROOT} to redirect installations,
+    the default use of the \c{DESTDIR} variable needs to be changed. Look for the \c{install:}
+    section in \c{debian/rules} and replace all occurences of \c{DESTDIR} with \c{INSTALL_ROOT}.
 */
 

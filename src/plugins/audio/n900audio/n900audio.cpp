@@ -70,7 +70,6 @@ N900AudioDeviceInfo::N900AudioDeviceInfo(QByteArray dev, QAudio::Mode mode)
 
 N900AudioDeviceInfo::~N900AudioDeviceInfo()
 {
-    close();
 }
 
 bool N900AudioDeviceInfo::isFormatSupported(const QAudioFormat& format) const
@@ -87,14 +86,14 @@ QAudioFormat N900AudioDeviceInfo::preferredFormat() const
         nearest.setByteOrder(QAudioFormat::LittleEndian);
         nearest.setSampleType(QAudioFormat::SignedInt);
         nearest.setSampleSize(16);
-        nearest.setCodec(tr("audio/pcm"));
+        nearest.setCodec(QLatin1String("audio/pcm"));
     } else {
         nearest.setFrequency(8000);
         nearest.setChannels(1);
         nearest.setByteOrder(QAudioFormat::LittleEndian);
         nearest.setSampleType(QAudioFormat::UnSignedInt);
         nearest.setSampleSize(8);
-        nearest.setCodec(tr("audio/pcm"));
+        nearest.setCodec(QLatin1String("audio/pcm"));
     }
     return nearest;
 }
@@ -148,15 +147,6 @@ QList<QAudioFormat::SampleType> N900AudioDeviceInfo::sampleTypeList()
     return typez;
 }
 
-bool N900AudioDeviceInfo::open()
-{
-    return true;
-}
-
-void N900AudioDeviceInfo::close()
-{
-}
-
 bool N900AudioDeviceInfo::testSettings(const QAudioFormat& format) const
 {
     if (!channelz.contains(format.channels()))
@@ -184,23 +174,27 @@ void N900AudioDeviceInfo::updateLists()
     typez.clear();
     codecz.clear();
 
-    if(!open())
-        return;
-
-    for(int i=0; i<(int)MAX_SAMPLE_RATES; i++) {
-        freqz.append(SAMPLE_RATES[i]);
-    }
-    if(mode == QAudio::AudioInput)
+    if (mode == QAudio::AudioInput) {
+        freqz.append(8000);
         channelz.append(1);
-    else
+        sizez.append(8);
+        sizez.append(16);
+        byteOrderz.append(QAudioFormat::LittleEndian);
+        typez.append(QAudioFormat::SignedInt);
+        typez.append(QAudioFormat::UnSignedInt);
+        codecz.append(QLatin1String("audio/pcm"));
+
+    } else {
+        for(int i=0; i<(int)MAX_SAMPLE_RATES; i++) {
+            freqz.append(SAMPLE_RATES[i]);
+        }
         channelz.append(2);
-
-    sizez.append(16);
-    byteOrderz.append(QAudioFormat::LittleEndian);
-    typez.append(QAudioFormat::SignedInt);
-    codecz.append(tr("audio/pcm"));
-
-    close();
+        sizez.append(8);
+        sizez.append(16);
+        byteOrderz.append(QAudioFormat::LittleEndian);
+        typez.append(QAudioFormat::SignedInt);
+        codecz.append(QLatin1String("audio/pcm"));
+    }
 }
 
 QList<QByteArray> N900AudioDeviceInfo::availableDevices(QAudio::Mode mode)
@@ -226,43 +220,7 @@ N900InputPrivate::~N900InputPrivate()
 
 qint64 N900InputPrivate::readData( char* data, qint64 len)
 {
-    // push mode, user read() called
-    if((audioDevice->state() != QAudio::ActiveState) && !audioDevice->resuming)
-        return 0;
-
-    int readFrames;
-    int count=0, err = 0;
-
-    while(count < 5) {
-        int frames = snd_pcm_bytes_to_frames(audioDevice->handle, len);
-        readFrames = snd_pcm_readi(audioDevice->handle, data, frames);
-        if (readFrames >= 0) {
-            err = snd_pcm_frames_to_bytes(audioDevice->handle, readFrames);
-#ifdef DEBUG_AUDIO
-            qDebug()<<QString::fromLatin1("PUSH: read in bytes = %1 (frames=%2)").arg(err).arg(readFrames).toLatin1().constData();
-#endif
-            break;
-        } else if((readFrames == -EAGAIN) || (readFrames == -EINTR)) {
-            audioDevice->errorState = QAudio::IOError;
-            err = 0;
-            break;
-        } else {
-            if(readFrames == -EPIPE) {
-                audioDevice->errorState = QAudio::UnderrunError;
-                err = snd_pcm_prepare(audioDevice->handle);
-            } else if(readFrames == -ESTRPIPE) {
-                err = snd_pcm_prepare(audioDevice->handle);
-            }
-            if(err != 0) break;
-        }
-        count++;
-    }
-    if(err > 0 && readFrames > 0) {
-        audioDevice->totalTimeValue += readFrames*1000/audioDevice->settings.frequency()*1000;
-        audioDevice->deviceState = QAudio::ActiveState;
-        return err;
-    }
-    return 0;
+    return audioDevice->read(data,len);
 }
 
 qint64 N900InputPrivate::writeData(const char* data, qint64 len)
@@ -297,7 +255,6 @@ N900AudioInput::N900AudioInput(const QByteArray &device, const QAudioFormat& aud
     audioSource = 0;
     pullMode = true;
     resuming = false;
-    settings = audioFormat;
 
     m_device = device;
 
@@ -323,6 +280,11 @@ int N900AudioInput::xrun_recovery(int err)
         err = snd_pcm_prepare(handle);
         if(err < 0)
             reset = true;
+        else {
+            bytesAvailable = bytesReady();
+            if (bytesAvailable <= 0)
+                reset = true;
+        }
 
     } else if((err == -ESTRPIPE)||(err == -EIO)) {
         errorState = QAudio::IOError;
@@ -341,8 +303,11 @@ int N900AudioInput::xrun_recovery(int err)
         }
     }
     if(reset) {
+        saveProcessed = totalTimeValue;
         close();
         open();
+        totalTimeValue = saveProcessed;
+
         snd_pcm_prepare(handle);
         return 0;
     }
@@ -424,7 +389,10 @@ void N900AudioInput::userFeed()
 {
     if(deviceState == QAudio::StoppedState || deviceState == QAudio::SuspendedState)
         return;
-
+#ifdef DEBUG_AUDIO
+    QTime now(QTime::currentTime());
+    qDebug()<<now.second()<<"s "<<now.msec()<<"ms :userFeed() IN";
+#endif
     if(pullMode) {
         // reads some audio data and writes it to QIODevice
         read(0,0);
@@ -434,8 +402,13 @@ void N900AudioInput::userFeed()
         a->trigger();
     }
     bytesAvailable = bytesReady();
-    if(timeStamp.elapsed() > intervalTime) {
+
+    if(deviceState != QAudio::ActiveState)
+        return;
+
+    if((timeStamp.elapsed() + elapsedTimeOffset)> intervalTime) {
         emit notify();
+        elapsedTimeOffset = timeStamp.elapsed() + elapsedTimeOffset - intervalTime;
         timeStamp.restart();
     }
 }
@@ -511,14 +484,14 @@ bool N900AudioInput::open()
     QTime now(QTime::currentTime());
     qDebug()<<now.second()<<"s "<<now.msec()<<"ms :open()";
 #endif
-    clockTime.restart();
+    clockStamp.restart();
     timeStamp.restart();
     elapsedTimeOffset = 0;
 
     int err=-1;
     int count=0;
 
-    QString dev = QLatin1String("default");
+    QString dev = QLatin1String("plughw:0,0");
 
     // Step 1: try and open the device
     while((count < 5) && (err < 0)) {
@@ -559,7 +532,6 @@ bool N900AudioInput::open()
     timer->start(period_time*chunks/2000);
 
     errorState  = QAudio::NoError;
-    deviceState = QAudio::ActiveState;
 
     totalTimeValue = 0;
 
@@ -568,13 +540,27 @@ bool N900AudioInput::open()
 
 qint64 N900AudioInput::read(char* data, qint64 len)
 {
-    Q_UNUSED(data)
     Q_UNUSED(len)
+
     // Read in some audio data and write it to QIODevice, pull mode
     if ( !handle )
         return 0;
 
     bytesAvailable = bytesReady();
+
+    if (bytesAvailable < 0) {
+        // bytesAvailable as negative is error code, try to recover from it.
+        xrun_recovery(bytesAvailable);
+        bytesAvailable = bytesReady();
+        if (bytesAvailable < 0) {
+            // recovery failed must stop and set error.
+            close();
+            errorState = QAudio::IOError;
+            deviceState = QAudio::StoppedState;
+            emit stateChanged(deviceState);
+            return 0;
+        }
+    }
 
     int count=0, err = 0;
     while(count < 5) {
@@ -586,7 +572,7 @@ qint64 N900AudioInput::read(char* data, qint64 len)
         if (readFrames >= 0) {
             err = snd_pcm_frames_to_bytes(handle, readFrames);
 #ifdef DEBUG_AUDIO
-            qDebug()<<QString::fromLatin1("PULL: read in bytes = %1 (frames=%2)").arg(err).arg(readFrames).toLatin1().constData();
+            qDebug()<<QString::fromLatin1("read in bytes = %1 (frames=%2)").arg(err).arg(readFrames).toLatin1().constData();
 #endif
             break;
         } else if((readFrames == -EAGAIN) || (readFrames == -EINTR)) {
@@ -607,28 +593,46 @@ qint64 N900AudioInput::read(char* data, qint64 len)
     if(err > 0) {
         // got some send it onward
 #ifdef DEBUG_AUDIO
-        qDebug()<<"PULL: frames to write to QIODevice = "<<
+        qDebug()<<"frames to write to QIODevice = "<<
             snd_pcm_bytes_to_frames( handle, (int)err )<<" ("<<err<<") bytes";
 #endif
-        if(deviceState != QAudio::ActiveState)
+        if(deviceState != QAudio::ActiveState && deviceState != QAudio::IdleState)
             return 0;
+        if (pullMode) {
+            qint64 l = audioSource->write(audioBuffer,err);
+            if(l < 0) {
+                close();
+                errorState = QAudio::IOError;
+                deviceState = QAudio::StoppedState;
+                emit stateChanged(deviceState);
+            } else if(l == 0) {
+                if (deviceState != QAudio::IdleState) {
+                    errorState = QAudio::NoError;
+                    deviceState = QAudio::IdleState;
+                    emit stateChanged(deviceState);
+                }
+            } else {
+                totalTimeValue += l;
+                resuming = false;
+                if (deviceState != QAudio::ActiveState) {
+                    errorState = QAudio::NoError;
+                    deviceState = QAudio::ActiveState;
+                    emit stateChanged(deviceState);
+                }
+            }
+            return l;
 
-        qint64 l = audioSource->write(audioBuffer,err);
-        if(l < 0) {
-            close();
-            errorState = QAudio::IOError;
-            deviceState = QAudio::StoppedState;
-            emit stateChanged(deviceState);
-        } else if(l == 0) {
-            errorState = QAudio::NoError;
-            deviceState = QAudio::IdleState;
         } else {
-            totalTimeValue += snd_pcm_bytes_to_frames(handle, err)*1000000/settings.frequency();
+            memcpy(data,audioBuffer,err);
+            totalTimeValue += err;
             resuming = false;
-            errorState = QAudio::NoError;
-            deviceState = QAudio::ActiveState;
+            if (deviceState != QAudio::ActiveState) {
+                errorState = QAudio::NoError;
+                deviceState = QAudio::ActiveState;
+                emit stateChanged(deviceState);
+            }
+            return err;
         }
-        return l;
     }
     return 0;
 }
@@ -646,9 +650,11 @@ QIODevice* N900AudioInput::start(QIODevice* device)
         //set to pull mode
         pullMode = true;
         audioSource = device;
+        deviceState = QAudio::ActiveState;
     } else {
         //set to push mode
         pullMode = false;
+        deviceState = QAudio::IdleState;
         audioSource = new N900InputPrivate(this);
         audioSource->open(QIODevice::ReadWrite | QIODevice::Unbuffered);
     }
@@ -667,6 +673,7 @@ void N900AudioInput::stop()
         return;
 
     deviceState = QAudio::StoppedState;
+    errorState = QAudio::NoError;
 
     close();
     emit stateChanged(deviceState);
@@ -678,7 +685,8 @@ void N900AudioInput::reset()
 
 void N900AudioInput::suspend()
 {
-    if(deviceState == QAudio::ActiveState) {
+    if(deviceState == QAudio::ActiveState||deviceState == QAudio::IdleState||resuming) {
+        saveProcessed = totalTimeValue;
         timer->stop();
         deviceState = QAudio::SuspendedState;
         emit stateChanged(deviceState);
@@ -702,6 +710,7 @@ void N900AudioInput::resume()
             bytesAvailable = buffer_size;
         }
         resuming = true;
+        totalTimeValue = saveProcessed;
         deviceState = QAudio::ActiveState;
         int chunks = buffer_size/period_size;
         timer->start(period_time*chunks/2000);
@@ -714,11 +723,11 @@ int N900AudioInput::bytesReady() const
     if(resuming)
         return period_size;
 
-    if(deviceState != QAudio::ActiveState)
+    if(deviceState != QAudio::ActiveState && deviceState != QAudio::IdleState)
         return 0;
     int frames = snd_pcm_avail_update(handle);
     if((int)frames > (int)buffer_frames || (int)frames < 0)
-        return period_size;
+        frames = buffer_frames;
 
     return snd_pcm_frames_to_bytes(handle, frames);
 }
@@ -740,7 +749,10 @@ int N900AudioInput::bufferSize() const
 
 void N900AudioInput::setNotifyInterval(int ms)
 {
-    intervalTime = ms;
+    if (ms <= 0)
+        intervalTime = 0;
+    else
+        intervalTime = ms;
 }
 
 int N900AudioInput::notifyInterval() const
@@ -750,14 +762,19 @@ int N900AudioInput::notifyInterval() const
 
 qint64 N900AudioInput::processedUSecs() const
 {
-    return totalTimeValue;
+    qint64 result = qint64(1000000) * totalTimeValue /
+        (settings.channels()*(settings.sampleSize()/8)) /
+        settings.frequency();
+
+    return result;
 }
 
 qint64 N900AudioInput::elapsedUSecs() const
 {
-    if(deviceState != QAudio::ActiveState && deviceState != QAudio::SuspendedState)
+    if (deviceState == QAudio::StoppedState)
         return 0;
-    return clockTime.elapsed()*1000;
+
+    return clockStamp.elapsed()*1000;
 }
 
 QAudio::Error N900AudioInput::error() const
@@ -826,6 +843,8 @@ N900AudioOutput::N900AudioOutput(const QByteArray &device, const QAudioFormat& a
     pullMode = true;
     handle = 0;
 
+    dummyBuffer = 0;
+
     m_device = device;
 
     timer = new QTimer(this);
@@ -842,12 +861,16 @@ N900AudioOutput::~N900AudioOutput()
 
 qint64 N900AudioOutput::write(const char *data, qint64 len )
 {
-    int length = len;
+    qint64 length = len;
 
     if(!connected)
         return 0;
 
     writing = true;
+
+    if (length <= 0) return 0;
+    if (length > buffer_size) length = buffer_size;
+    if (dummyBuffer-length < 0) length = dummyBuffer;
 
     if (pa_simple_write(handle, data, (size_t)length, &err) < 0) {
         qWarning()<<"QAudioOutput::write err, can't write to pulseaudio daemon";
@@ -858,9 +881,14 @@ qint64 N900AudioOutput::write(const char *data, qint64 len )
         emit stateChanged(deviceState);
         return 0;
     } else {
+        writeTime.restart();
         totalTimeValue += length;
+        dummyBuffer -= length;
         errorState = QAudio::NoError;
-        deviceState = QAudio::ActiveState;
+        if (deviceState != QAudio::ActiveState) {
+            deviceState = QAudio::ActiveState;
+            emit stateChanged(deviceState);
+        }
         return length;
     }
     return 0;
@@ -872,6 +900,7 @@ bool N900AudioOutput::open()
 
     clockTime.restart();
     timeStamp.restart();
+    writeTime.restart();
 
     count     = 0;
 
@@ -908,6 +937,9 @@ bool N900AudioOutput::open()
             params.format = PA_SAMPLE_U8;
         } else {
             qWarning()<<"unsupported format";
+            errorState = QAudio::OpenError;
+            deviceState = QAudio::StoppedState;
+            emit stateChanged(deviceState);
             return false;
         }
     }
@@ -920,7 +952,8 @@ bool N900AudioOutput::open()
     attr.minreq = attr.tlength/50;
     attr.prebuf = (attr.tlength - attr.minreq)/4;
     attr.fragsize = attr.tlength/50;
-
+    buffer_size = attr.tlength*3;
+    period_size = buffer_size/5;
 
     if(!(handle = pa_simple_new(NULL, m_device.constData(),
                     PA_STREAM_PLAYBACK, NULL,
@@ -936,9 +969,6 @@ bool N900AudioOutput::open()
     connected = true;
     writing   = false;
 
-    period_size = settings.frequency()*20*(settings.sampleSize()/8)*settings.channels()/1000;
-    buffer_size = period_size*5;
-
     if(audioBuffer == 0)
         audioBuffer = new char[buffer_size];
 
@@ -948,9 +978,9 @@ bool N900AudioOutput::open()
     timer->start(20);
 
     errorState  = QAudio::NoError;
-    deviceState = QAudio::ActiveState;
 
     totalTimeValue = 0;
+    dummyBuffer = buffer_size;
 
     return true;
 }
@@ -962,27 +992,45 @@ void N900AudioOutput::userFeed()
 
     if(pullMode) {
         // write some audio data and writes it to QIODevice
-        int l = audioSource->read(audioBuffer,period_size);
-        if(l > 0) {
-            if(deviceState != QAudio::ActiveState)
-                return;
-            write(audioBuffer,l);
-        } else if(l == 0) {
-            errorState = QAudio::UnderrunError;
+        while (dummyBuffer >= period_size) {
+            int l = audioSource->read(audioBuffer,period_size);
+            if(l > 0) {
+                qint64 bytesWritten = write(audioBuffer,l);
+                if (bytesWritten != l) {
+                    audioSource->seek(audioSource->pos()-(l-bytesWritten));
+                    break;
+                }
+
+            } else if(l == 0) {
+                if (deviceState != QAudio::IdleState) {
+                    errorState = QAudio::UnderrunError;
+                    deviceState = QAudio::IdleState;
+                    emit stateChanged(deviceState);
+                }
+                break;
+
+            } else {
+                close();
+                errorState = QAudio::IOError;
+                emit stateChanged(deviceState);
+                break;
+
+            }
+        }
+    } else {
+        if (writeTime.elapsed() > 40 && deviceState != QAudio::IdleState) {
             deviceState = QAudio::IdleState;
-            emit stateChanged(deviceState);
-        } else {
-            close();
-            errorState = QAudio::IOError;
+            errorState = QAudio::UnderrunError;
             emit stateChanged(deviceState);
         }
-
     }
 
-    if(timeStamp.elapsed() > intervalTime) {
+    if(intervalTime > 0 && timeStamp.elapsed() > intervalTime) {
         emit notify();
         timeStamp.restart();
     }
+    dummyBuffer+=period_size;
+    if (dummyBuffer > buffer_size) dummyBuffer = buffer_size;
 }
 
 void N900AudioOutput::close()
@@ -991,9 +1039,10 @@ void N900AudioOutput::close()
     timer->stop();
 
     if(handle) {
-        pa_simple_flush(handle, &err);
+        pa_simple_drain(handle, &err);
         pa_simple_free(handle);
         handle = 0;
+        dummyBuffer = buffer_size;
     }
 }
 
@@ -1031,7 +1080,8 @@ QIODevice* N900AudioOutput::start(QIODevice* device)
         deviceState = QAudio::IdleState;
     }
 
-    open();
+    if (!open())
+        return 0;
 
     emit stateChanged(deviceState);
 
@@ -1042,6 +1092,7 @@ void N900AudioOutput::stop()
 {
     if(deviceState == QAudio::StoppedState)
         return;
+    errorState = QAudio::NoError;
     close();
     emit stateChanged(deviceState);
 }
@@ -1052,10 +1103,12 @@ void N900AudioOutput::reset()
 
 void N900AudioOutput::suspend()
 {
-    if(deviceState == QAudio::ActiveState) {
+    if(deviceState == QAudio::ActiveState || deviceState == QAudio::IdleState) {
         timer->stop();
+        saveProcessed = totalTimeValue;
         close();
         deviceState = QAudio::SuspendedState;
+        errorState = QAudio::NoError;
         emit stateChanged(deviceState);
     }
 }
@@ -1064,18 +1117,17 @@ void N900AudioOutput::resume()
 {
     if(deviceState == QAudio::SuspendedState) {
         deviceState = QAudio::ActiveState;
-        open();
-        timer->start(20);
+        if (!open()) return;
+        totalTimeValue = saveProcessed;
         emit stateChanged(deviceState);
     }
 }
 
 int N900AudioOutput::bytesFree() const
 {
-    if(deviceState != QAudio::ActiveState)
+    if(deviceState != QAudio::ActiveState && deviceState != QAudio::IdleState)
         return 0;
-
-    return buffer_size;
+    return dummyBuffer;
 }
 
 int N900AudioOutput::periodSize() const
@@ -1095,7 +1147,10 @@ int N900AudioOutput::bufferSize() const
 
 void N900AudioOutput::setNotifyInterval(int ms)
 {
-    intervalTime = ms;
+    if (ms <= 0)
+        intervalTime = 0;
+    else
+        intervalTime = ms;
 }
 
 int N900AudioOutput::notifyInterval() const
@@ -1105,13 +1160,20 @@ int N900AudioOutput::notifyInterval() const
 
 qint64 N900AudioOutput::processedUSecs() const
 {
-    return (totalTimeValue/(settings.channels()*(settings.sampleSize()/8))*1000000/settings.frequency());
+    if (deviceState == QAudio::StoppedState)
+        return 0;
+    qint64 result = qint64(1000000) * totalTimeValue /
+        (settings.channels()*(settings.sampleSize()/8)) /
+        settings.frequency();
+
+    return result;
 }
 
 qint64 N900AudioOutput::elapsedUSecs() const
 {
-    if(deviceState != QAudio::ActiveState && deviceState != QAudio::SuspendedState)
+    if(deviceState == QAudio::StoppedState)
         return 0;
+
     return clockTime.elapsed()*1000;
 }
 

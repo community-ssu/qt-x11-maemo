@@ -3018,39 +3018,40 @@ QRect QGtkStyle::subControlRect(ComplexControl control, const QStyleOptionComple
 
     case CC_GroupBox:
         if (qstyleoption_cast<const QStyleOptionGroupBox *>(option)) {
-            rect = option->rect.adjusted(0, groupBoxTopMargin, 0, -groupBoxBottomMargin);
-            int topMargin = 0;
-            int topHeight = 0;
-            topHeight = 10;
-            QRect frameRect = rect;
-            frameRect.setTop(topMargin);
+            rect = option->rect;
 
-            if (subControl == SC_GroupBoxFrame)
-                return rect;
-            else if (subControl == SC_GroupBoxContents) {
-                int margin = 0;
-                int leftMarginExtension = 8;
-                return frameRect.adjusted(leftMarginExtension + margin, margin + topHeight + groupBoxTitleMargin, -margin, -margin);
-            }
-
+            //Special behaviour for Qt 4.6 on Maemo 5
             if (const QGroupBox *groupBoxWidget = qobject_cast<const QGroupBox *>(widget)) {
+                const int leftMarginExtension = 8;
+                const int groupBoxBottomMargin = 2;
+
                 //Prepare metrics for a bold font
                 QFont font = widget->font();
                 font.setBold(true);
                 QFontMetrics fontMetrics(font);
-                QSize textRect = fontMetrics.boundingRect(groupBoxWidget->title()).size() + QSize(4, 4);
+                int flags = Qt::TextShowMnemonic | Qt::AlignLeft;
+                QSize textSize = fontMetrics.boundingRect(QRect(), flags, groupBoxWidget->title().remove('&')).size();
+                int labelHeight = fontMetrics.height()+ 1;
+
+                if (subControl == SC_GroupBoxFrame)
+                    return rect;
+                else if (subControl == SC_GroupBoxContents)
+                    return rect.adjusted(leftMarginExtension, labelHeight, 0, -groupBoxBottomMargin);
+
+                QSize labelSize = textSize + QSize(4, 4);
                 int indicatorWidth = proxy()->pixelMetric(PM_IndicatorWidth, option, widget);
                 int indicatorHeight = proxy()->pixelMetric(PM_IndicatorHeight, option, widget);
 
                 if (subControl == SC_GroupBoxCheckBox) {
                     rect.setWidth(indicatorWidth);
                     rect.setHeight(indicatorHeight);
-                    rect.moveTop((textRect.height() - indicatorHeight) / 2);
+                    rect.moveTop((textSize.height() - indicatorHeight) / 2);
 
                 } else if (subControl == SC_GroupBoxLabel) {
+                    rect.setSize(labelSize);
+                    int labeloffset = indicatorWidth + 4;
                     if (groupBoxWidget->isCheckable())
-                        rect.adjust(indicatorWidth + 4, 0, 0, 0);
-                    rect.setSize(textRect);
+                        rect.translate(labeloffset, 0);
                 }
                 rect = visualRect(option->direction, option->rect, rect);
             }
@@ -3288,7 +3289,9 @@ QSize QGtkStyle::sizeFromContents(ContentsType type, const QStyleOption *option,
         break;
 
     case CT_GroupBox:
-        newSize += QSize(4, groupBoxBottomMargin + groupBoxTopMargin + groupBoxTitleMargin); // Add some space below the groupbox
+        {
+            newSize += QSize(4, 0);
+        }
         break;
 
     case CT_TabBarTab:

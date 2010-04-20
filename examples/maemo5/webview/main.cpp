@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -39,57 +39,18 @@
 **
 ****************************************************************************/
 
-#ifndef WINDOW_H
-#define WINDOW_H
+#include "examplewidget.h"
 
-#include <QWidget>
+#include <QtGui>
+#include <QtWebKit>
 
-class QAbstractKineticScroller;
-class QTableView;
-class QLabel;
-class QGridLayout;
-
-
-class ScrollerWindow : public QWidget
+int main(int argc, char *argv[])
 {
-    Q_OBJECT
+    QApplication app(argc, argv);
 
-public:
-    ScrollerWindow();
+    ExampleWidget widget;
+    widget.show();
 
-protected slots:
-    void setLowFrictionEnabled(bool);
+    return app.exec();
+}
 
-    void setAutoMode();
-    void setPushMode();
-    void setAccelerationMode();
-
-    void setDragInertia(int);
-    void setDirectionErrorMargin(int);
-    void setPanningThreshold(int);
-    void setDecelerationFactor(int);
-    void setFastVelocityFactor(int);
-    void setMinimumVelocity(int);
-    void setMaximumVelocity(int);
-    void setOvershootWhenScrollable();
-    void setOvershootAlwaysOn();
-    void setOvershootAlwaysOff();
-    void setAxisLockThreshold(int);
-    void setFPS(int);
-
-    void scrollToRandom();
-
-protected:
-
-    void updateNumberLabels();
-    void setupSlider( const char* text, int min, int max, int value, const char* slot, int *row, QGridLayout *layout);
-
-    QTableView *table;
-    QAbstractKineticScroller *scroller1;
-    QAbstractKineticScroller *scroller2;
-
-    QLabel *numberLabels[9];
-};
-
-
-#endif

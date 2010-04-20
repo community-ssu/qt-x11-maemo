@@ -1,17 +1,16 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** Contact: Qt Software Information (qt-info@nokia.com)
 **
-** This file is part of the QtMultimedia module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
 ** This file contains pre-release code and may not be distributed.
 ** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** contained in the either Technology Preview License Agreement or the
+** Beta Release License Agreement.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -21,20 +20,21 @@
 ** ensure the GNU Lesser General Public License version 2.1 requirements
 ** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** In addition, as a special exception, Nokia gives you certain
+** additional rights. These rights are described in the Nokia Qt LGPL
+** Exception version 1.0, included in the file LGPL_EXCEPTION.txt in this
+** package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
-**
-**
-**
-**
-**
+** If you are unsure which license is appropriate for your use, please
+** contact the sales department at qt-sales@nokia.com.
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -81,9 +81,6 @@ public:
     QList<QByteArray> availableDevices(QAudio::Mode);
 
 private:
-    bool open();
-    void close();
-
     QString device;
     QAudio::Mode mode;
     QAudioFormat settings;
@@ -149,8 +146,8 @@ private slots:
 
 private:
     int xrun_recovery(int err);
-    int setFormat();
     bool setParams();
+    int setFormat();
     bool open();
     void close();
     void drain();
@@ -174,6 +171,7 @@ private:
     qint64 totalTimeValue;
     QTime clockStamp;
     qint64 elapsedTimeOffset;
+    qint64 saveProcessed;
 
     snd_pcm_uframes_t buffer_frames;
     snd_pcm_uframes_t period_frames;
@@ -243,6 +241,7 @@ private:
     QTimer* timer;
     QTime timeStamp;
     QTime clockTime;
+    QTime writeTime;
     int intervalTime;
     char* audioBuffer;
     int bytesAvailable;
@@ -251,6 +250,7 @@ private:
     unsigned int buffer_time;
     unsigned int period_time;
     qint64 totalTimeValue;
+    qint64 saveProcessed;
 
     pa_sample_spec  params;
     pa_simple*      handle;
@@ -259,6 +259,8 @@ private:
     bool            writing;
     int             count;
     int             err;
+
+    int dummyBuffer;
 };
 
 #endif

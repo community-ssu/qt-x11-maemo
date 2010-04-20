@@ -45,12 +45,13 @@
 
 #include <QtDebug>
 
+//![0]
 class ViewportItem : public QGraphicsWidget, public QAbstractKineticScroller
 {
     Q_OBJECT
 public:
     ViewportItem()
-        : QGraphicsWidget(), QAbstractKineticScroller(), m_widget(0), m_ignoreEvents(false)
+        : QGraphicsWidget(), QAbstractKineticScroller(), m_widget(0) 
     {
         setFlag(QGraphicsItem::ItemHasNoContents, true);
         setFlag(QGraphicsItem::ItemClipsChildrenToShape, true);
@@ -59,6 +60,9 @@ public:
         setFiltersChildEvents(true);
     }
 
+//![0]
+
+//![1]
     void setWidget(QGraphicsWidget *widget)
     {
         if (m_widget) {
@@ -76,12 +80,14 @@ public:
             }
         }
     }
+//![1]
 
 protected:
+//![4]
     bool sceneEventFilter(QGraphicsItem *i, QEvent *e)
     {
         bool res = false;
-        if (i && (i == m_widget) && !m_ignoreEvents && m_widget->isEnabled()) {
+        if (i && (i == m_widget) && m_widget->isEnabled()) {
             switch (e->type()) {
             case QEvent::GraphicsSceneMousePress:
             case QEvent::GraphicsSceneMouseMove:
@@ -94,13 +100,16 @@ protected:
                 break;
             }
         }
+//![6]
         // prevent text selection and image dragging
         if (e->type() == QEvent::GraphicsSceneMouseMove)
             return true;
         return res ? true : QGraphicsWidget::sceneEventFilter(i, e);
+//![6]
     }
+//![4]
 
-
+//![3]
     QSize viewportSize() const
     {
         return size().toSize();
@@ -123,20 +132,15 @@ protected:
         if (m_widget)
             m_widget->setPos(-p + m_overShoot);
     }
+//![3]
 
     void cancelLeftMouseButtonPress(const QPoint & /*globalPressPos*/)
     {
         //TODO: although my test have shown, that this seems like it isn't necessary
     }
 
-    void sendEvent(QGraphicsItem *i, QEvent *e)
-    {
-        m_ignoreEvents = true;
-        scene()->sendEvent(i, e);
-        m_ignoreEvents = false;
-    }
-
 private slots:
+//![2]
     void resizeWebViewToFrame()
     {
         if (QGraphicsWebView *view = qgraphicsitem_cast<QGraphicsWebView *>(m_widget)) {
@@ -147,10 +151,10 @@ private slots:
             }
         }
     }
+//![2]
 
 private:
     QGraphicsWidget *m_widget;
-    bool m_ignoreEvents;
     QPoint m_overShoot;
 };
 
@@ -158,6 +162,7 @@ class GraphicsView : public QGraphicsView
 {
     Q_OBJECT
 public:
+//![7]
     GraphicsView()
         : QGraphicsView(new QGraphicsScene()), viewport(0)
     {
@@ -173,6 +178,7 @@ public:
         viewport = new ViewportItem();
         scene()->addItem(viewport);
     }
+//![7]
 
     ViewportItem *viewportItem() const
     {
@@ -180,6 +186,7 @@ public:
     }
 
 protected:
+//![8]
     void resizeEvent(QResizeEvent *e)
     {
         QGraphicsView::resizeEvent(e);
@@ -195,19 +202,23 @@ protected:
         setUpdatesEnabled(true);
         update();
     }
+//![8]
 
 private:
     ViewportItem *viewport;
 };
 
 
+//![10]
 MainWindow::MainWindow()
 {
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
+//![9]
     GraphicsView *gv = new GraphicsView();
     view = new QGraphicsWebView();
     gv->viewportItem()->setWidget(view);
+//![9]
 
     connect(view, SIGNAL(loadFinished(bool)), SLOT(adjustLocation()));
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
@@ -268,5 +279,6 @@ void MainWindow::finishLoading(bool)
 {
     setProgress(100);
 }
+//![10]
 
 #include "mainwindow.moc"

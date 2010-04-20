@@ -14,10 +14,10 @@ maemo5:SOURCES += maemo5.cpp
            
 maemo5:QT += maemo5
 
-no-webkit {
-    DEFINES += QT_NO_WEBKIT
-} else {
+contains(QT_CONFIG, webkit) {
     QT += webkit multimedia
+} else {
+    DEFINES += QT_NO_WEBKIT
 }
 
 # install

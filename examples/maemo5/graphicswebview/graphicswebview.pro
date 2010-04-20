@@ -4,7 +4,7 @@ SOURCES =   main.cpp \
             mainwindow.cpp
 
 # install
-target.path = $$[QT_INSTALL_EXAMPLES]/maemo5/maemobrowser
+target.path = $$[QT_INSTALL_EXAMPLES]/maemo5/graphicswebview
 sources.files = $$SOURCES $$HEADERS *.pro
-sources.path = $$[QT_INSTALL_EXAMPLES]/maemo5/maemobrowser
+sources.path = $$[QT_INSTALL_EXAMPLES]/maemo5/graphicswebview
 INSTALLS += target sources

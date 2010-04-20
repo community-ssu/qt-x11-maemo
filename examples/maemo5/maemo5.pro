@@ -1,6 +1,7 @@
 TEMPLATE      = subdirs
 maemo5:SUBDIRS = widgets \
-                 maemobrowser \
+                 graphicswebview \
+                 webview \
                  controlpanel \
                  stackedwindows \
                  informationbox \

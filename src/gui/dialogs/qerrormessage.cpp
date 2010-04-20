@@ -50,7 +50,7 @@
 #include "qmessagebox.h"
 #include "qpushbutton.h"
 #include "qstringlist.h"
-#include "qtextedit.h"
+#include "qtextbrowser.h"
 #include "qdialog_p.h"
 #include "qpixmap.h"
 #include "qmetaobject.h"
@@ -83,7 +83,7 @@ class QErrorMessagePrivate : public QDialogPrivate
 public:
     QPushButton * ok;
     QCheckBox * again;
-    QTextEdit * errors;
+    QTextBrowser * errors;
     QLabel * icon;
 #ifdef QT_SOFTKEYS_ENABLED
     QAction *okAction;
@@ -98,11 +98,11 @@ public:
     void retranslateStrings();
 };
 
-class QErrorMessageTextView : public QTextEdit
+class QErrorMessageTextView : public QTextBrowser
 {
 public:
     QErrorMessageTextView(QWidget *parent)
-        : QTextEdit(parent) { setReadOnly(true); }
+        : QTextBrowser(parent) {}
 
     virtual QSize minimumSizeHint() const;
     virtual QSize sizeHint() const;

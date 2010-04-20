@@ -2029,7 +2029,22 @@ QSize QMaemo5Style::sizeFromContents(ContentsType type, const QStyleOption *opti
 
     case CT_RadioButton:
     case CT_CheckBox: {
-        gtkWidget = d->gtkWidget("HildonCheckButton-finger");
+        gtkWidget = d->gtkWidget("HildonButton-finger");
+        if (gtkWidget)
+        {
+            gint w = -1, h = -1;
+            d->gtk_widget_get_size_request(gtkWidget, &w, &h);
+            newSize = newSize.expandedTo(QSize(w, h));
+
+            GtkBorder *border = 0;
+            d->gtk_widget_style_get(gtkWidget, "inner-border", &border, NULL);
+            if (border)
+            {
+                newSize += QSize(border->left + border->right,0);
+                d->gtk_border_free(border);
+            }
+            gtkWidget = 0;
+        }
         break;
     }
 

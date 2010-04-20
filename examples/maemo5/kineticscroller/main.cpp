@@ -85,6 +85,24 @@ void ScrollerWindow::setLowFrictionEnabled(bool value)
     scroller2->setLowFrictionEnabled(value);
 }
 
+void ScrollerWindow::setOvershootWhenScrollable()
+{
+    scroller1->setOvershootPolicy(QAbstractKineticScroller::OvershootWhenScrollable);
+    scroller2->setOvershootPolicy(QAbstractKineticScroller::OvershootWhenScrollable);
+}
+
+void ScrollerWindow::setOvershootAlwaysOn()
+{
+    scroller1->setOvershootPolicy(QAbstractKineticScroller::OvershootAlwaysOn);
+    scroller2->setOvershootPolicy(QAbstractKineticScroller::OvershootAlwaysOn);
+}
+
+void ScrollerWindow::setOvershootAlwaysOff()
+{
+    scroller1->setOvershootPolicy(QAbstractKineticScroller::OvershootAlwaysOff);
+    scroller2->setOvershootPolicy(QAbstractKineticScroller::OvershootAlwaysOff);
+}
+
 void ScrollerWindow::setAutoMode()
 {
     scroller1->setMode(QAbstractKineticScroller::AutoMode);
@@ -105,50 +123,64 @@ void ScrollerWindow::setAccelerationMode()
 
 void ScrollerWindow::setDragInertia(int value)
 {
-    scroller1->setDragInertia( (double)value / 100.0);
-    scroller2->setDragInertia( (double)value / 100.0);
+    scroller1->setDragInertia(qreal(value) / qreal(100.0));
+    scroller2->setDragInertia(qreal(value) / qreal(100.0));
     updateNumberLabels();
 }
 
 void ScrollerWindow::setDirectionErrorMargin(int value)
 {
-    scroller1->setDirectionErrorMargin( value );
-    scroller2->setDirectionErrorMargin( value );
+    scroller1->setDirectionErrorMargin(value);
+    scroller2->setDirectionErrorMargin(value);
     updateNumberLabels();
 }
 
 void ScrollerWindow::setPanningThreshold(int value)
 {
-    scroller1->setPanningThreshold( value );
-    scroller2->setPanningThreshold( value );
+    scroller1->setPanningThreshold(value);
+    scroller2->setPanningThreshold(value);
     updateNumberLabels();
 }
 
 void ScrollerWindow::setDecelerationFactor(int value)
 {
-    scroller1->setDecelerationFactor( (double)value / 100.0);
-    scroller2->setDecelerationFactor( (double)value / 100.0);
+    scroller1->setDecelerationFactor(qreal(value) / qreal(100.0));
+    scroller2->setDecelerationFactor(qreal(value) / qreal(100.0));
     updateNumberLabels();
 }
 
 void ScrollerWindow::setFastVelocityFactor(int value)
 {
-    scroller1->setFastVelocityFactor( (double)value / 1000.0);
-    scroller2->setFastVelocityFactor( (double)value / 1000.0);
+    scroller1->setFastVelocityFactor(qreal(value) / qreal(1000.0));
+    scroller2->setFastVelocityFactor(qreal(value) / qreal(1000.0));
     updateNumberLabels();
 }
 
 void ScrollerWindow::setMinimumVelocity(int value)
 {
-    scroller1->setMinimumVelocity( (double)value / 1.0);
-    scroller2->setMinimumVelocity( (double)value / 1.0);
+    scroller1->setMinimumVelocity(value);
+    scroller2->setMinimumVelocity(value);
     updateNumberLabels();
 }
 
 void ScrollerWindow::setMaximumVelocity(int value)
 {
-    scroller1->setMaximumVelocity( (double)value / 1.0);
-    scroller2->setMaximumVelocity( (double)value / 1.0);
+    scroller1->setMaximumVelocity(value);
+    scroller2->setMaximumVelocity(value);
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setAxisLockThreshold(int value)
+{
+    scroller1->setAxisLockThreshold(qreal(value) / qreal(100.0));
+    scroller2->setAxisLockThreshold(qreal(value) / qreal(100.0));
+    updateNumberLabels();
+}
+
+void ScrollerWindow::setFPS(int value)
+{
+    scroller1->setScrollsPerSecond(value);
+    scroller2->setScrollsPerSecond(value);
     updateNumberLabels();
 }
 
@@ -168,6 +200,8 @@ void ScrollerWindow::updateNumberLabels()
     numberLabels[4]->setText(QString::number(scroller1->fastVelocityFactor(), 'f', 3));
     numberLabels[5]->setText(QString::number(scroller1->minimumVelocity(), 'f', 0));
     numberLabels[6]->setText(QString::number(scroller1->maximumVelocity(), 'f', 0));
+    numberLabels[7]->setText(QString::number(scroller1->axisLockThreshold(), 'f', 2));
+    numberLabels[8]->setText(QString::number(scroller1->scrollsPerSecond()));
 }
 
 void ScrollerWindow::setupSlider(const char* text, int min, int max, int value, const char* slot, int *row, QGridLayout *layout)
@@ -206,12 +240,12 @@ ScrollerWindow::ScrollerWindow()
     QWidget *left = new QWidget();
     QGridLayout *layoutLeft = new QGridLayout(left);
     QRadioButton *radio;
+    QLabel *label;
     int row = 0;
     left->setLayout(layoutLeft);
 
-    QCheckBox *checkbox = new QCheckBox(tr("low friction enabled"));
-    connect( checkbox, SIGNAL(clicked(bool)), this, SLOT(setLowFrictionEnabled(bool)));
-    layoutLeft->addWidget(checkbox, row++, 0, 1, 3);
+    label = new QLabel(tr("Scroll Mode"));
+    layoutLeft->addWidget(label, row++, 0, 1, 3);
 
     QHBoxLayout *layoutMode = new QHBoxLayout();
     layoutMode->setSpacing(0);
@@ -233,6 +267,29 @@ ScrollerWindow::ScrollerWindow()
 
     layoutLeft->addLayout(layoutMode, row++, 0, 1, 3);
 
+    label = new QLabel(tr("Overshoot Policy"));
+    layoutLeft->addWidget(label, row++, 0, 1, 3);
+
+    QHBoxLayout *layoutPolicy = new QHBoxLayout();
+    layoutPolicy->setSpacing(0);
+
+    QButtonGroup *groupPolicy = new QButtonGroup(this);
+    radio = new QRadioButton(tr("Auto"));
+    radio->setChecked(true);
+    connect(radio, SIGNAL(clicked()), this, SLOT(setOvershootWhenScrollable()) );
+    groupPolicy->addButton(radio);
+    layoutPolicy->addWidget(radio);
+    radio = new QRadioButton(tr("Always"));
+    connect(radio, SIGNAL(clicked()), this, SLOT(setOvershootAlwaysOn()) );
+    groupPolicy->addButton(radio);
+    layoutPolicy->addWidget(radio);
+    radio = new QRadioButton(tr("Never"));
+    connect(radio, SIGNAL(clicked()), this, SLOT(setOvershootAlwaysOff()) );
+    groupPolicy->addButton(radio);
+    layoutPolicy->addWidget(radio);
+
+    layoutLeft->addLayout(layoutPolicy, row++, 0, 1, 3);
+
     setupSlider( "Drag inertia", 10, 100, scroller1->dragInertia()*100.0, SLOT(setDragInertia(int)), &row, layoutLeft);
     setupSlider( "Dir.err. marg.", 1, 50, scroller1->directionErrorMargin(), SLOT(setDirectionErrorMargin(int)), &row, layoutLeft);
     setupSlider( "Pan. thres.", 1, 100, scroller1->panningThreshold(), SLOT(setPanningThreshold(int)), &row, layoutLeft);
@@ -240,11 +297,13 @@ ScrollerWindow::ScrollerWindow()
     setupSlider( "Fast vel. fact.", 1, 100, scroller1->fastVelocityFactor()*1000.0, SLOT(setFastVelocityFactor(int)), &row, layoutLeft);
     setupSlider( "Min vel.", 1, 1000, scroller1->minimumVelocity(), SLOT(setMinimumVelocity(int)), &row, layoutLeft);
     setupSlider( "Max vel.", 1, 10000, scroller1->maximumVelocity(), SLOT(setMaximumVelocity(int)), &row, layoutLeft);
+    setupSlider( "Axis lock", 0, 100, scroller1->axisLockThreshold(), SLOT(setAxisLockThreshold(int)), &row, layoutLeft);
+    setupSlider( "FPS", 10, 60, scroller1->scrollsPerSecond(), SLOT(setFPS(int)), &row, layoutLeft);
 
     // create the number labels
-    for (int i=0; i<7; i++) {
+    for (int i=0; i<9; i++) {
         numberLabels[i] = new QLabel();
-        layoutLeft->addWidget(numberLabels[i], i+2, 2);
+        layoutLeft->addWidget(numberLabels[i], i+4, 2);
     }
     updateNumberLabels();
 

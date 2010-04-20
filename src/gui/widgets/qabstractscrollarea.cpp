@@ -187,6 +187,7 @@ protected:
     {
         bool res = false;
         bool isMouseEvent = false;
+        bool isMouseDown = false;
 
         if (area && (o == area->viewport()) && !ignoreEvents && area->isEnabled() && isEnabled()) {
             switch (e->type()) {
@@ -195,9 +196,12 @@ protected:
                 // this is an evil hack, but hard to work around without prioritized event filters.
                 area->viewport()->removeEventFilter(this);
                 area->viewport()->installEventFilter(this);
+                // fall through
+            case QEvent::MouseButtonDblClick:
+                isMouseDown = true;
+                // fall through
             case QEvent::MouseMove:
-            case QEvent::MouseButtonRelease:
-            case QEvent::MouseButtonDblClick: {
+            case QEvent::MouseButtonRelease: {
                 isMouseEvent = true;
                 res = handleMouseEvent(static_cast<QMouseEvent *>(e));
                 break;
@@ -205,8 +209,11 @@ protected:
             case QEvent::ChildAdded:
             case QEvent::ChildRemoved: {
                 QChildEvent *ce = static_cast<QChildEvent *>(e);
-                if (ce->child()->isWidgetType())
+                if (ce->child()->isWidgetType()) {
                     static_cast<QWidget *>(ce->child())->setAttribute(Qt::WA_TransparentForMouseEvents, ce->added());
+                    if ((e->type() == QEvent::ChildRemoved) && (ce->child() == childWidget))
+                        childWidget = 0;
+                }
                 break;
             }
             default:
@@ -220,7 +227,11 @@ protected:
         // we have to find the "real" widget to forward this event to...
         if (!res && isMouseEvent) {
             QMouseEvent *me = static_cast<QMouseEvent *>(e);
-            if (QWidget *childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), me->globalPos())) {
+
+            if (isMouseDown)
+                childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), me->globalPos());
+
+            if (childWidget) {
                 QMouseEvent cme(me->type(), childWidget->mapFromGlobal(me->globalPos()),
                                 me->globalPos(), me->button(), me->buttons(), me->modifiers());
                 sendEvent(childWidget, &cme);
@@ -351,6 +362,7 @@ private:
     QItemSelection oldSelection;
     bool ignoreEvents;
     QPoint lastOverShoot;
+    QPointer<QWidget> childWidget;
 };
 
 #endif // Q_WS_MAEMO_5

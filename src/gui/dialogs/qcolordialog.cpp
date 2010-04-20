@@ -72,6 +72,10 @@
 #  define QT_SMALL_COLORDIALOG
 #endif
 
+#if defined(Q_WS_MAEMO_5)
+#  define QT_NO_DRAGANDDROP
+#endif
+
 QT_BEGIN_NAMESPACE
 
 //////////// QWellArray BEGIN

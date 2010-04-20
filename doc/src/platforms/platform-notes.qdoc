@@ -648,8 +648,12 @@
     (and derived classes) as well as QWebView are private to those classes.
     Please see the QAbstractKineticScroller documentation for more information.
 
-    The \c maemobrowser example in \c examples/maemo5 shows one way how to
-    implement kinetic scrolling of QGraphicsWebView.
+    The \l{Maemo 5 QWebView Example} in \c examples/maemo5 shows how to switch
+    QWebView between text selection and scrolling behavior when the user swipes
+    his finger.
+
+    The \l{Maemo 5 QGraphicsWebView Example} in \c examples/maemo5 shows one way how to
+    implement kinetic scrolling of a QGraphicsWebView.
 
     \o Maemo 5 has a special application menu that is triggered by clicking
     on the application's title bar. Qt will use all visible and enabled
