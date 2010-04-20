@@ -107,6 +107,10 @@ config.status:
 				-phonon \
 				$(EXTRA_CONFIGURE_OPTS)
 
+#
+# ### TODO - Append -no-rpath as configure option when switching to /usr prefix
+#
+
 common-build-arch:: build-dbus-tools build-linguist-tools build-maemo5-examples strip-host-tools build-uitools build-qml-tool
 
 strip-host-tools:
