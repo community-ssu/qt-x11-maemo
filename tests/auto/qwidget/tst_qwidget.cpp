@@ -6100,9 +6100,6 @@ void tst_QWidget::setToolTip()
 #ifdef Q_WS_MAEMO_5
     QSKIP("Test does not work with Maemo's window manager", SkipAll);
 #endif
-#ifdef QT_MAC_USE_COCOA
-    QSKIP("Temporarily disable the rest on cocoa due to QCursor::setPos problems.", SkipAll);
-#endif
 
     for (int pass = 0; pass < 2; ++pass) {
         QWidget *popup = new QWidget(0, Qt::Popup);
