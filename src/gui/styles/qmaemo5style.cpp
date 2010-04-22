@@ -1033,6 +1033,12 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
         break;
     }
     case PE_PanelItemViewItem: {
+
+            //To improve the performance we won't cache unusable states
+            QStyle::State old_state = option->state;
+            const_cast<QStyleOption*>(option)->state |= QStyle::State_Active;
+            const_cast<QStyleOption*>(option)->state &= ~(QStyle::State_HasFocus | QStyle::State_MouseOver);
+
             BEGIN_STYLE_PIXMAPCACHE(QString::fromLatin1("panelitem"));
             QGtkPainter gtkCachedPainter(p);
             QRect cacheRect(0, 0, option->rect.width(), option->rect.height());
@@ -1072,6 +1078,7 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
                 }
             }
             END_STYLE_PIXMAPCACHE
+            const_cast<QStyleOption*>(option)->state = old_state;
         break;
     }
     case PE_Maemo5InformationBox: {
