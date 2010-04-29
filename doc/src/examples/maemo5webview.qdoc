@@ -43,36 +43,36 @@
     \example maemo5/webview
     \title Maemo 5 QWebView Example
 
-    The Maemo 5 QWebView example shows how to switch user interaction while swiping
-    from scrolling to text selection.
+    The Maemo 5 QWebView example shows how to switch user interaction from scrolling
+    to text selection while using a swiping gesture.
 
-    By default, QWebView selects text when the user presses, holds and moves his
+    By default, QWebView selects text when the user presses, holds and moves his or her
     finger. However, this behavior is not always wanted, since it clashes with kinetic
     finger scrolling.
 
-    In order to suppress text selection, this example introdices a helper class,
-    \c QWebViewSelectionSuppressor. The class is stand-alone, so the header file
+    In order to suppress text selection, this example introduces a helper class,
+    \c QWebViewSelectionSuppressor. The class is standalone, so the header file
     \c qwebviewselectionsuppressor.h can be copied and used in any project.
 
     \snippet examples/maemo5/webview/examplewidget.h 0
 
-    In order to use the helper class, it must be instanciated with a QWebView as
-    parent. The QWebView becomes the parent of the helper class, the suppressor does not
-    have to be manually deleted. Once the class is instanciated, it registers an event
-    filter on the QWebView and automatically suppresses text selection.
+    In order to use the helper class, it must be instantiated with a QWebView as
+    parent. The QWebView becomes the parent of the helper class, which means that the
+    suppressor does not have to be manually deleted. Once the class is instantiated, it
+    registers an event filter on the QWebView and automatically suppresses text selection.
 
     The \c QWebViewSelectionSuppressor class can be enabled and disabled on the fly:
 
     \snippet examples/maemo5/webview/examplewidget.h 2
 
-    In order to allow the user to select text when swiping with his finger, the
-    suppressor first has to be disabled. In addition, the kinetic scroller is also
-    disabled to prevent the website from scrolling while the user selects text.
+    In order to allow the user to select text when swiping with his/her finger, the
+    suppressor must first be disabled. In addition, the kinetic scroller is also
+    disabled to prevent the Web page from scrolling while the user selects text.
 
     \snippet examples/maemo5/webview/examplewidget.h 1
 
     This code restores the old behavior by enabling the suppressor as well as the
-    kinetic scroller. When the user is swiping with his finger, the view scrolls
+    kinetic scroller. When the user is swiping with his/her finger, the view scrolls
     without selecting text.
 */
 
