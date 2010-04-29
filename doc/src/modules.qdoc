@@ -54,6 +54,7 @@
     \header \o {2,1} \bold{Modules for general software development}
     \row \o \l{QtCore} \o Core non-graphical classes used by other modules
     \row \o \l{QtGui} \o Graphical user interface (GUI) components
+    \row \o \l{QtMaemo5} \o Maemo 5 specific (GUI) components
     \row \o \l{QtMultimedia} \o Classes for low-level multimedia functionality
     \row \o \l{QtNetwork} \o Classes for network programming
     \row \o \l{QtOpenGL} \o OpenGL support classes
@@ -117,7 +118,7 @@
     \title QtGui Module
     \contentspage All Modules
     \previouspage QtCore
-    \nextpage QtNetwork
+    \nextpage QtMaemo5
     \ingroup modules
 
     \brief The QtGui module extends QtCore with GUI functionality.
@@ -129,11 +130,30 @@
 */
 
 /*!
+    \module QtMaemo5
+    \title QtMaemo5 Module
+    \contentspage All Modules
+    \previouspage QtGui
+    \nextpage QtMultimedia
+    \ingroup modules
+
+    \brief The QtMaemo5 module extends QtGui with Maemo 5 specific controls.
+
+    To include the definitions of both modules' classes, use the
+    following directive:
+
+    \snippet doc/src/snippets/code/doc_src_qtmaemo5.qdoc 0
+
+    The QtMaemo5 module is part of the \l{Qt GUI Framework Edition},
+    the \l{Qt Full Framework Edition}, and the \l{Open Source Versions of Qt}.
+*/
+
+/*!
     \module QtMultimedia
     \page qtmultimedia-module.html
     \title QtMultimedia Module
     \contentspage All Modules
-    \previouspage QtCore
+    \previouspage QtMaemo5
     \nextpage QtNetwork
     \ingroup modules
 
