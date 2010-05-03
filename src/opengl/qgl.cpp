@@ -1637,7 +1637,14 @@ static void convertFromGLImage(QImage &img, int w, int h, bool alpha_format, boo
             uint *q = (uint*)img.scanLine(y);
             for (int x=0; x < w; ++x) {
                 const uint pixel = *q;
-                *q = ((pixel << 16) & 0xff0000) | ((pixel >> 16) & 0xff) | (pixel & 0xff00ff00);
+                if (alpha_format && include_alpha) {
+                    *q = ((pixel << 16) & 0xff0000) | ((pixel >> 16) & 0xff)
+                         | (pixel & 0xff00ff00);
+                } else {
+                    *q = 0xff000000 | ((pixel << 16) & 0xff0000)
+                         | ((pixel >> 16) & 0xff) | (pixel & 0x00ff00);
+                }
+
                 q++;
             }
         }
@@ -1648,7 +1655,8 @@ static void convertFromGLImage(QImage &img, int w, int h, bool alpha_format, boo
 
 QImage qt_gl_read_framebuffer(const QSize &size, bool alpha_format, bool include_alpha)
 {
-    QImage img(size, alpha_format ? QImage::Format_ARGB32 : QImage::Format_RGB32);
+    QImage img(size, (alpha_format && include_alpha) ? QImage::Format_ARGB32
+                                                     : QImage::Format_RGB32);
     int w = size.width();
     int h = size.height();
     glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
@@ -3984,7 +3992,7 @@ bool QGLWidget::event(QEvent *e)
     if ((e->type() == QEvent::ParentChange) || (e->type() == QEvent::WindowStateChange)) {
         // The window may have been re-created during re-parent or state change - if so, the EGL
         // surface will need to be re-created.
-        d->recreateEglSurface(false);
+        d->recreateEglSurface();
     }
 #endif
 #elif defined(Q_WS_WIN)

@@ -239,6 +239,7 @@ private slots:
     void QTBUG_4151_clipAndIgnore_data();
     void QTBUG_4151_clipAndIgnore();
     void QTBUG_5859_exposedRect();
+    void QTBUG_7438_cursor();
 };
 
 void tst_QGraphicsView::initTestCase()
@@ -3707,6 +3708,22 @@ void tst_QGraphicsView::update()
 #endif
 }
 
+class FocusItem : public QGraphicsRectItem
+{
+public:
+    FocusItem() : QGraphicsRectItem(0, 0, 20, 20) {
+        m_viewHasIMEnabledInFocusInEvent = false;
+    }
+
+    void focusInEvent(QFocusEvent *event)
+    {
+        QGraphicsView *view = scene()->views().first();
+        m_viewHasIMEnabledInFocusInEvent = view->testAttribute(Qt::WA_InputMethodEnabled);
+    }
+
+    bool m_viewHasIMEnabledInFocusInEvent;
+};
+
 void tst_QGraphicsView::inputMethodSensitivity()
 {
     QGraphicsScene scene;
@@ -3716,7 +3733,7 @@ void tst_QGraphicsView::inputMethodSensitivity()
     QApplication::setActiveWindow(&view);
     QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(&view));
 
-    QGraphicsRectItem *item = new QGraphicsRectItem;
+    FocusItem *item = new FocusItem;
 
     view.setAttribute(Qt::WA_InputMethodEnabled, true);
 
@@ -3745,6 +3762,7 @@ void tst_QGraphicsView::inputMethodSensitivity()
     scene.setFocusItem(item);
     QCOMPARE(scene.focusItem(), static_cast<QGraphicsItem *>(item));
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), true);
+    QCOMPARE(item->m_viewHasIMEnabledInFocusInEvent, true);
 
     item->setFlag(QGraphicsItem::ItemAcceptsInputMethod, false);
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), false);
@@ -3753,15 +3771,17 @@ void tst_QGraphicsView::inputMethodSensitivity()
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), true);
 
     // introduce another item that is focusable but does not accept input methods
-    QGraphicsRectItem *item2 = new QGraphicsRectItem;
+    FocusItem *item2 = new FocusItem;
     item2->setFlag(QGraphicsItem::ItemIsFocusable);
     scene.addItem(item2);
     scene.setFocusItem(item2);
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), false);
+    QCOMPARE(item2->m_viewHasIMEnabledInFocusInEvent, false);
     QCOMPARE(scene.focusItem(), static_cast<QGraphicsItem *>(item2));
 
     scene.setFocusItem(item);
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), true);
+    QCOMPARE(item->m_viewHasIMEnabledInFocusInEvent, true);
     QCOMPARE(scene.focusItem(), static_cast<QGraphicsItem *>(item));
 
     view.setScene(0);
@@ -3770,10 +3790,12 @@ void tst_QGraphicsView::inputMethodSensitivity()
 
     view.setScene(&scene);
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), true);
+    QCOMPARE(item->m_viewHasIMEnabledInFocusInEvent, true);
     QCOMPARE(scene.focusItem(), static_cast<QGraphicsItem *>(item));
 
     scene.setFocusItem(item2);
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), false);
+    QCOMPARE(item2->m_viewHasIMEnabledInFocusInEvent, false);
     QCOMPARE(scene.focusItem(), static_cast<QGraphicsItem *>(item2));
 
     view.setScene(0);
@@ -3786,6 +3808,7 @@ void tst_QGraphicsView::inputMethodSensitivity()
 
     view.setScene(&scene);
     QCOMPARE(view.testAttribute(Qt::WA_InputMethodEnabled), true);
+    QCOMPARE(item->m_viewHasIMEnabledInFocusInEvent, true);
     QCOMPARE(scene.focusItem(), static_cast<QGraphicsItem *>(item));
 }
 
@@ -4117,6 +4140,33 @@ void tst_QGraphicsView::QTBUG_5859_exposedRect()
     QApplication::processEvents();
 
     QCOMPARE(item.lastExposedRect, scene.lastBackgroundExposedRect);
+}
+
+void tst_QGraphicsView::QTBUG_7438_cursor()
+{
+#ifndef QT_NO_CURSOR
+#if defined(Q_OS_WINCE)
+    QSKIP("Qt/CE does not have regular cursor support", SkipAll);
+#endif
+    QGraphicsScene scene;
+    QGraphicsItem *item = scene.addRect(QRectF(-10, -10, 20, 20));
+    item->setFlag(QGraphicsItem::ItemIsMovable);
+
+    QGraphicsView view(&scene);
+    view.setFixedSize(400, 400);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QCOMPARE(view.viewport()->cursor().shape(), QCursor().shape());
+    view.viewport()->setCursor(Qt::PointingHandCursor);
+    QCOMPARE(view.viewport()->cursor().shape(), Qt::PointingHandCursor);
+    sendMouseMove(view.viewport(), view.mapFromScene(0, 0));
+    QCOMPARE(view.viewport()->cursor().shape(), Qt::PointingHandCursor);
+    sendMousePress(view.viewport(), view.mapFromScene(0, 0));
+    QCOMPARE(view.viewport()->cursor().shape(), Qt::PointingHandCursor);
+    sendMouseRelease(view.viewport(), view.mapFromScene(0, 0));
+    QCOMPARE(view.viewport()->cursor().shape(), Qt::PointingHandCursor);
+#endif
 }
 
 QTEST_MAIN(tst_QGraphicsView)
