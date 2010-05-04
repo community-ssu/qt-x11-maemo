@@ -4534,6 +4534,9 @@ bool QETWidget::translateMouseEvent(const XEvent *event)
                 widgetPos = receiver->mapFromGlobal(globalPos);
             QWidget *alien = childAt(mapFromGlobal(globalPos));
             QMouseEvent e(type, widgetPos, globalPos, button, buttons, modifiers);
+#ifdef Q_WS_MAEMO_5
+            QApplicationPrivate::sendTouchEvent(receiver, &e, alien, this, &qt_button_down, qt_last_mouse_receiver);
+#endif
             QApplicationPrivate::sendMouseEvent(receiver, &e, alien, this, &qt_button_down, qt_last_mouse_receiver);
         } else {
             // close disabled popups when a mouse button is pressed or released
@@ -4599,6 +4602,9 @@ bool QETWidget::translateMouseEvent(const XEvent *event)
 
         int oldOpenPopupCount = openPopupCount;
         QMouseEvent e(type, pos, globalPos, button, buttons, modifiers);
+#ifdef Q_WS_MAEMO_5
+        QApplicationPrivate::sendTouchEvent(widget, &e, alienWidget, this, &qt_button_down, qt_last_mouse_receiver);
+#endif
         QApplicationPrivate::sendMouseEvent(widget, &e, alienWidget, this, &qt_button_down,
                                             qt_last_mouse_receiver);
         if (type == QEvent::MouseButtonPress
