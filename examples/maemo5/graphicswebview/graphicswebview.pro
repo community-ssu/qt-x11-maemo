@@ -1,4 +1,4 @@
-QT      +=  webkit network multimedia
+QT      +=  webkit network multimedia opengl
 HEADERS =   mainwindow.h
 SOURCES =   main.cpp \
             mainwindow.cpp
