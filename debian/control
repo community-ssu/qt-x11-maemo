@@ -6,7 +6,7 @@ Uploaders: Brian Nelson <pyro@debian.org>, Sune Vuorela <debian@pusling.com>, Fa
 Build-Depends: cdbs, debhelper (>= 5), sharutils,
  libdbus-1-dev, libfreetype6-dev, libglib2.0-dev, libice-dev, libjpeg62-dev,
  libpng12-dev, libreadline5-dev | libreadline4-dev, libsm-dev, libtiff4-dev, libx11-dev,
- libxcursor-dev, libxext-dev, libxft-dev, libxi-dev, libxmu-dev,
+ libxv-dev, libxcursor-dev, libxext-dev, libxft-dev, libxi-dev, libxmu-dev,
  libxrandr-dev, libxrender-dev, libxt-dev, x11proto-core-dev,
  zlib1g-dev, libgstreamer-plugins-base0.10-dev, libgstreamer0.10-dev, 
  libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel],
