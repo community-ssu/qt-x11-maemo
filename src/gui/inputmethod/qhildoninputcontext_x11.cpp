@@ -447,6 +447,7 @@ void QHildonInputContext::reset()
         sendHildonCommand(HILDON_IM_CLEAR, realFocus);
 
     cancelPreedit();
+    updateInputMethodHints();
 
     //Reset internals
     mask = 0;
@@ -471,6 +472,15 @@ void QHildonInputContext::setFocusWidget(QWidget *w)
     // that it had the focus
     realFocus = resolveFocusWidget(w);
 
+    updateInputMethodHints();
+
+    QInputContext::setFocusWidget(w);
+
+    qHimDebug() << "HIM: setFocusWidget: " << w << " (real: " << realFocus << " / last: " << lastFocus << ")";
+}
+
+void QHildonInputContext::updateInputMethodHints()
+{
     if (realFocus) {
         Qt::InputMethodHints hints = realFocus->inputMethodHints();
 
@@ -508,10 +518,6 @@ void QHildonInputContext::setFocusWidget(QWidget *w)
     } else {
         inputMode = 0;
     }
-
-    QInputContext::setFocusWidget(w);
-
-    qHimDebug() << "HIM: setFocusWidget: " << w << " (real: " << realFocus << " / last: " << lastFocus << ")";
 }
 
 bool QHildonInputContext::filterEvent(const QEvent *event)
@@ -553,6 +559,8 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
 void QHildonInputContext::update()
 {
     qHimDebug() << "HIM: update(): lastInternalChange =" << lastInternalChange;
+
+    updateInputMethodHints();
 
     if (lastInternalChange) {
         //Autocase update

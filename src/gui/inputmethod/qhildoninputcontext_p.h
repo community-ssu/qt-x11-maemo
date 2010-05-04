@@ -112,6 +112,7 @@ private:
                              HildonIMInternalModifierMask lock_mask,
                              HildonIMInternalModifierMask sticky_mask,
                              bool was_press_and_release);
+    void updateInputMethodHints();
 
     //Vars
     int timerId;
