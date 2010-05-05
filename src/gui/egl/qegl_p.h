@@ -171,8 +171,6 @@ typedef void *EGLImageKHR;
 #define EGL_KHR_image_pixmap
 #endif
 
-#define EGL_KHR_image_pixmap
-
 
 class QEglProperties;
 
