@@ -896,7 +896,7 @@ void QCompleterPrivate::showPopup(const QRect& rect)
     if (pos.x() < screen.x())
         pos.setX(screen.x());
 
-    int top = pos.y() - rh - screen.top() - 2;
+    int top = pos.y() - rh - screen.top() + 2;
     int bottom = screen.bottom() - pos.y();
     h = qMax(h, popup->minimumHeight());
     if (h > bottom) {
