@@ -903,10 +903,14 @@ void QCompleterPrivate::showPopup(const QRect& rect)
     if (top > bottom)
         pos.setY(pos.y() - h - rh + 2);
 
+    popup->hide();
     popup->setGeometry(pos.x(), pos.y(), w, h);
 
-    if (!popup->isVisible())
+    if (!popup->isVisible()) {
+        popup->ensurePolished();
+        popup->setFrameStyle(QFrame::StyledPanel);
         popup->show();
+    }
 }
 
 void QCompleterPrivate::_q_fileSystemModelDirectoryLoaded(const QString &path)
@@ -976,6 +980,7 @@ void QCompleter::setWidget(QWidget *widget)
     if (d->widget)
         d->widget->installEventFilter(this);
     if (d->popup) {
+        d->popup->setParent(d->widget, Qt::Popup);
         d->popup->hide();
         d->popup->setFocusProxy(d->widget);
     }
@@ -1125,7 +1130,7 @@ void QCompleter::setPopup(QAbstractItemView *popup)
     Qt::FocusPolicy origPolicy = Qt::NoFocus;
     if (d->widget)
         origPolicy = d->widget->focusPolicy();
-    popup->setParent(0, Qt::Popup);
+    popup->setParent(d->widget, Qt::Popup);
     popup->setFocusPolicy(Qt::NoFocus);
     if (d->widget)
         d->widget->setFocusPolicy(origPolicy);
@@ -1161,6 +1166,7 @@ QAbstractItemView *QCompleter::popup() const
     if (!d->popup && completionMode() != QCompleter::InlineCompletion) {
         QListView *listView = new QListView;
         listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        listView->setParent(d->widget, Qt::Popup);
         listView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         listView->setSelectionBehavior(QAbstractItemView::SelectRows);
         listView->setSelectionMode(QAbstractItemView::SingleSelection);
