@@ -2948,6 +2948,53 @@ QWidget *QApplicationPrivate::pickMouseReceiver(QWidget *candidate, const QPoint
 
 }
 
+
+bool QApplicationPrivate::sendTouchEvent(QWidget *receiver, QMouseEvent *event,
+        QWidget *alienWidget, QWidget *nativeWidget,
+        QWidget **buttonDown, QPointer<QWidget> &lastMouseReceiver,
+        bool spontaneous)
+{
+    Q_ASSERT(receiver);
+    Q_ASSERT(event);
+    Q_ASSERT(nativeWidget);
+    Q_ASSERT(buttonDown);
+    Q_UNUSED(lastMouseReceiver);
+    Q_UNUSED(spontaneous);
+
+    if (event->type() != QEvent::MouseButtonPress && !receiver->testAttribute(Qt::WA_WState_AcceptedTouchBeginEvent))
+        return false;
+
+    if (alienWidget && !isAlien(alienWidget))
+        alienWidget = 0;
+
+    QTouchEvent::TouchPoint touchPoint(1);
+    touchPoint.setState(Qt::TouchPointPressed);
+
+    switch (event->type()) {
+    case QEvent::MouseButtonPress:
+        touchPoint.setState(Qt::TouchPointPressed);
+        break;
+    case QEvent::MouseButtonRelease:
+        touchPoint.setState(Qt::TouchPointReleased);
+        break;
+    case QEvent::MouseMove:
+        touchPoint.setState(Qt::TouchPointMoved);
+        break;
+    default:
+        qDebug("Unhandled mouse event");
+    }
+
+    touchPoint.setPressure(1.0);
+    touchPoint.setScreenPos(event->globalPos());
+    touchPoint.d->state |= Qt::TouchPointPrimary;
+
+    QList<QTouchEvent::TouchPoint> touchPoints;
+    touchPoints.append(touchPoint);
+    translateRawTouchEvent(receiver, QTouchEvent::TouchScreen, touchPoints);
+
+    return true;
+}
+
 /*
    \internal
 */
@@ -5575,6 +5622,9 @@ int QApplicationPrivate::findClosestTouchPointId(const QPointF &screenPos)
     return closestTouchPointId;
 }
 
+/*! Translates a list of touchPoints to a QTouchEvent and sends it.
+    \returns true if the event was accepted.
+*/
 void QApplicationPrivate::translateRawTouchEvent(QWidget *window,
                                                  QTouchEvent::DeviceType deviceType,
                                                  const QList<QTouchEvent::TouchPoint> &touchPoints)
