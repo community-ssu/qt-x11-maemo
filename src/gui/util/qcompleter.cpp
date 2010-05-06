@@ -898,10 +898,13 @@ void QCompleterPrivate::showPopup(const QRect& rect)
 
     int top = pos.y() - rh - screen.top() - 2;
     int bottom = screen.bottom() - pos.y();
-    h = qMax(qMin(qMax(top, bottom), h), popup->minimumHeight());
+    h = qMax(h, popup->minimumHeight());
+    if (h > bottom) {
+        h = qMin(qMax(top, bottom), h);
 
-    if (top > bottom)
-        pos.setY(pos.y() - h - rh + 2);
+        if (top > bottom)
+            pos.setY(pos.y() - h - rh + 2);
+    }
 
     popup->hide();
     popup->setGeometry(pos.x(), pos.y(), w, h);
