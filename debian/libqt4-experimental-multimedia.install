@@ -1,2 +1,3 @@
 opt/qt4-maemo5/lib/libQtMultimedia.so.*
+opt/qt4-maemo5/lib/libQtMediaServices.so.*
 opt/qt4-maemo5/lib/qt4/plugins/audio/libn900audio.so
