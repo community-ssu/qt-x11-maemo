@@ -873,7 +873,7 @@ void QCompleterPrivate::showPopup(const QRect& rect)
     const QRect screen = QApplication::desktop()->availableGeometry(widget);
     Qt::LayoutDirection dir = widget->layoutDirection();
     QPoint pos;
-    int rw, rh, w;
+    int rh, w;
     int h = (popup->sizeHintForRow(0) * qMin(maxVisibleItems, popup->model()->rowCount()) + 3) + 3;
     QScrollBar *hsb = popup->horizontalScrollBar();
     if (hsb && hsb->isVisible())
@@ -881,26 +881,36 @@ void QCompleterPrivate::showPopup(const QRect& rect)
 
     if (rect.isValid()) {
         rh = rect.height();
-        w = rw = rect.width();
+        w = rect.width();
         pos = widget->mapToGlobal(dir == Qt::RightToLeft ? rect.bottomRight() : rect.bottomLeft());
     } else {
         rh = widget->height();
-        rw = widget->width();
         pos = widget->mapToGlobal(QPoint(0, widget->height() - 2));
         w = widget->width();
     }
 
-    if ((pos.x() + rw) > (screen.x() + screen.width()))
+    if (w > screen.width())
+        w = screen.width();
+    if ((pos.x() + w) > (screen.x() + screen.width()))
         pos.setX(screen.x() + screen.width() - w);
     if (pos.x() < screen.x())
         pos.setX(screen.x());
-    if (((pos.y() + rh) > (screen.y() + screen.height())) && ((pos.y() - h - rh) >= 0))
-        pos.setY(pos.y() - qMax(h, popup->minimumHeight()) - rh + 2);
 
+    int top = pos.y() - rh - screen.top() - 2;
+    int bottom = screen.bottom() - pos.y();
+    h = qMax(qMin(qMax(top, bottom), h), popup->minimumHeight());
+
+    if (top > bottom)
+        pos.setY(pos.y() - h - rh + 2);
+
+    popup->hide();
     popup->setGeometry(pos.x(), pos.y(), w, h);
 
-    if (!popup->isVisible())
+    if (!popup->isVisible()) {
+        popup->ensurePolished();
+        popup->setFrameStyle(QFrame::StyledPanel);
         popup->show();
+    }
 }
 
 void QCompleterPrivate::_q_fileSystemModelDirectoryLoaded(const QString &path)
@@ -970,6 +980,7 @@ void QCompleter::setWidget(QWidget *widget)
     if (d->widget)
         d->widget->installEventFilter(this);
     if (d->popup) {
+        d->popup->setParent(d->widget, Qt::Popup);
         d->popup->hide();
         d->popup->setFocusProxy(d->widget);
     }
@@ -1119,7 +1130,7 @@ void QCompleter::setPopup(QAbstractItemView *popup)
     Qt::FocusPolicy origPolicy = Qt::NoFocus;
     if (d->widget)
         origPolicy = d->widget->focusPolicy();
-    popup->setParent(0, Qt::Popup);
+    popup->setParent(d->widget, Qt::Popup);
     popup->setFocusPolicy(Qt::NoFocus);
     if (d->widget)
         d->widget->setFocusPolicy(origPolicy);
@@ -1155,6 +1166,7 @@ QAbstractItemView *QCompleter::popup() const
     if (!d->popup && completionMode() != QCompleter::InlineCompletion) {
         QListView *listView = new QListView;
         listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        listView->setParent(d->widget, Qt::Popup);
         listView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         listView->setSelectionBehavior(QAbstractItemView::SelectRows);
         listView->setSelectionMode(QAbstractItemView::SingleSelection);
