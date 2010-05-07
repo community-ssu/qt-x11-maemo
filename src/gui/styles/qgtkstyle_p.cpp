@@ -716,6 +716,11 @@ void QGtkStylePrivate::applyCustomPaletteHash()
 
     QPalette menuBarPal = gtkWidgetPalette("GtkMenuBar");
     qApp->setPalette(menuBarPal, "QMenuBar");
+
+#ifdef Q_WS_MAEMO_5
+    QPalette spinBoxPal = gtkWidgetPalette(classPath(getTextColorWidget()));
+    qApp->setPalette(spinBoxPal, "QSpinBox");
+#endif
 }
 
 /*! \internal
