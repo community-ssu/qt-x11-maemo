@@ -193,8 +193,8 @@ protected:
             case QEvent::MouseButtonPress:
                 // re-install the event filter so that we get the mouse release before all other filters.
                 // this is an evil hack, but hard to work around without prioritized event filters.
-                /*fixEventFilterRecursive(area->viewport(), false);
-                fixEventFilterRecursive(area->viewport(), true);*/
+                fixEventFilterRecursive(area->viewport(), false);
+                fixEventFilterRecursive(area->viewport(), true);
                 // fall through
             case QEvent::MouseButtonDblClick:
             case QEvent::MouseMove:
