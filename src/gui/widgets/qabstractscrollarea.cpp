@@ -174,12 +174,12 @@ public:
     void setWidget(QAbstractScrollArea *widget)
     {
         if (area)
-            area->viewport()->removeEventFilter(this);
+            fixEventFilterRecursive(area->viewport(), false);
         reset();
         area = widget;
         setParent(area);
         if (area)
-            area->viewport()->installEventFilter(this);
+            fixEventFilterRecursive(area->viewport(), true);
     }
 
 protected:
@@ -187,19 +187,16 @@ protected:
     {
         bool res = false;
         bool isMouseEvent = false;
-        bool isMouseDown = false;
 
-        if (area && (o == area->viewport()) && !ignoreEvents && area->isEnabled() && isEnabled()) {
+        if (area && !ignoreEvents && area->isEnabled() && isEnabled()) {
             switch (e->type()) {
             case QEvent::MouseButtonPress:
                 // re-install the event filter so that we get the mouse release before all other filters.
                 // this is an evil hack, but hard to work around without prioritized event filters.
-                area->viewport()->removeEventFilter(this);
-                area->viewport()->installEventFilter(this);
+                /*fixEventFilterRecursive(area->viewport(), false);
+                fixEventFilterRecursive(area->viewport(), true);*/
                 // fall through
             case QEvent::MouseButtonDblClick:
-                isMouseDown = true;
-                // fall through
             case QEvent::MouseMove:
             case QEvent::MouseButtonRelease: {
                 isMouseEvent = true;
@@ -210,9 +207,7 @@ protected:
             case QEvent::ChildRemoved: {
                 QChildEvent *ce = static_cast<QChildEvent *>(e);
                 if (ce->child()->isWidgetType()) {
-                    static_cast<QWidget *>(ce->child())->setAttribute(Qt::WA_TransparentForMouseEvents, ce->added());
-                    if ((e->type() == QEvent::ChildRemoved) && (ce->child() == childWidget))
-                        childWidget = 0;
+                    fixEventFilterRecursive(ce->child(), ce->added());
                 }
                 break;
             }
@@ -221,29 +216,12 @@ protected:
             }
         }
 
-        res |= QObject::eventFilter(o, e);
-
-        // all child widgets get the WA_TransparentForMouseEvents attribute, so
-        // we have to find the "real" widget to forward this event to...
-        if (!res && isMouseEvent) {
-            QMouseEvent *me = static_cast<QMouseEvent *>(e);
-
-            if (isMouseDown)
-                childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), me->globalPos());
-
-            if (childWidget) {
-                QMouseEvent cme(me->type(), childWidget->mapFromGlobal(me->globalPos()),
-                                me->globalPos(), me->button(), me->buttons(), me->modifiers());
-                sendEvent(childWidget, &cme);
-                res = cme.isAccepted();
-            }
-        }
         return res;
     }
 
     void cancelLeftMouseButtonPress(const QPoint &globalPressPos)
     {
-        if (QWidget *childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), globalPressPos)) {
+        if (QWidget *childWidget = area->viewport()->childAt(area->viewport()->mapFromGlobal(globalPressPos))) {
             // simulate a mouse-move and mouse-release far, far away
             QPoint faraway(-1000, -1000);
             QMouseEvent cmem(QEvent::MouseMove, faraway, childWidget->mapToGlobal(faraway),
@@ -285,7 +263,7 @@ protected:
                 return false;
         }
         // don't start scrolling on a QSlider
-        if (qobject_cast<QSlider *>(mouseTransparentChildAtGlobalPos(area->viewport(), globalPos))) {
+        if (qobject_cast<QSlider *>(area->viewport()->childAt(area->viewport()->mapFromGlobal(globalPos)))) {
             return false;
         }
 
@@ -337,17 +315,22 @@ protected:
     }
 
 private:
-    static QWidget *mouseTransparentChildAtGlobalPos(QWidget *parent, const QPoint &gp)
+    void fixEventFilterRecursive(QObject *widget, bool install)
     {
-        foreach (QWidget *w, parent->findChildren<QWidget *>()) {
-            if (w && !w->isWindow() && w->isVisible() && (w->rect().contains(w->mapFromGlobal(gp)))) {
-                if (QWidget *t = mouseTransparentChildAtGlobalPos(w, gp))
-                    return t;
-                else
-                    return w;
-            }
+        if (!widget)
+            return;
+
+        foreach (QWidget* child, widget->findChildren<QWidget *>()) {
+            if (child->isWidgetType() && !static_cast<QWidget*>(child)->isWindow())
+                fixEventFilterRecursive(child, install);
         }
-        return 0;
+
+        qDebug()<<"fixFilter for:"<<widget<<install;
+
+        if (install)
+            widget->installEventFilter(this);
+        else
+            widget->removeEventFilter(this);
     }
 
     void sendEvent(QWidget *w, QEvent *e)
