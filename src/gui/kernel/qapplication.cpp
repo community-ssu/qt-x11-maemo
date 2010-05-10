@@ -2961,8 +2961,8 @@ bool QApplicationPrivate::sendTouchEvent(QWidget *receiver, QMouseEvent *event,
     Q_UNUSED(lastMouseReceiver);
     Q_UNUSED(spontaneous);
 
-    if (event->type() != QEvent::MouseButtonPress && !receiver->testAttribute(Qt::WA_WState_AcceptedTouchBeginEvent))
-        return false;
+    /*if (event->type() != QEvent::MouseButtonPress && !receiver->testAttribute(Qt::WA_WState_AcceptedTouchBeginEvent))
+        return false;*/
 
     if (alienWidget && !isAlien(alienWidget))
         alienWidget = 0;
