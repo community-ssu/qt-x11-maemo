@@ -2949,28 +2949,14 @@ QWidget *QApplicationPrivate::pickMouseReceiver(QWidget *candidate, const QPoint
 }
 
 
-bool QApplicationPrivate::sendTouchEvent(QWidget *receiver, QMouseEvent *event,
-        QWidget *alienWidget, QWidget *nativeWidget,
-        QWidget **buttonDown, QPointer<QWidget> &lastMouseReceiver,
-        bool spontaneous)
+bool QApplicationPrivate::sendTouchEvent(QWidget *receiver, QEvent::Type type, const QPoint &globalPos)
 {
     Q_ASSERT(receiver);
-    Q_ASSERT(event);
-    Q_ASSERT(nativeWidget);
-    Q_ASSERT(buttonDown);
-    Q_UNUSED(lastMouseReceiver);
-    Q_UNUSED(spontaneous);
-
-    /*if (event->type() != QEvent::MouseButtonPress && !receiver->testAttribute(Qt::WA_WState_AcceptedTouchBeginEvent))
-        return false;*/
-
-    if (alienWidget && !isAlien(alienWidget))
-        alienWidget = 0;
 
     QTouchEvent::TouchPoint touchPoint(1);
     touchPoint.setState(Qt::TouchPointPressed);
 
-    switch (event->type()) {
+    switch (type) {
     case QEvent::MouseButtonPress:
         touchPoint.setState(Qt::TouchPointPressed);
         break;
@@ -2985,7 +2971,7 @@ bool QApplicationPrivate::sendTouchEvent(QWidget *receiver, QMouseEvent *event,
     }
 
     touchPoint.setPressure(1.0);
-    touchPoint.setScreenPos(event->globalPos());
+    touchPoint.setScreenPos(globalPos);
     touchPoint.d->state |= Qt::TouchPointPrimary;
 
     QList<QTouchEvent::TouchPoint> touchPoints;

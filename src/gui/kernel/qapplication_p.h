@@ -503,9 +503,7 @@ public:
                                       QEvent::Type type, Qt::MouseButtons buttons,
                                       QWidget *buttonDown, QWidget *alienWidget);
 
-    static bool sendTouchEvent(QWidget *receiver, QMouseEvent *event, QWidget *alienWidget,
-                               QWidget *native, QWidget **buttonDown, QPointer<QWidget> &lastMouseReceiver,
-                               bool spontaneous = true);
+    static bool sendTouchEvent(QWidget *receiver, QEvent::Type type, const QPoint &pos);
     static bool sendMouseEvent(QWidget *receiver, QMouseEvent *event, QWidget *alienWidget,
                                QWidget *native, QWidget **buttonDown, QPointer<QWidget> &lastMouseReceiver,
                                bool spontaneous = true);
