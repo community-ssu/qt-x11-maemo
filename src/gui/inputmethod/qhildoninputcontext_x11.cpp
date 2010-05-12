@@ -998,7 +998,7 @@ bool QHildonInputContext::x11FilterEvent(QWidget *keywidget, XEvent *event)
         case HILDON_IM_CONTEXT_REQUEST_SURROUNDING:
             sendSurrounding(false);
             return true;
-        case HILDON_IM_CONTEXT_CLEAR_STICKY:
+        case HILDON_IM_CONTEXT_SHIFT_UNSTICKY:
             mask &= ~(HILDON_IM_SHIFT_STICKY_MASK |
                       HILDON_IM_SHIFT_LOCK_MASK |
                       HILDON_IM_LEVEL_STICKY_MASK |
@@ -1214,13 +1214,13 @@ void QHildonInputContext::checkSentenceStart()
         // is not defined, and the plugin sets the mode appropriate for the language */
         if (inputMode & HILDON_GTK_INPUT_MODE_ALPHA) {
             autoUpper = false;
-            sendHildonCommand(HILDON_IM_LOW, w);
+            sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
         }
         return;
     } else if (inputMode & HILDON_GTK_INPUT_MODE_INVISIBLE) {
         // no autocap for passwords
         autoUpper = false;
-        sendHildonCommand(HILDON_IM_LOW, w);
+        sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
     }
 
     int cpos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
@@ -1247,13 +1247,13 @@ void QHildonInputContext::checkSentenceStart()
 
     if (!cpos || analyze.length() == spaces) {
         autoUpper = true;
-        sendHildonCommand(HILDON_IM_UPP, w);
+        sendHildonCommand(HILDON_IM_SHIFT_STICKY, w);
     } else if (spaces && punctuation.contains(analyze.at(analyze.length() - spaces - 1))) {
         autoUpper = options & HILDON_IM_AUTOCASE;
-        sendHildonCommand(HILDON_IM_UPP, w);
+        sendHildonCommand(HILDON_IM_SHIFT_STICKY, w);
     } else {
         autoUpper = false;
-        sendHildonCommand(HILDON_IM_LOW, w);
+        sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
     }
 }
 

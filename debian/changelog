@@ -1,3 +1,9 @@
+qt4-experimental (4.7.0~git20100505-0maemo1) unstable; urgency=low
+
+  * Rename all packages to qt4-experimental
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Wed, 5 May 2010 09:29:01 +0200
+
 qt4-maemo5 (4.7.0~git20100329-0maemo1) unstable; urgency=low
 
   * Also package QML's import/ directory
