@@ -49,7 +49,7 @@ static const Properties editableProperties = Properties()
             << Property("editable", true);
 
 static const Properties passwordEcho = Properties()
-            << Property("echoMode", QLineEdit::Password);
+            << Property("echoMode", QLineEdit::PasswordEchoOnEdit);
 
 static const Properties plainTextProperties = Properties()
             << Property("plainText", QLatin1String(lotsOfText));
