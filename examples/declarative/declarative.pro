@@ -6,6 +6,7 @@ SUBDIRS = \
    imageprovider \
    objectlistmodel \
    stringlistmodel \
+   proxyviewer \
    plugins \
    proxywidgets
 
@@ -36,6 +37,7 @@ sources.files = \
    scrollbar \
    searchbox \
    slideswitch \
+   spinner \
    sql \
    states \
    tabwidget \
