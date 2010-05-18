@@ -1142,6 +1142,9 @@ void tst_QItemDelegate::enterKey()
 
 void tst_QItemDelegate::task257859_finalizeEdit()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("On Maemo 5 the delegates stays visible, otherwise no softkeyboard editing is possible", SkipSingle);
+#endif
     QStandardItemModel model;
     model.appendRow(new QStandardItem());
 
