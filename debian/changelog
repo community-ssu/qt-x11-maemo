@@ -1,3 +1,9 @@
+qt4-experimental (4.7.0~git20100518-0maemo1) unstable; urgency=low
+
+  * Temporarily enable the GL_SCISSOR tests
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Tue, 18 May 2010 09:29:01 +0200
+
 qt4-experimental (4.7.0~git20100505-0maemo1) unstable; urgency=low
 
   * Rename all packages to qt4-experimental
