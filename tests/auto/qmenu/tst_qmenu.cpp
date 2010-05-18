@@ -725,6 +725,9 @@ void tst_QMenu::activeSubMenuPosition()
 #ifdef Q_OS_WINCE_WM
     QSKIP("Not true for Windows Mobile Soft Keys", SkipSingle);
 #endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Can't check right position, because of small screen size", SkipSingle);
+#endif
 
 #ifdef Q_OS_SYMBIAN
     // On Symbian, QS60Style::pixelMetric(QStyle::PM_SubMenuOverlap) is different with other styles.
