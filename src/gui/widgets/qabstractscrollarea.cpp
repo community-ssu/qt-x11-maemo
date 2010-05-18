@@ -325,8 +325,6 @@ private:
                 fixEventFilterRecursive(child, install);
         }
 
-        qDebug()<<"fixFilter for:"<<widget<<install;
-
         if (install)
             widget->installEventFilter(this);
         else

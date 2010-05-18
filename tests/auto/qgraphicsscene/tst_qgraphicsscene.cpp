@@ -2844,6 +2844,7 @@ void tst_QGraphicsScene::contextMenuEvent_ItemIgnoresTransformations()
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&view);
 #endif
+    QTest::qWaitForWindowShown(&topLevel);
 
     {
         QPoint pos(50, 50);

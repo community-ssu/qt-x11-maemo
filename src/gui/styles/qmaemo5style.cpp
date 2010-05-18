@@ -62,6 +62,7 @@
 #include <QtGui/QAbstractSpinBox>
 #include <QtGui/QX11Info>
 #include <QtGui/QHBoxLayout>
+#include <QtGui/QCalendarWidget>
 #include <QtCore/QTimer>
 #include <QtCore/QTimeLine>
 
@@ -688,6 +689,16 @@ void QMaemo5Style::polish(QWidget *widget)
     } else if (qobject_cast<QCommandLinkButton*>(widget)) {
         widget->setFont(standardFont(QLS("SystemFont")));
         widget->setAttribute(Qt::WA_Hover, false);
+    } else if (QCalendarWidget *calendar = qobject_cast<QCalendarWidget *>(widget)) {
+        QPalette palette = widget->palette();
+
+        QColor high = palette.color(QPalette::Highlight);
+        QColor base = palette.color(QPalette::Window);
+
+        palette.setColor(QPalette::Disabled, QPalette::Highlight, high.darker(130));
+        palette.setColor(QPalette::AlternateBase, base.lighter(250));
+
+        widget->setPalette(palette);
     }
 
     if (widget && widget->parentWidget() && widget->parentWidget()->inherits("QMaemo5InformationBox")) {
@@ -2295,7 +2306,14 @@ QColor QMaemo5Style::standardColor(const QString &logicalColorName)
 QIcon QMaemo5Style::standardIconImplementation(StandardPixmap standardIcon,
         const QStyleOption *option, const QWidget *widget) const
 {
-    return standardPixmap(standardIcon, option, widget);
+    switch (standardIcon) {
+    case SP_ArrowLeft:
+        return QIcon::fromTheme("general_back");
+    case SP_ArrowRight:
+        return QIcon::fromTheme("general_forward");
+    default:
+        return standardPixmap(standardIcon, option, widget);
+    }
 }
 
 /*! \reimp */

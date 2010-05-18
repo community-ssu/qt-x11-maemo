@@ -80,7 +80,7 @@ public:
 
     QPointer<QWidget> widget;
     QCompletionModel *proxy;
-    QAbstractItemView *popup;
+    QPointer<QAbstractItemView> popup;
     QCompleter::CompletionMode mode;
 
     QString prefix;
