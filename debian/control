@@ -216,7 +216,7 @@ Section: libs
 Depends:  libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1),
  libqt4-experimental-network (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}),
  libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-phonon (= ${binary:Version}),
- libqt4-experimental-xmlpatterns (= ${binary:Version}), libqt4-experimental-multimedia (= ${binary:Version), libstdc++6 (>= 4.2.1), libsqlite3-0
+ libqt4-experimental-xmlpatterns (= ${binary:Version}), libqt4-experimental-multimedia (= ${binary:Version}), libstdc++6 (>= 4.2.1), libsqlite3-0
 Conflicts: libqt4-maemo5-webkit (<< 4.6.99)
 Replaces: libqt4-maemo5-webkit (<< 4.6.99)
 Description: Qt 4 WebKit module
