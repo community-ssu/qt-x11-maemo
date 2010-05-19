@@ -3735,16 +3735,16 @@ void tst_QGraphicsView::update2_data()
     QTest::addColumn<bool>("antialiasing");
 
     // Anti-aliased.
-    QTest::newRow("pen width: 0.0, antialiasing: true") << 0.0 << true;
-    QTest::newRow("pen width: 1.5, antialiasing: true") << 1.5 << true;
-    QTest::newRow("pen width: 2.0, antialiasing: true") << 2.0 << true;
-    QTest::newRow("pen width: 3.0, antialiasing: true") << 3.0 << true;
+    QTest::newRow("pen width: 0.0, antialiasing: true") << (qreal)0.0 << true;
+    QTest::newRow("pen width: 1.5, antialiasing: true") << (qreal)1.5 << true;
+    QTest::newRow("pen width: 2.0, antialiasing: true") << (qreal)2.0 << true;
+    QTest::newRow("pen width: 3.0, antialiasing: true") << (qreal)3.0 << true;
 
     // Aliased.
-    QTest::newRow("pen width: 0.0, antialiasing: false") << 0.0 << false;
-    QTest::newRow("pen width: 1.5, antialiasing: false") << 1.5 << false;
-    QTest::newRow("pen width: 2.0, antialiasing: false") << 2.0 << false;
-    QTest::newRow("pen width: 3.0, antialiasing: false") << 3.0 << false;
+    QTest::newRow("pen width: 0.0, antialiasing: false") << (qreal)0.0 << false;
+    QTest::newRow("pen width: 1.5, antialiasing: false") << (qreal)1.5 << false;
+    QTest::newRow("pen width: 2.0, antialiasing: false") << (qreal)2.0 << false;
+    QTest::newRow("pen width: 3.0, antialiasing: false") << (qreal)3.0 << false;
 }
 
 void tst_QGraphicsView::update2()
