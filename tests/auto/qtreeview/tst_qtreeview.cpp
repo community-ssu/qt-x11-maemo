@@ -3754,14 +3754,15 @@ void tst_QTreeView::taskQTBUG_9216_setSizeAndUniformRowHeightsWrongRepaint()
     QTest::qWait(100);  // This one is needed to make the test fail before the patch.
     view.painted = 0;
     view.doCompare = true;
-    model.setData(model.index(0, 0), QVariant(QSize(50, 50)), Qt::SizeHintRole);
+    model.setData(model.index(0, 0), QVariant(QSize(100, 100)), Qt::SizeHintRole);
     QTest::qWait(100);
     QTRY_VERIFY(view.painted > 0);
 }
 
 void tst_QTreeView::keyboardNavigationWithDisabled()
 {
-    QTreeView view;
+    QWidget topLevel;
+    QTreeView view(&topLevel);
     QStandardItemModel model(90, 0);
     for (int i = 0; i < 90; i ++) {
         model.setItem(i, new QStandardItem(QString::number(i)));
@@ -3770,10 +3771,10 @@ void tst_QTreeView::keyboardNavigationWithDisabled()
     view.setModel(&model);
 
     view.resize(200, view.visualRect(model.index(0,0)).height()*10);
-    view.show();
-    QApplication::setActiveWindow(&view);
-    QTest::qWaitForWindowShown(&view);
-    QTRY_VERIFY(view.isActiveWindow());
+    topLevel.show();
+    QApplication::setActiveWindow(&topLevel);
+    QTest::qWaitForWindowShown(&topLevel);
+    QTRY_VERIFY(topLevel.isActiveWindow());
 
     view.setCurrentIndex(model.index(1, 0));
     QTest::keyClick(view.viewport(), Qt::Key_Up);
