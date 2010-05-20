@@ -50,8 +50,7 @@ my %modules = ( # path to module name map
         "QtDBus" => "$basedir/src/dbus",
         "QtWebKit" => "$basedir/src/3rdparty/webkit/WebCore",
         "phonon" => "$basedir/src/phonon",
-        "QtMultimedia" => "$basedir/src/multimedia/multimedia",
-        "QtMediaServices" => "$basedir/src/multimedia/mediaservices",
+        "QtMultimedia" => "$basedir/src/multimedia",
         "QtMaemo5" => "$basedir/src/maemo5"
 );
 my %moduleheaders = ( # restrict the module headers to those found in relative path

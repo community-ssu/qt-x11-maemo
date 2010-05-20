@@ -773,6 +773,33 @@ void QDeclarativeTextEdit::componentComplete()
 }
 
 /*!
+    \qmlproperty string TextEdit::selectByMouse
+
+    Defaults to false.
+
+    If true, the user can use the mouse to select text in some
+    platform-specific way. Note that for some platforms this may
+    not be an appropriate interaction (eg. may conflict with how
+    the text needs to behave inside a Flickable.
+*/
+bool QDeclarativeTextEdit::selectByMouse() const
+{
+    Q_D(const QDeclarativeTextEdit);
+    return d->selectByMouse;
+}
+
+void QDeclarativeTextEdit::setSelectByMouse(bool on)
+{
+    Q_D(QDeclarativeTextEdit);
+    if (d->selectByMouse != on) {
+        d->selectByMouse = on;
+        emit selectByMouseChanged(on);
+    }
+}
+
+
+
+/*!
     \qmlproperty bool TextEdit::readOnly
 
     Whether the user an interact with the TextEdit item. If this
@@ -858,8 +885,9 @@ Handles the given key \a event.
 void QDeclarativeTextEdit::keyPressEvent(QKeyEvent *event)
 {
     Q_D(QDeclarativeTextEdit);
-    d->control->processEvent(event, QPointF(0, 0));
-
+    keyPressPreHandler(event);
+    if (!event->isAccepted())
+        d->control->processEvent(event, QPointF(0, 0));
     if (!event->isAccepted())
         QDeclarativePaintedItem::keyPressEvent(event);
 }
@@ -871,7 +899,9 @@ Handles the given key \a event.
 void QDeclarativeTextEdit::keyReleaseEvent(QKeyEvent *event)
 {
     Q_D(QDeclarativeTextEdit);
-    d->control->processEvent(event, QPointF(0, 0));
+    keyReleasePreHandler(event);
+    if (!event->isAccepted())
+        d->control->processEvent(event, QPointF(0, 0));
     if (!event->isAccepted())
         QDeclarativePaintedItem::keyReleaseEvent(event);
 }
@@ -903,17 +933,16 @@ void QDeclarativeTextEdit::mousePressEvent(QGraphicsSceneMouseEvent *event)
     if (d->focusOnPress){
         QGraphicsItem *p = parentItem();//###Is there a better way to find my focus scope?
         while(p) {
-            if(p->flags() & QGraphicsItem::ItemIsFocusScope){
+            if (p->flags() & QGraphicsItem::ItemIsFocusScope)
                 p->setFocus();
-                break;
-            }
             p = p->parentItem();
         }
         setFocus(true);
     }
     if (!hadFocus && hasFocus())
         d->clickCausedFocus = true;
-    d->control->processEvent(event, QPointF(0, 0));
+    if (event->type() != QEvent::GraphicsSceneMouseDoubleClick || d->selectByMouse)
+        d->control->processEvent(event, QPointF(0, 0));
     if (!event->isAccepted())
         QDeclarativePaintedItem::mousePressEvent(event);
 }
@@ -942,9 +971,13 @@ Handles the given mouse \a event.
 void QDeclarativeTextEdit::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
 {
     Q_D(QDeclarativeTextEdit);
-    d->control->processEvent(event, QPointF(0, 0));
-    if (!event->isAccepted())
+    if (d->selectByMouse) {
+        d->control->processEvent(event, QPointF(0, 0));
+        if (!event->isAccepted())
+            QDeclarativePaintedItem::mouseDoubleClickEvent(event);
+    } else {
         QDeclarativePaintedItem::mouseDoubleClickEvent(event);
+    }
 }
 
 /*!
@@ -954,10 +987,14 @@ Handles the given mouse \a event.
 void QDeclarativeTextEdit::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     Q_D(QDeclarativeTextEdit);
-    d->control->processEvent(event, QPointF(0, 0));
-    if (!event->isAccepted())
+    if (d->selectByMouse) {
+        d->control->processEvent(event, QPointF(0, 0));
+        if (!event->isAccepted())
+            QDeclarativePaintedItem::mouseMoveEvent(event);
+        event->setAccepted(true);
+    } else {
         QDeclarativePaintedItem::mouseMoveEvent(event);
-    event->setAccepted(true);
+    }
 }
 
 /*!

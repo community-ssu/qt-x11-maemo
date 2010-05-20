@@ -679,8 +679,10 @@ void QDeclarativeGridViewPrivate::createHighlight()
             highlightYAnimator = new QSmoothedAnimation(q);
             highlightYAnimator->target = QDeclarativeProperty(highlight->item, QLatin1String("y"));
             highlightYAnimator->userDuration = highlightMoveDuration;
-            highlightXAnimator->restart();
-            highlightYAnimator->restart();
+            if (autoHighlight) {
+                highlightXAnimator->restart();
+                highlightYAnimator->restart();
+            }
             changed = true;
         }
     }
@@ -1226,8 +1228,8 @@ void QDeclarativeGridView::setHighlight(QDeclarativeComponent *highlight)
       id: myHighlight
       Rectangle {
           id: wrapper; color: "lightsteelblue"; radius: 4; width: 320; height: 60
-          SpringFollow on y { source: Wrapper.GridView.view.currentItem.y; spring: 3; damping: 0.2 }
-          SpringFollow on x { source: Wrapper.GridView.view.currentItem.x; spring: 3; damping: 0.2 }
+          SpringFollow on y { source: wrapper.GridView.view.currentItem.y; spring: 3; damping: 0.2 }
+          SpringFollow on x { source: wrapper.GridView.view.currentItem.x; spring: 3; damping: 0.2 }
       }
   }
   \endcode
@@ -1243,7 +1245,12 @@ void QDeclarativeGridView::setHighlightFollowsCurrentItem(bool autoHighlight)
     Q_D(QDeclarativeGridView);
     if (d->autoHighlight != autoHighlight) {
         d->autoHighlight = autoHighlight;
-        d->updateHighlight();
+        if (autoHighlight) {
+            d->updateHighlight();
+        } else if (d->highlightXAnimator) {
+            d->highlightXAnimator->stop();
+            d->highlightYAnimator->stop();
+        }
     }
 }
 
@@ -1651,6 +1658,9 @@ qreal QDeclarativeGridView::maxXExtent() const
 void QDeclarativeGridView::keyPressEvent(QKeyEvent *event)
 {
     Q_D(QDeclarativeGridView);
+    keyPressPreHandler(event);
+    if (event->isAccepted())
+        return;
     if (d->model && d->model->count() && d->interactive) {
         d->moveReason = QDeclarativeGridViewPrivate::SetIndex;
         int oldCurrent = currentIndex();
@@ -1676,10 +1686,8 @@ void QDeclarativeGridView::keyPressEvent(QKeyEvent *event)
         }
     }
     d->moveReason = QDeclarativeGridViewPrivate::Other;
-    QDeclarativeFlickable::keyPressEvent(event);
-    if (event->isAccepted())
-        return;
     event->ignore();
+    QDeclarativeFlickable::keyPressEvent(event);
 }
 
 /*!

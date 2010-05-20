@@ -336,6 +336,7 @@ private slots:
     void finishedWithoutStarted();
     void unknownGesture();
     void graphicsItemGesture();
+    void graphicsView();
     void graphicsItemTreeGesture();
     void explicitGraphicsObjectTarget();
     void gestureOverChildGraphicsItem();
@@ -863,7 +864,6 @@ void tst_Gestures::graphicsItemGesture()
     QTest::qWait(500);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
     item->grabGesture(CustomGesture::GestureType);
 
     static const int TotalGestureEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialStartedThreshold + 1;
@@ -912,6 +912,71 @@ void tst_Gestures::graphicsItemGesture()
     QCOMPARE(item->gestureOverrideEventsReceived, 0);
 }
 
+void tst_Gestures::graphicsView()
+{
+    QGraphicsScene scene;
+    QGraphicsView view(&scene);
+    view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+
+    GestureItem *item = new GestureItem("item");
+    scene.addItem(item);
+    item->setPos(100, 100);
+
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+    view.ensureVisible(scene.sceneRect());
+
+    item->grabGesture(CustomGesture::GestureType);
+
+    static const int TotalGestureEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialStartedThreshold + 1;
+    static const int TotalCustomEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialMaybeThreshold + 1;
+
+    CustomEvent event;
+    // make sure the event is properly delivered if only the hotspot is set.
+    event.hotSpot = mapToGlobal(QPointF(10, 10), item, &view);
+    event.hasHotSpot = true;
+    sendCustomGesture(&event, item, &scene);
+
+    QCOMPARE(item->customEventsReceived, TotalCustomEventsCount);
+    QCOMPARE(item->gestureEventsReceived, TotalGestureEventsCount);
+    QCOMPARE(item->gestureOverrideEventsReceived, 0);
+
+    // change the viewport and try again
+    QWidget *newViewport = new QWidget;
+    view.setViewport(newViewport);
+
+    item->reset();
+    sendCustomGesture(&event, item, &scene);
+
+    QCOMPARE(item->customEventsReceived, TotalCustomEventsCount);
+    QCOMPARE(item->gestureEventsReceived, TotalGestureEventsCount);
+    QCOMPARE(item->gestureOverrideEventsReceived, 0);
+
+    // change the scene and try again
+    QGraphicsScene newScene;
+    item = new GestureItem("newItem");
+    newScene.addItem(item);
+    item->setPos(100, 100);
+    view.setScene(&newScene);
+
+    item->reset();
+    // first without a gesture
+    sendCustomGesture(&event, item, &newScene);
+
+    QCOMPARE(item->customEventsReceived, TotalCustomEventsCount);
+    QCOMPARE(item->gestureEventsReceived, 0);
+    QCOMPARE(item->gestureOverrideEventsReceived, 0);
+
+    // then grab the gesture and try again
+    item->reset();
+    item->grabGesture(CustomGesture::GestureType);
+    sendCustomGesture(&event, item, &newScene);
+
+    QCOMPARE(item->customEventsReceived, TotalCustomEventsCount);
+    QCOMPARE(item->gestureEventsReceived, TotalGestureEventsCount);
+    QCOMPARE(item->gestureOverrideEventsReceived, 0);
+}
+
 void tst_Gestures::graphicsItemTreeGesture()
 {
     QGraphicsScene scene;
@@ -937,7 +1002,6 @@ void tst_Gestures::graphicsItemTreeGesture()
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
     item1->grabGesture(CustomGesture::GestureType);
 
     static const int TotalGestureEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialStartedThreshold + 1;
@@ -999,7 +1063,6 @@ void tst_Gestures::explicitGraphicsObjectTarget()
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
     item1->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
     item2->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
     item2_child1->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
@@ -1059,7 +1122,6 @@ void tst_Gestures::gestureOverChildGraphicsItem()
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
     item1->grabGesture(CustomGesture::GestureType);
 
     static const int TotalGestureEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialStartedThreshold + 1;
@@ -1531,8 +1593,6 @@ void tst_Gestures::autoCancelGestures2()
     parent->setPos(0, 0);
     child->setPos(10, 10);
     scene.addItem(parent);
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
-    view.viewport()->grabGesture(secondGesture, Qt::DontStartGestureOnChildren);
     parent->grabGesture(CustomGesture::GestureType);
     child->grabGesture(secondGesture);
 
@@ -1585,7 +1645,6 @@ void tst_Gestures::graphicsViewParentPropagation()
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
     item0->grabGesture(CustomGesture::GestureType, Qt::ReceivePartialGestures | Qt::IgnoredGesturesPropagateToParent);
     item1->grabGesture(CustomGesture::GestureType, Qt::ReceivePartialGestures | Qt::IgnoredGesturesPropagateToParent);
     item1_c1->grabGesture(CustomGesture::GestureType, Qt::IgnoredGesturesPropagateToParent);
@@ -1657,8 +1716,6 @@ void tst_Gestures::panelPropagation()
     view.show();
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
-
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
 
     static const int TotalGestureEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialStartedThreshold + 1;
     static const int TotalCustomEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialMaybeThreshold + 1;
@@ -1781,8 +1838,6 @@ void tst_Gestures::panelStacksBehindParent()
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
-
     static const int TotalGestureEventsCount = CustomGesture::SerialFinishedThreshold - CustomGesture::SerialStartedThreshold + 1;
 
     CustomEvent event;
@@ -1869,8 +1924,6 @@ void tst_Gestures::deleteGestureTargetItem()
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
-
     if (propagateUpdateGesture)
         item2->ignoredUpdatedGestures << CustomGesture::GestureType;
     connect(items.value(emitter, 0), signalName, items.value(receiver, 0), slotName);
@@ -1916,8 +1969,6 @@ void tst_Gestures::viewportCoordinates()
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
-
     CustomEvent event;
     event.hotSpot = mapToGlobal(item1->boundingRect().center(), item1, &view);
     event.hasHotSpot = true;
@@ -1954,8 +2005,6 @@ void tst_Gestures::partialGesturePropagation()
     view.show();
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
-
-    view.viewport()->grabGesture(CustomGesture::GestureType, Qt::DontStartGestureOnChildren);
 
     item1->ignoredUpdatedGestures << CustomGesture::GestureType;
 

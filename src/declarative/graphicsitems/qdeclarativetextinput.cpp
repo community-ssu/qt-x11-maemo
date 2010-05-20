@@ -55,7 +55,7 @@ QT_BEGIN_NAMESPACE
 /*!
     \qmlclass TextInput QDeclarativeTextInput
   \since 4.7
-    The TextInput item allows you to add an editable line of text to a scene.
+    \brief The TextInput item allows you to add an editable line of text to a scene.
 
     TextInput can only display a single line of text, and can only display
     plain text. However it can provide addition input constraints on the text.
@@ -863,6 +863,9 @@ void QDeclarativeTextInputPrivate::focusChanged(bool hasFocus)
 void QDeclarativeTextInput::keyPressEvent(QKeyEvent* ev)
 {
     Q_D(QDeclarativeTextInput);
+    keyPressPreHandler(ev);
+    if (ev->isAccepted())
+        return;
     if (((ev->key() == Qt::Key_Up || ev->key() == Qt::Key_Down) && ev->modifiers() == Qt::NoModifier) // Don't allow MacOSX up/down support, and we don't allow a completer.
         || (((d->control->cursor() == 0 && ev->key() == Qt::Key_Left)
             || (d->control->cursor() == d->control->text().length()
@@ -886,10 +889,8 @@ void QDeclarativeTextInput::mousePressEvent(QGraphicsSceneMouseEvent *event)
     if(d->focusOnPress){
         QGraphicsItem *p = parentItem();//###Is there a better way to find my focus scope?
         while(p) {
-            if(p->flags() & QGraphicsItem::ItemIsFocusScope){
+            if (p->flags() & QGraphicsItem::ItemIsFocusScope)
                 p->setFocus();
-                break;
-            }
             p = p->parentItem();
         }
         setFocus(true);
@@ -906,8 +907,12 @@ void QDeclarativeTextInput::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void QDeclarativeTextInput::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     Q_D(QDeclarativeTextInput);
-    d->control->moveCursor(d->xToPos(event->pos().x()), true);
-    event->setAccepted(true);
+    if (d->selectByMouse) {
+        d->control->moveCursor(d->xToPos(event->pos().x()), true);
+        event->setAccepted(true);
+    } else {
+        QDeclarativePaintedItem::mouseMoveEvent(event);
+    }
 }
 
 /*!
@@ -938,6 +943,8 @@ bool QDeclarativeTextInput::event(QEvent* ev)
         case QEvent::GraphicsSceneMouseRelease:
             break;
         default:
+            if (ev->type() == QEvent::GraphicsSceneMouseDoubleClick && !d->selectByMouse)
+                break;
             handled = d->control->processEvent(ev);
             if (ev->type() == QEvent::InputMethod)
                 updateSize();
@@ -1111,6 +1118,32 @@ QString QDeclarativeTextInput::displayText() const
     Q_D(const QDeclarativeTextInput);
     return d->control->displayText();
 }
+
+/*!
+    \qmlproperty string TextInput::selectByMouse
+
+    Defaults to false.
+
+    If true, the user can use the mouse to select text in some
+    platform-specific way. Note that for some platforms this may
+    not be an appropriate interaction (eg. may conflict with how
+    the text needs to behave inside a Flickable.
+*/
+bool QDeclarativeTextInput::selectByMouse() const
+{
+    Q_D(const QDeclarativeTextInput);
+    return d->selectByMouse;
+}
+
+void QDeclarativeTextInput::setSelectByMouse(bool on)
+{
+    Q_D(QDeclarativeTextInput);
+    if (d->selectByMouse != on) {
+        d->selectByMouse = on;
+        emit selectByMouseChanged(on);
+    }
+}
+
 
 /*!
     \qmlmethod void TextInput::moveCursorSelection(int position)

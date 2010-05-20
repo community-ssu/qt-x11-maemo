@@ -81,8 +81,12 @@ void QDeclarativeLoaderPrivate::clear()
 
         // We can't delete immediately because our item may have triggered
         // the Loader to load a different item.
-        item->setVisible(false);
-        item->setParentItem(0);
+        if (item->scene()) {
+            item->scene()->removeItem(item);
+        } else {
+            item->setParentItem(0);
+            item->setVisible(false);
+        }
         item->deleteLater();
         item = 0;
     }
@@ -321,6 +325,7 @@ void QDeclarativeLoaderPrivate::_q_sourceLoaded()
         emit q->statusChanged();
         emit q->progressChanged();
         emit q->itemChanged();
+        emit q->loaded();
     }
 }
 
@@ -341,10 +346,13 @@ void QDeclarativeLoaderPrivate::_q_sourceLoaded()
     of the following ways:
     \list
     \o Create a state, so that a state change occurs, e.g. State{name: 'loaded'; when: loader.status = Loader.Ready;}
-    \o Do something inside the onStatusChanged signal handler, e.g. Loader{id: loader; onStatusChanged: if(loader.status == Loader.Ready) console.log('Loaded');}
+    \o Do something inside the onLoaded signal handler, e.g. Loader{id: loader; onLoaded: console.log('Loaded');}
     \o Bind to the status variable somewhere, e.g. Text{text: if(loader.status!=Loader.Ready){'Not Loaded';}else{'Loaded';}}
     \endlist
     \sa progress
+
+    Note that if the source is a local file, the status will initially be Ready (or Error). While
+    there will be no onStatusChanged signal in that case, the onLoaded will still be invoked.
 */
 
 QDeclarativeLoader::Status QDeclarativeLoader::status() const
@@ -359,6 +367,22 @@ QDeclarativeLoader::Status QDeclarativeLoader::status() const
 
     return d->source.isEmpty() ? Null : Error;
 }
+
+void QDeclarativeLoader::componentComplete()
+{
+    QDeclarativeItem::componentComplete();
+    if (status() == Ready)
+        emit loaded();
+}
+
+
+/*!
+    \qmlsignal Loader::onLoaded()
+
+    This handler is called when the \l status becomes Loader.Ready, or on successful
+    initial load.
+*/
+
 
 /*!
 \qmlproperty real Loader::progress
@@ -381,7 +405,6 @@ qreal QDeclarativeLoader::progress() const
 
     return 0.0;
 }
-
 
 void QDeclarativeLoaderPrivate::_q_updateSize(bool loaderGeometryChanged)
 {

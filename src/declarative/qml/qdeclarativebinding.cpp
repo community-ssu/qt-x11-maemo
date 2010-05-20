@@ -88,7 +88,7 @@ QDeclarativeBinding::QDeclarativeBinding(void *data, QDeclarativeRefCount *rc, Q
 
 QDeclarativeBinding::QDeclarativeBinding(const QString &str, QObject *obj, QDeclarativeContext *ctxt, 
                                          QObject *parent)
-: QDeclarativeExpression(QDeclarativeContextData::get(ctxt), str, obj, *new QDeclarativeBindingPrivate)
+: QDeclarativeExpression(QDeclarativeContextData::get(ctxt), obj, str, *new QDeclarativeBindingPrivate)
 {
     setParent(parent);
     setNotifyOnValueChanged(true);
@@ -96,7 +96,7 @@ QDeclarativeBinding::QDeclarativeBinding(const QString &str, QObject *obj, QDecl
 
 QDeclarativeBinding::QDeclarativeBinding(const QString &str, QObject *obj, QDeclarativeContextData *ctxt, 
                                          QObject *parent)
-: QDeclarativeExpression(ctxt, str, obj, *new QDeclarativeBindingPrivate)
+: QDeclarativeExpression(ctxt, obj, str, *new QDeclarativeBindingPrivate)
 {
     setParent(parent);
     setNotifyOnValueChanged(true);
@@ -286,13 +286,15 @@ QDeclarativeAbstractBinding::QDeclarativeAbstractBinding()
 
 QDeclarativeAbstractBinding::~QDeclarativeAbstractBinding()
 {
-    removeFromObject();
-    if (m_mePtr)
-        *m_mePtr = 0;
+    Q_ASSERT(m_prevBinding == 0);
+    Q_ASSERT(m_mePtr == 0);
 }
 
 void QDeclarativeAbstractBinding::destroy()
 {
+    removeFromObject();
+    clear();
+
     delete this;
 }
 
