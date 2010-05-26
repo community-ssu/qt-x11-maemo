@@ -812,8 +812,10 @@ int QProgressDialog::minimumDuration() const
 void QProgressDialog::closeEvent(QCloseEvent *e)
 {
 #ifdef Q_WS_MAEMO_5
-    e->ignore();
-    return;
+    if (e->spontaneous()) {
+        e->ignore();
+        return;
+    }
 #endif
     emit canceled();
     QDialog::closeEvent(e);
