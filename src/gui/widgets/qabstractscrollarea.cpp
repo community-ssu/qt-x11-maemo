@@ -168,7 +168,7 @@ class QAbstractScrollAreaKineticScroller : public QObject, public QAbstractKinet
     Q_OBJECT
 public:
     QAbstractScrollAreaKineticScroller()
-        : QObject(), QAbstractKineticScroller(), area(0), ignoreEvents(false)
+        : QObject(), QAbstractKineticScroller(), area(0), ignoreEvents(false), overShootMove(false)
     { }
 
     void setWidget(QAbstractScrollArea *widget)
@@ -208,6 +208,15 @@ protected:
                 QChildEvent *ce = static_cast<QChildEvent *>(e);
                 if (ce->child()->isWidgetType()) {
                     fixEventFilterRecursive(ce->child(), ce->added());
+                }
+                break;
+            }
+
+            case QEvent::Move: {
+                if(!overShootMove && !lastOverShoot.isNull()) {
+                    overShootMove=true;
+                    area->viewport()->move(area->viewport()->pos() + lastOverShoot);
+                    overShootMove=false;
                 }
                 break;
             }
@@ -308,8 +317,11 @@ protected:
                 s->setValue(p.y());
 
             QPoint delta = overShoot - lastOverShoot;
-            if (!delta.isNull())
+            if (!delta.isNull()) {
+                overShootMove = true;
                 area->viewport()->move(area->viewport()->pos() + delta);
+                overShootMove = false;
+            }
             lastOverShoot = overShoot;
         }
     }
@@ -344,6 +356,7 @@ private:
     bool ignoreEvents;
     QPoint lastOverShoot;
     QPointer<QWidget> childWidget;
+    bool overShootMove;
 };
 
 #endif // Q_WS_MAEMO_5
