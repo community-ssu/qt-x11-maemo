@@ -42,6 +42,7 @@
 #include <qgtkstyle.h>
 #include <qmaemo5style.h>
 #include <private/qmaemo5style_p.h>
+#include <private/qstylehelper_p.h>
 
 #include <private/qapplication_p.h>
 
