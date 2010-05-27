@@ -588,7 +588,8 @@ public:
     static void maemo5ShowApplicationMenu();
 #endif
 
-#if defined(Q_WS_S60)
+#if defined(Q_OS_SYMBIAN)
+    int pressureSupported;
     int maxTouchPressure;
     QList<QTouchEvent::TouchPoint> appAllTouchPoints;
 #endif

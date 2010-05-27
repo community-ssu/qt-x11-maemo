@@ -48,6 +48,7 @@
 #include <QGraphicsItem>
 #include <QDeclarativeItem>
 #include <QDeclarativeContext>
+#include <private/qdeclarativetextinput_p.h>
 #include <private/qobject_p.h>
 
 #ifdef Q_OS_SYMBIAN
@@ -90,8 +91,8 @@ private:
 class TestType : public QObject
 {
 Q_OBJECT
-Q_PROPERTY(QDeclarativeListProperty<QObject> resources READ resources);
-Q_CLASSINFO("DefaultProperty", "resources");
+Q_PROPERTY(QDeclarativeListProperty<QObject> resources READ resources)
+Q_CLASSINFO("DefaultProperty", "resources")
 public:
     TestType(QObject *parent = 0)
     : QObject(parent) {}
@@ -108,6 +109,9 @@ public:
 tst_creation::tst_creation()
 {
     qmlRegisterType<TestType>("Qt.test", 1, 0, "TestType");
+
+    //get rid of initialization effects
+    QDeclarativeTextInput te;
 }
 
 inline QUrl TEST_FILE(const QString &filename)

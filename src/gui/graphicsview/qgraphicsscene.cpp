@@ -2545,12 +2545,16 @@ void QGraphicsScene::addItem(QGraphicsItem *item)
         return;
     }
 
-    if (d->unpolishedItems.isEmpty()) {
-        QMetaMethod method = metaObject()->method(d->polishItemsIndex);
-        method.invoke(this, Qt::QueuedConnection);
+    // QDeclarativeItems do not rely on initial itemChanged message, as the componentComplete
+    // function allows far more opportunity for delayed-construction optimization.
+    if (!item->d_ptr->isDeclarativeItem) {
+        if (d->unpolishedItems.isEmpty()) {
+            QMetaMethod method = metaObject()->method(d->polishItemsIndex);
+            method.invoke(this, Qt::QueuedConnection);
+        }
+        d->unpolishedItems.append(item);
+        item->d_ptr->pendingPolish = true;
     }
-    d->unpolishedItems.append(item);
-    item->d_ptr->pendingPolish = true;
 
     // Detach this item from its parent if the parent's scene is different
     // from this scene.
@@ -4373,11 +4377,6 @@ void QGraphicsScenePrivate::drawItemHelper(QGraphicsItem *item, QPainter *painte
     bool pixmapFound;
     QGraphicsItemCache *itemCache = itemd->extraItemCache();
     if (cacheMode == QGraphicsItem::ItemCoordinateCache) {
-        if (itemCache->boundingRect != brect.toRect()) {
-            itemCache->boundingRect = brect.toRect();
-            itemCache->allExposed = true;
-            itemCache->exposed.clear();
-        }
         pixmapKey = itemCache->key;
     } else {
         pixmapKey = itemCache->deviceData.value(widget).key;
@@ -4390,19 +4389,24 @@ void QGraphicsScenePrivate::drawItemHelper(QGraphicsItem *item, QPainter *painte
     if (cacheMode == QGraphicsItem::ItemCoordinateCache) {
         QSize pixmapSize;
         bool fixedCacheSize = false;
-        QRectF brectAligned = brect.toAlignedRect();
+        QRect br = brect.toAlignedRect();
         if ((fixedCacheSize = itemCache->fixedSize.isValid())) {
             pixmapSize = itemCache->fixedSize;
         } else {
-            pixmapSize = brectAligned.size().toSize();
+            pixmapSize = br.size();
         }
 
         // Create or recreate the pixmap.
         int adjust = itemCache->fixedSize.isValid() ? 0 : 2;
         QSize adjustSize(adjust*2, adjust*2);
-        QRectF br = brectAligned.adjusted(-adjust, -adjust, adjust, adjust);
+        br.adjust(-adjust, -adjust, adjust, adjust);
         if (pix.isNull() || (!fixedCacheSize && (pixmapSize + adjustSize) != pix.size())) {
             pix = QPixmap(pixmapSize + adjustSize);
+            itemCache->boundingRect = br;
+            itemCache->exposed.clear();
+            itemCache->allExposed = true;
+        } else if (itemCache->boundingRect != br) {
+            itemCache->boundingRect = br;
             itemCache->exposed.clear();
             itemCache->allExposed = true;
         }
@@ -4456,10 +4460,10 @@ void QGraphicsScenePrivate::drawItemHelper(QGraphicsItem *item, QPainter *painte
         // qpixmap-image-transform-pixmap roundtrip.
         if (newPainterOpacity != oldPainterOpacity) {
             painter->setOpacity(newPainterOpacity);
-            painter->drawPixmap(br, pix, QRectF(QPointF(), pix.size()));
+            painter->drawPixmap(br.topLeft(), pix);
             painter->setOpacity(oldPainterOpacity);
         } else {
-            painter->drawPixmap(br, pix, QRectF(QPointF(), pix.size()));
+            painter->drawPixmap(br.topLeft(), pix);
         }
         return;
     }
@@ -4885,6 +4889,24 @@ void QGraphicsScenePrivate::markDirty(QGraphicsItem *item, const QRectF &rect, b
     Q_ASSERT(item);
     if (updateAll)
         return;
+
+    if (removingItemFromScene && !ignoreOpacity && !item->d_ptr->ignoreOpacity) {
+        // If any of the item's ancestors ignore opacity, it means that the opacity
+        // was set to 0 (and the update request has not yet been processed). That
+        // also means that we have to ignore the opacity for the item itself; otherwise
+        // things like: parent->setOpacity(0); scene->removeItem(child) won't work.
+        // Note that we only do this when removing items from the scene. In all other
+        // cases the ignoreOpacity bit propagates properly in processDirtyItems, but
+        // since the item is removed immediately it won't be processed there.
+        QGraphicsItem *p = item->d_ptr->parent;
+        while (p) {
+            if (p->d_ptr->ignoreOpacity) {
+                item->d_ptr->ignoreOpacity = true;
+                break;
+            }
+            p = p->d_ptr->parent;
+        }
+    }
 
     if (item->d_ptr->discardUpdateRequest(/*ignoreVisibleBit=*/force,
                                           /*ignoreDirtyBit=*/removingItemFromScene || invalidateChildren,
