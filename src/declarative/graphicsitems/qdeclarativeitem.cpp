@@ -97,9 +97,11 @@ QT_BEGIN_NAMESPACE
 
     The Translate object provides independent control over position in addition to the Item's x and y properties.
 
-    The following example moves the Y axis of the Rectangles while still allowing the Row element
+    The following example moves the Y axis of the \l Rectangle elements while still allowing the \l Row element
     to lay the items out as if they had not been transformed:
     \qml
+    import Qt 4.7
+
     Row {
         Rectangle {
             width: 100; height: 100
@@ -113,6 +115,8 @@ QT_BEGIN_NAMESPACE
         }
     }
     \endqml
+
+    \image translate.png
 */
 
 /*!
@@ -3131,6 +3135,7 @@ bool QDeclarativeItem::event(QEvent *ev)
     return QGraphicsObject::event(ev);
 }
 
+#ifndef QT_NO_DEBUG_STREAM
 QDebug operator<<(QDebug debug, QDeclarativeItem *item)
 {
     if (!item) {
@@ -3144,42 +3149,58 @@ QDebug operator<<(QDebug debug, QDeclarativeItem *item)
           << ", z =" << item->zValue() << ')';
     return debug;
 }
+#endif
 
-int QDeclarativeItemPrivate::consistentTime = -1;
-void QDeclarativeItemPrivate::setConsistentTime(int t)
+qint64 QDeclarativeItemPrivate::consistentTime = -1;
+void QDeclarativeItemPrivate::setConsistentTime(qint64 t)
 {
     consistentTime = t;
 }
 
-QTime QDeclarativeItemPrivate::currentTime()
+class QElapsedTimerConsistentTimeHack
 {
-    if (consistentTime == -1)
-        return QTime::currentTime();
+public:
+    void start() {
+        t1 = QDeclarativeItemPrivate::consistentTime;
+        t2 = 0;
+    }
+    qint64 elapsed() {
+        return QDeclarativeItemPrivate::consistentTime - t1;
+    }
+    qint64 restart() {
+        qint64 val = QDeclarativeItemPrivate::consistentTime - t1;
+        t1 = QDeclarativeItemPrivate::consistentTime;
+        t2 = 0;
+        return val;
+    }
+
+private:
+    qint64 t1;
+    qint64 t2;
+};
+
+void QDeclarativeItemPrivate::start(QElapsedTimer &t)
+{
+    if (QDeclarativeItemPrivate::consistentTime == -1)
+        t.start();
     else
-        return QTime(0, 0).addMSecs(consistentTime);
+        ((QElapsedTimerConsistentTimeHack*)&t)->start();
 }
 
-void QDeclarativeItemPrivate::start(QTime &t)
+qint64 QDeclarativeItemPrivate::elapsed(QElapsedTimer &t)
 {
-    t = currentTime();
+    if (QDeclarativeItemPrivate::consistentTime == -1)
+        return t.elapsed();
+    else
+        return ((QElapsedTimerConsistentTimeHack*)&t)->elapsed();
 }
 
-int QDeclarativeItemPrivate::elapsed(QTime &t)
+qint64 QDeclarativeItemPrivate::restart(QElapsedTimer &t)
 {
-    int n = t.msecsTo(currentTime());
-    if (n < 0)                                // passed midnight
-        n += 86400 * 1000;
-    return n;
-}
-
-int QDeclarativeItemPrivate::restart(QTime &t)
-{
-    QTime time = currentTime();
-    int n = t.msecsTo(time);
-    if (n < 0)                                // passed midnight
-        n += 86400*1000;
-    t = time;
-    return n;
+    if (QDeclarativeItemPrivate::consistentTime == -1)
+        return t.restart();
+    else
+        return ((QElapsedTimerConsistentTimeHack*)&t)->restart();
 }
 
 QT_END_NAMESPACE

@@ -287,8 +287,6 @@ void QGtkStylePrivate::init()
 {
     resolveGtk();
     initGtkWidgets();
-    if (isThemeAvailable())
-        qApp->installEventFilter(&filter);
 }
 
 GtkWidget* QGtkStylePrivate::gtkWidget(const QHashableLatin1Literal &path)
