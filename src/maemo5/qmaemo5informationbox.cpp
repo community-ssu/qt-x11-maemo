@@ -306,13 +306,11 @@ void QMaemo5InformationBox::mousePressEvent(QMouseEvent *me)
 */
 void QMaemo5InformationBox::paintEvent(QPaintEvent *)
 {
-    if (qobject_cast<QMaemo5Style*>(style())) {
         QPainter painter(this);
         QStyleOption option;
         option.initFrom(this);
         style()->drawPrimitive(static_cast<QStyle::PrimitiveElement>(QMaemo5Style::PE_Maemo5InformationBox),
                                &option, &painter, this);
-    }
 }
 
 QT_END_NAMESPACE
