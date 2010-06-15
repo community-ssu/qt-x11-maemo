@@ -106,7 +106,7 @@ QT_BEGIN_NAMESPACE
     set your custom QLabel with setWidget().
 
     The \c DefaultTimeout (3 seconds) is the timeout recommended by the
-    Hildon style guide.
+    Hildon style guide. The maximum timeout is 10 seconds.
 
     Please see the Maemo 5 Widget, UI-Style and Master-Layout guides for
     hints on when, where and how to best use this information box.
@@ -188,6 +188,7 @@ void QMaemo5InformationBoxPrivate::enforceInformationType()
   Hildon Notes) and \c DefaultTimeout (for style guide compliant Banners).
 
   The default value of this property is \c DefaultTimeout (3 seconds).
+  The maximum timeout is 10 seconds.
 */
 
 int QMaemo5InformationBox::timeout() const
