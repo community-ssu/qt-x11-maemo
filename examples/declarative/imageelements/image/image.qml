@@ -40,32 +40,27 @@
 
 import Qt 4.7
 
-Item {
-    id: page
-    property int repeatdelay: 300
-    property int repeatperiod: 75
-    property bool isPressed: false
+Rectangle {
+    width: 490
+    height: 285
 
-    signal pressed
-    signal released
-    signal clicked
+    Grid {
+        property int cellWidth: (width - (spacing * (columns - 1))) / columns
+        property int cellHeight: (height - (spacing * (rows - 1))) / rows
 
-    SequentialAnimation on isPressed {
-        running: false
-        id: autoRepeat
-        PropertyAction { target: page; property: "isPressed"; value: true }
-        ScriptAction { script: page.pressed() }
-        ScriptAction { script: page.clicked() }
-        PauseAnimation { duration: repeatdelay }
-        SequentialAnimation {
-            loops: Animation.Infinite
-            ScriptAction { script: page.clicked() }
-            PauseAnimation { duration: repeatperiod }
-        }
-    }
-    MouseArea {
         anchors.fill: parent
-        onPressed: autoRepeat.start()
-        onReleased: { autoRepeat.stop(); parent.isPressed = false; page.released() }
+        anchors.margins: 30
+
+        columns: 3
+        rows: 2
+        spacing: 30
+
+        ImageCell { mode: Image.Stretch; caption: "Stretch" }
+        ImageCell { mode: Image.PreserveAspectFit; caption: "PreserveAspectFit" }
+        ImageCell { mode: Image.PreserveAspectCrop; caption: "PreserveAspectCrop" }
+
+        ImageCell { mode: Image.Tile; caption: "Tile" }
+        ImageCell { mode: Image.TileHorizontally; caption: "TileHorizontally" }
+        ImageCell { mode: Image.TileVertically; caption: "TileVertically" }
     }
 }
