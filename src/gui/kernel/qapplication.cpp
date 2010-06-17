@@ -5354,6 +5354,7 @@ void QApplication::setInputContext(QInputContext *inputContext)
     }
     delete QApplicationPrivate::inputContext;
     QApplicationPrivate::inputContext = inputContext;
+    QApplicationPrivate::inputContext->setParent(this);
 }
 
 /*!
