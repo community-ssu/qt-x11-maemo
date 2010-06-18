@@ -69,15 +69,45 @@ inline static bool launch(const QUrl &url, const QString &client)
 #ifdef Q_WS_MAEMO_5
 inline static bool maemo5Launch(const QUrl &url)
 {
+    struct DBusConnection;
+    typedef DBusConnection *(*Ptr_get_raw_handler_from_session_bus)();
+    static Ptr_get_raw_handler_from_session_bus get_raw_handler_from_session_bus = 0;
+    typedef void (*Ptr_hildon_mime_open)(DBusConnection *, const char *);
+    static Ptr_hildon_mime_open hildon_mime_open = 0;
     typedef bool (*Ptr_hildon_uri_open)(const char *, void *, void **);
     static Ptr_hildon_uri_open hildon_uri_open = 0;
 
-    if (!hildon_uri_open) {
+    if (!get_raw_handler_from_session_bus) {
+        get_raw_handler_from_session_bus = (Ptr_get_raw_handler_from_session_bus)QLibrary::resolve(QLatin1String("libQtDBus"), 4, "get_raw_handler_from_session_bus");
+    }
+
+    DBusConnection* conn = 0;
+
+    if (get_raw_handler_from_session_bus){
+        conn = get_raw_handler_from_session_bus();
+        if(!conn)
+            qWarning()<<"error in getting dbus connection";
+    }
+
+    if (!hildon_mime_open && !hildon_uri_open) {
         QLibrary lib(QLatin1String("libhildonmime"), 0, 0);
+        hildon_mime_open = (Ptr_hildon_mime_open)lib.resolve("hildon_mime_open_file");
         hildon_uri_open = (Ptr_hildon_uri_open)lib.resolve("hildon_uri_open");
     }
-    if (hildon_uri_open)
-        return hildon_uri_open(url.toEncoded().constData(), 0, 0);
+
+    QByteArray array = url.toEncoded();
+    if(array.startsWith("file://")) {
+        if (hildon_mime_open)
+            hildon_mime_open(conn, array.constData());
+        else
+            qWarning()<<"error in hildon_mime_open_file";
+    } else {
+        if (hildon_uri_open)
+            return hildon_uri_open(array.constData(), 0, 0);
+        else
+            qWarning()<<"error in hildon_open_uri";
+    }
+
     return false;
 }
 #endif

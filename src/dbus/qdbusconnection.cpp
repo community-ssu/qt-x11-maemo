@@ -1041,6 +1041,13 @@ void QDBusConnectionPrivate::setBusService(const QDBusConnection &connection)
     When using BlockWithGui, applications must be prepared for reentrancy in any function.
 */
 
+extern "C" {
+    DBusConnection* get_raw_handler_from_session_bus()
+    {
+        return QDBusConnectionPrivate::get_raw_handler_from_session_bus();
+    }
+}
+
 QT_END_NAMESPACE
 
 #endif // QT_NO_DBUS

@@ -312,6 +312,11 @@ public:
 
     friend class QDBusActivateObjectEvent;
     friend class QDBusCallDeliveryEvent;
+
+    static inline DBusConnection *get_raw_handler_from_session_bus()
+    {
+        return QDBusConnection::sessionBus().d->connection;
+    }
 };
 
 // in qdbusmisc.cpp
