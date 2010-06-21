@@ -56,6 +56,8 @@
 #include "qabstractscrollarea_p.h"
 #include <qwidget.h>
 
+#include <qdebug.h>
+
 #include <private/qapplication_p.h>
 
 #ifdef Q_WS_MAC
@@ -168,7 +170,7 @@ class QAbstractScrollAreaKineticScroller : public QObject, public QAbstractKinet
     Q_OBJECT
 public:
     QAbstractScrollAreaKineticScroller()
-        : QObject(), QAbstractKineticScroller(), area(0), ignoreEvents(false), overShootMove(false)
+        : QObject(), QAbstractKineticScroller(), area(0), ignoreEvents(false), scrollMove(false)
     { }
 
     void setWidget(QAbstractScrollArea *widget)
@@ -213,10 +215,10 @@ protected:
             }
 
             case QEvent::Move: {
-                if(!overShootMove && !lastOverShoot.isNull()) {
-                    overShootMove=true;
+                if(!scrollMove && !lastOverShoot.isNull()) {
+                    scrollMove=true;
                     area->viewport()->move(area->viewport()->pos() + lastOverShoot);
-                    overShootMove=false;
+                    scrollMove=false;
                 }
                 break;
             }
@@ -311,6 +313,7 @@ protected:
     void setScrollPosition(const QPoint &p, const QPoint &overShoot)
     {
         if (area) {
+            scrollMove = true;
             if (QAbstractSlider *s = area->horizontalScrollBar())
                 s->setValue(p.x());
             if (QAbstractSlider *s = area->verticalScrollBar())
@@ -318,11 +321,10 @@ protected:
 
             QPoint delta = overShoot - lastOverShoot;
             if (!delta.isNull()) {
-                overShootMove = true;
                 area->viewport()->move(area->viewport()->pos() + delta);
-                overShootMove = false;
             }
             lastOverShoot = overShoot;
+            scrollMove = false;
         }
     }
 
@@ -356,7 +358,7 @@ private:
     bool ignoreEvents;
     QPoint lastOverShoot;
     QPointer<QWidget> childWidget;
-    bool overShootMove;
+    bool scrollMove;
 };
 
 #endif // Q_WS_MAEMO_5
