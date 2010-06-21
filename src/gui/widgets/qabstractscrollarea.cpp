@@ -213,10 +213,10 @@ protected:
             }
 
             case QEvent::Move: {
-                if(!overShootMove && !lastOverShoot.isNull()) {
-                    overShootMove=true;
+                if(o == area->viewport() && !overShootMove && !lastOverShoot.isNull()) {
+                    overShootMove = true;
                     area->viewport()->move(area->viewport()->pos() + lastOverShoot);
-                    overShootMove=false;
+                    overShootMove = false;
                 }
                 break;
             }
