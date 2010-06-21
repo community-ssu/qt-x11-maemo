@@ -544,39 +544,12 @@ ScrollBarFader::ScrollBarFader(QAbstractScrollArea *area, int delay, int duratio
     m_delay_timer = new QTimer(this);
     m_delay_timer->setInterval(delay);
     connect(m_delay_timer, SIGNAL(timeout()), this, SLOT(delayTimeout()));
-
-    area->viewport()->installEventFilter(this);
 }
 
 ScrollBarFader::~ScrollBarFader()
 {
 }
 
-bool ScrollBarFader::eventFilter(QObject *o, QEvent *e)
-{
-    if (o == m_area->viewport()) {
-        switch (e->type()) {
-        case QEvent::Show:
-        case QEvent::MouseButtonPress:
-        case QEvent::MouseMove:
-        case QEvent::MouseButtonRelease:
-        case QEvent::Wheel:
-        case QEvent::KeyPress:
-        case QEvent::KeyRelease:
-            if (!m_delay_timer->isActive()) {
-                m_fade_timeline->setDirection(QTimeLine::Forward);
-                if (m_fade_timeline->state() != QTimeLine::Running)
-                    m_fade_timeline->start();
-            }
-            m_delay_timer->start();
-            break;
-
-        default:
-            break;
-        }
-    }
-    return QObject::eventFilter(o, e);
-}
 
 void ScrollBarFader::delayTimeout()
 {
@@ -607,6 +580,26 @@ void ScrollBarFader::fade(qreal value)
     }
 }
 
+
+void ScrollBarFader::show()
+{
+    if (!m_delay_timer->isActive()) {
+        m_fade_timeline->setDirection(QTimeLine::Forward);
+        if (m_fade_timeline->state() != QTimeLine::Running)
+            m_fade_timeline->start();
+    }
+    m_delay_timer->start();
+}
+
+void QMaemo5Style::showScrollIndicators(QAbstractScrollArea *area)
+{
+    Q_D(QMaemo5Style);
+
+    if (area) {
+        if (ScrollBarFader *fader = d->scrollBarFaders.value(area))
+            fader->show();
+    }
+}
 
 /*!
     \reimp

@@ -161,6 +161,7 @@ QT_BEGIN_NAMESPACE
 #include "qabstractitemview.h"
 #include "qgraphicsview.h"
 #include "qgraphicsitem.h"
+#include "qmaemo5style.h"
 
 extern bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
 
@@ -186,7 +187,6 @@ protected:
     bool eventFilter(QObject *o, QEvent *e)
     {
         bool res = false;
-        bool isMouseEvent = false;
 
         if (area && !ignoreEvents && area->isEnabled() && isEnabled()) {
             switch (e->type()) {
@@ -199,8 +199,8 @@ protected:
             case QEvent::MouseButtonDblClick:
             case QEvent::MouseMove:
             case QEvent::MouseButtonRelease: {
-                isMouseEvent = true;
                 res = handleMouseEvent(static_cast<QMouseEvent *>(e));
+                showScrollBar();
                 break;
             }
             case QEvent::ChildAdded:
@@ -220,11 +220,14 @@ protected:
                 }
                 break;
             }
+            case QEvent::Show:
+                showScrollBar();
+                break;
+
             default:
                 break;
             }
         }
-
         return res;
     }
 
@@ -348,6 +351,12 @@ private:
         ignoreEvents = true;
         qt_sendSpontaneousEvent(w, e);
         ignoreEvents = false;
+    }
+
+    void showScrollBar()
+    {
+        if (QMaemo5Style *mstyle = qobject_cast<QMaemo5Style *>(area->style()))
+            mstyle->showScrollIndicators(area);
     }
 
 private:

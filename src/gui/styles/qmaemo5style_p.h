@@ -180,10 +180,9 @@ public:
     ScrollBarFader(QAbstractScrollArea *area, int delay, int duration, int update_interval);
     ~ScrollBarFader();
 
-    inline qreal currentAlpha() const  { return m_current_alpha; }
+    void show();
 
-protected:
-    bool eventFilter(QObject *o, QEvent *e);
+    inline qreal currentAlpha() const  { return m_current_alpha; }
 
 private slots:
     void delayTimeout();
