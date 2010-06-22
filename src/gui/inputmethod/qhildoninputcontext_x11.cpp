@@ -859,6 +859,30 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         commitString = QString();
     }
 
+    // check for input mode restrictions
+    if (!commitString.isEmpty() && (inputMode & HILDON_GTK_INPUT_MODE_FULL) != HILDON_GTK_INPUT_MODE_FULL) {
+        for (int i = 0; i < commitString.length(); ++i) {
+            QChar c = commitString.at(i);
+            bool isalpha = c.isDigit() || QString::fromLatin1("abcdefghijklmnopqrstuvwxyz ").contains(c, Qt::CaseInsensitive);
+            bool isspecial = !isalpha;
+            bool isnumeric = c.isDigit() || c == QLatin1Char('-');
+            bool istele = c.isDigit() || QString::fromLatin1("#*+pP").contains(c, Qt::CaseSensitive);
+            bool ishexa = c.isDigit() || QString::fromLatin1("abcdef").contains(c, Qt::CaseInsensitive);
+
+            bool ok = false;
+            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_ALPHA) && isalpha);
+            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_NUMERIC) && isnumeric);
+            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_SPECIAL) && isspecial);
+            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_HEXA) && ishexa);
+            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_TELE) && istele);
+
+            if (!ok) {
+                cancelPreedit();
+                return true;
+            }
+        }
+    }
+
     if (!commitString.isEmpty()){
         //entering a new character cleans the preedit buffer
         cancelPreedit();
