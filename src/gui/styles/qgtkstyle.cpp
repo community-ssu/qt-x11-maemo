@@ -224,8 +224,11 @@ QPalette QGtkStyle::standardPalette() const
     if (d->isThemeAvailable()) {
         GtkStyle *style = d->gtkStyle();
         GtkWidget *gtkButton = d->gtkWidget("GtkButton");
+#ifdef Q_WS_MAEMO_5
+        GtkWidget *gtkEntry = d->gtkWidget("GtkTreeView");
+#else
         GtkWidget *gtkEntry = d->getTextColorWidget();
-
+#endif
         GdkColor gdkBg, gdkBase, gdkText, gdkForeground, gdkSbg, gdkSfg;
         QColor bg, base, text, fg, highlight, highlightText;
         gdkBg = style->bg[GTK_STATE_NORMAL];
@@ -286,6 +289,11 @@ QPalette QGtkStyle::standardPalette() const
             text = QColor(gdkText.red>>8, gdkText.green>>8, gdkText.blue>>8);
             palette.setColor(QPalette::ToolTipText, text);
         }
+#ifdef Q_WS_MAEMO_5
+        // we need colors that are readable on both black and white backgrounds
+        palette.setColor(QPalette::Link, QColor(128, 128, 255)); // light blue
+        palette.setColor(QPalette::LinkVisited, QColor(192, 128, 255)); // light magenta
+#endif
     }
     return palette;
 }
@@ -3057,7 +3065,7 @@ QRect QGtkStyle::subControlRect(ComplexControl control, const QStyleOptionComple
                 font.setBold(true);
                 QFontMetrics fontMetrics(font);
                 int flags = Qt::TextShowMnemonic | Qt::AlignLeft;
-                QSize textSize = fontMetrics.boundingRect(QRect(), flags, groupBoxWidget->title().remove('&')).size();
+                QSize textSize = fontMetrics.boundingRect(QRect(), flags, groupBoxWidget->title().remove(QLatin1Char('&'))).size();
                 int labelHeight = fontMetrics.height()+ 1;
 
                 if (subControl == SC_GroupBoxFrame)

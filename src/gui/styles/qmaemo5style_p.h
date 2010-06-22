@@ -115,6 +115,7 @@ public:
     virtual void resolveGtk() const;
     virtual void initGtkMenu() const;
     virtual void initGtkWidgets() const;
+    virtual void applyCustomPaletteHash();
 
     static void setupGtkFileChooser(GtkWidget* gtkFileChooser, QWidget *parent,
             const QString &dir, const QString &filter, QString *selectedFilter,

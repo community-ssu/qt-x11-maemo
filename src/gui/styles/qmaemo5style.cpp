@@ -164,7 +164,7 @@ void QMaemo5StylePrivate::resolveGtk() const
 */
 GtkWidget* QMaemo5StylePrivate::getTextColorWidget() const
 {
-    return  gtkWidget("GtkTextView");
+    return gtkWidget("GtkTextView");
 }
 
 /*!
@@ -221,6 +221,29 @@ void QMaemo5StylePrivate::initGtkMenu() const
     radioButtonRight->allocation.x = 2;
     radioButtonRight->allocation.y = 0;
     GTK_WIDGET_FLAGS(radioButtonRight) |= GTK_MAPPED;
+}
+
+void QMaemo5StylePrivate::applyCustomPaletteHash()
+{
+    QGtkStylePrivate::applyCustomPaletteHash();
+
+    QPalette textpalette = gtkWidgetPalette("GtkTextView");
+    qApp->setPalette(textpalette, "QSpinBox");
+    qApp->setPalette(textpalette, "QLineEdit");
+    qApp->setPalette(textpalette, "QTextEdit");
+    qApp->setPalette(textpalette, "QPlainTextEdit" );
+
+    QPalette calendarpalette = QApplication::palette();
+    QColor high = calendarpalette.color(QPalette::Highlight);
+    QColor base = calendarpalette.color(QPalette::Window);
+    calendarpalette.setColor(QPalette::Disabled, QPalette::Highlight, high.darker(130));
+    calendarpalette.setColor(QPalette::AlternateBase, base.lighter(250));
+    QApplication::setPalette(calendarpalette, "QCalendarWidget");
+
+    qApp->setPalette(gtkWidgetPalette("HildonPannableArea.GtkTreeView"), "QScrollBar");
+    qApp->setPalette(gtkWidgetPalette("HildonPannableArea.GtkTreeView"), "QAbstractScrollArea");
+    qApp->setPalette(gtkWidgetPalette("HildonNote-information-theme.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme"),
+        "QMaemo5InformationBox");
 }
 
 void QMaemo5StylePrivate::initGtkWidgets() const
@@ -620,85 +643,14 @@ void QMaemo5Style::polish(QWidget *widget)
                                                                      d->scrollBarFadeDuration,
                                                                      d->scrollBarFadeUpdateInterval));
 
-            // make sure that the scrollbars have a white text color, because the scroll indicators are
-            // drawn using the QPalette::Text color
-            if (GtkWidget *gtkWidget = d->gtkWidget("HildonPannableArea.GtkTreeView")) {
-                GdkColor gdkText = gtkWidget->style->text[GTK_STATE_NORMAL];
-                QPalette scrollPalette = area->horizontalScrollBar()->palette();
-                scrollPalette.setColor(QPalette::Text, QColor(gdkText.red>>8, gdkText.green>>8, gdkText.blue>>8));
-                area->horizontalScrollBar()->setPalette(scrollPalette);
-                area->verticalScrollBar()->setPalette(scrollPalette);
-            }
-
             if (QAbstractItemView *itemview = qobject_cast<QAbstractItemView *>(area)) {
                 itemview->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
                 itemview->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-
-                if (GtkWidget *gtkWidget = d->gtkWidget("HildonPannableArea.GtkTreeView")) {
-                    QPalette palette = widget->palette();
-
-                    GdkColor gdkBg, gdkBase, gdkText, gdkForeground;
-                    GdkColor gdkSbg, gdkSfg, gdkIbg, gdkIfg;
-                    QColor bg, base, text, fg, highlight, highlightText, disabled, disabledText;
-
-                    gdkBg = gtkWidget->style->bg[GTK_STATE_NORMAL];
-                    gdkForeground = gtkWidget->style->fg[GTK_STATE_NORMAL];
-
-                    // Our base and selected color is primarily used for text
-                    // so we assume a gtkWidget will have the most correct value
-                    gdkBase = gtkWidget->style->base[GTK_STATE_NORMAL];
-                    gdkText = gtkWidget->style->text[GTK_STATE_NORMAL];
-                    gdkSbg = gtkWidget->style->base[GTK_STATE_SELECTED];
-                    gdkSfg = gtkWidget->style->text[GTK_STATE_SELECTED];
-                    gdkIbg = gtkWidget->style->base[GTK_STATE_INSENSITIVE];
-                    gdkIfg = gtkWidget->style->text[GTK_STATE_INSENSITIVE];
-
-                    bg = QColor(gdkBg.red>>8, gdkBg.green>>8, gdkBg.blue>>8);
-                    text = QColor(gdkText.red>>8, gdkText.green>>8, gdkText.blue>>8);
-                    fg = QColor(gdkForeground.red>>8, gdkForeground.green>>8, gdkForeground.blue>>8);
-                    base = QColor(gdkBase.red>>8, gdkBase.green>>8, gdkBase.blue>>8);
-                    highlight = QColor(gdkSbg.red>>8, gdkSbg.green>>8, gdkSbg.blue>>8);
-                    highlightText = QColor(gdkSfg.red>>8, gdkSfg.green>>8, gdkSfg.blue>>8);
-                    disabled = QColor(gdkIbg.red>>8, gdkIbg.green>>8, gdkIbg.blue>>8);
-                    disabledText = QColor(gdkIfg.red>>8, gdkIfg.green>>8, gdkIfg.blue>>8);
-
-                    palette.setColor(QPalette::HighlightedText, highlightText);
-                    palette.setColor(QPalette::Light, bg.lighter(125));
-                    palette.setColor(QPalette::Shadow, bg.darker(130));
-                    palette.setColor(QPalette::Dark, bg.darker(120));
-                    palette.setColor(QPalette::Text, text);
-                    palette.setColor(QPalette::WindowText, fg);
-                    palette.setColor(QPalette::ButtonText, fg);
-                    palette.setColor(QPalette::Base, base);
-
-                    palette.setColor(QPalette::Disabled, QPalette::Text, disabledText);
-                    palette.setColor(QPalette::Disabled, QPalette::WindowText, disabledText);
-                    palette.setColor(QPalette::Disabled, QPalette::Foreground, disabledText);
-                    palette.setColor(QPalette::Disabled, QPalette::ButtonText, disabledText);
-
-                    widget->setPalette(palette);
-                }
             }
         }
     } else if (qobject_cast<QCommandLinkButton*>(widget)) {
         widget->setFont(standardFont(QLS("SystemFont")));
         widget->setAttribute(Qt::WA_Hover, false);
-    } else if (QCalendarWidget *calendar = qobject_cast<QCalendarWidget *>(widget)) {
-        QPalette palette = widget->palette();
-
-        QColor high = palette.color(QPalette::Highlight);
-        QColor base = palette.color(QPalette::Window);
-
-        palette.setColor(QPalette::Disabled, QPalette::Highlight, high.darker(130));
-        palette.setColor(QPalette::AlternateBase, base.lighter(250));
-
-        widget->setPalette(palette);
-    }
-
-    if (widget && widget->parentWidget() && widget->parentWidget()->inherits("QMaemo5InformationBox")) {
-        const char name[] = "HildonNote-information-theme.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme";
-        if (d->gtkWidget(name))
-            widget->setPalette(d->gtkWidgetPalette(name));
     }
 }
 
@@ -2302,9 +2254,9 @@ QIcon QMaemo5Style::standardIconImplementation(StandardPixmap standardIcon,
 {
     switch (standardIcon) {
     case SP_ArrowLeft:
-        return QIcon::fromTheme("general_back");
+        return QIcon::fromTheme(QLatin1String("general_back"));
     case SP_ArrowRight:
-        return QIcon::fromTheme("general_forward");
+        return QIcon::fromTheme(QLatin1String("general_forward"));
     default:
         return standardPixmap(standardIcon, option, widget);
     }
