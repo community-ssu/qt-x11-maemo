@@ -812,6 +812,8 @@ QPalette QGtkStylePrivate::gtkWidgetPalette(const QHashableLatin1Literal &gtkWid
     pal.setColor(QPalette::Disabled, QPalette::WindowText, disabledText);
     pal.setColor(QPalette::Disabled, QPalette::Foreground, disabledText);
     pal.setColor(QPalette::Disabled, QPalette::ButtonText, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::Base, disabled);
+
     return pal;
 }
 
