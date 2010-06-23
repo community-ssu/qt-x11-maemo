@@ -73,6 +73,7 @@
 #define STATE_SHIFT_MASK    1 << 0
 
 //Keyboard layout levels
+#define BASE_LEVEL 0
 #define NUMERIC_LEVEL 2
 #define LOCKABLE_LEVEL 4
 
@@ -490,7 +491,7 @@ void QHildonInputContext::updateInputMethodHints()
             inputMode = HILDON_GTK_INPUT_MODE_TELE;
         } else if (((hints & Qt::ImhExclusiveInputMask) == (Qt::ImhDigitsOnly | Qt::ImhUppercaseOnly)) ||
                    ((hints & Qt::ImhExclusiveInputMask) == (Qt::ImhDigitsOnly | Qt::ImhLowercaseOnly))) {
-            inputMode = HILDON_GTK_INPUT_MODE_HEXA;
+            inputMode = HILDON_GTK_INPUT_MODE_ALPHA;
         } else if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhDigitsOnly) {
             inputMode = HILDON_GTK_INPUT_MODE_NUMERIC;
         } else if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhFormattedNumbersOnly) {
@@ -588,6 +589,7 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     const quint32 keycode = event->nativeScanCode();
     quint32 keysym= event->nativeVirtualKey();
     const int qtkeycode = event->key();
+    Qt::InputMethodHints hints = realFocus->inputMethodHints();
 
     qHimDebug("HIM: filterKeyPress Mask: %x state: %x options: %x keycode: %d keysym: %x QtKey: %x Text: \"%s\"",
               mask, state, options, keycode, keysym, qtkeycode, event->text().toUtf8().constData());
@@ -664,6 +666,14 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         commitString = QLatin1String("\t");
     }
 
+    // Invert the level key when in tele or special mode
+    bool should_invert = false;
+    if ((inputMode & HILDON_GTK_INPUT_MODE_FULL) != HILDON_GTK_INPUT_MODE_FULL)
+        should_invert = (inputMode & HILDON_GTK_INPUT_MODE_ALPHA) == 0  &&
+                        (inputMode & HILDON_GTK_INPUT_MODE_HEXA)  == 0  &&
+                        ((inputMode & HILDON_GTK_INPUT_MODE_TELE) ||
+                        (inputMode & HILDON_GTK_INPUT_MODE_SPECIAL));
+
     /* 5. When the level key is in sticky or locked state, translate the
      *    keyboard state as if that level key was being held down.
      */
@@ -676,14 +686,31 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
      *  shifted on the layout, it's not necessary for the level key to
      *  be pressed at all.
      */
-    else if ((options & HILDON_IM_AUTOLEVEL_NUMERIC) &&
-             ((inputMode & HILDON_GTK_INPUT_MODE_FULL) == HILDON_GTK_INPUT_MODE_NUMERIC)) {
-        KeySym ks = getKeySymForLevel(keycode, NUMERIC_LEVEL);
-        QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
+    if (((options & HILDON_IM_AUTOLEVEL_NUMERIC) &&
+            ((inputMode & HILDON_GTK_INPUT_MODE_FULL) == HILDON_GTK_INPUT_MODE_NUMERIC))
+            || should_invert) {
 
-        if (!string.isEmpty()) {
-            keysym = ks;
-            commitString = string;
+        /* the level key is inverted
+        when level or shift key is pressed use normal level
+        otherwise use numeric level*/
+        if (!((state & STATE_LEVEL_MASK) || (state & STATE_SHIFT_MASK)
+            ||(mask & (HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK))
+            ||(mask & (HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK)))) {
+            KeySym ks = getKeySymForLevel(keycode, NUMERIC_LEVEL);
+            QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
+            if (!string.isEmpty()) {
+                keysym = ks;
+                commitString = string;
+            }
+        }
+        else
+        {
+            KeySym ks = getKeySymForLevel(keycode, BASE_LEVEL);
+            QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
+            if (!string.isEmpty()) {
+                keysym = ks;
+                commitString = string;
+            }
         }
     }
     /* The input is forced to a predetermined level
@@ -712,7 +739,7 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         }
     }
     //6. Shift lock or holding the shift down forces uppercase, ignoring autocap
-    else if ((mask & (HILDON_IM_SHIFT_LOCK_MASK | HILDON_IM_SHIFT_STICKY_MASK )) ||
+    if ((mask & (HILDON_IM_SHIFT_LOCK_MASK | HILDON_IM_SHIFT_STICKY_MASK )) ||
         (state & STATE_SHIFT_MASK)){
         commitString = translateKeycodeAndState(keycode, STATE_SHIFT_MASK, keysym);
     }
@@ -803,6 +830,9 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         //QString debug = QLatin1String("Sending state=0x%1 keysym=0x%2 keycode=%3");
         //LOGMESSAGE2(" - ", debug.arg(state,0,16).arg(keysym,0,16).arg(keycode));
 
+        //Prevent Symbol Picker for following hints
+        if((hints & (Qt::ImhFormattedNumbersOnly | Qt::ImhDigitsOnly | Qt::ImhDialableCharactersOnly)))
+            return false;
         sendKeyEvent(keywidget, event->type(), state, keysym, keycode);
         return false;
     }
@@ -845,21 +875,29 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     }
 
     // check for input mode restrictions
-    if (!commitString.isEmpty() && (inputMode & HILDON_GTK_INPUT_MODE_FULL) != HILDON_GTK_INPUT_MODE_FULL) {
+    if (!commitString.isEmpty() && hints) {
         for (int i = 0; i < commitString.length(); ++i) {
             QChar c = commitString.at(i);
-            bool isalpha = c.isDigit() || QString::fromLatin1("abcdefghijklmnopqrstuvwxyz ").contains(c, Qt::CaseInsensitive);
-            bool isspecial = !isalpha;
             bool isnumeric = c.isDigit() || c == QLatin1Char('-');
             bool istele = c.isDigit() || QString::fromLatin1("#*+pP").contains(c, Qt::CaseSensitive);
-            bool ishexa = c.isDigit() || QString::fromLatin1("abcdef").contains(c, Qt::CaseInsensitive);
+            bool isemail = c.isLetterOrNumber() || QString::fromLatin1("!#$%&'*+-/=?^_`{|}~@.").contains(c, Qt::CaseSensitive);
+            bool isurl = c.isLetterOrNumber() || QString::fromLatin1("$-_.+!*'(),").contains(c, Qt::CaseSensitive);
+            bool isFormattedNumber = c.isDigit() || QString::fromLatin1("-.,").contains(c, Qt::CaseSensitive);
 
             bool ok = false;
-            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_ALPHA) && isalpha);
-            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_NUMERIC) && isnumeric);
-            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_SPECIAL) && isspecial);
-            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_HEXA) && ishexa);
-            ok |= ((inputMode & HILDON_GTK_INPUT_MODE_TELE) && istele);
+            ok |= ((hints & Qt::ImhFormattedNumbersOnly) && isFormattedNumber);
+            ok |= ((hints & Qt::ImhDigitsOnly) && isnumeric);
+            ok |= ((hints & Qt::ImhDialableCharactersOnly) && istele);
+            ok |= ((hints & Qt::ImhEmailCharactersOnly) && isemail);
+            ok |= ((hints & Qt::ImhUrlCharactersOnly) && isurl);
+
+            if ((hints & Qt::ImhUppercaseOnly) && c.isLetter()) {
+                ok = true;
+                commitString = commitString.toUpper();
+            } else if ((hints & Qt::ImhLowercaseOnly) && c.isLetter()) {
+                ok = true;
+                commitString = commitString.toLower();
+            }
 
             if (!ok) {
                 cancelPreedit();
