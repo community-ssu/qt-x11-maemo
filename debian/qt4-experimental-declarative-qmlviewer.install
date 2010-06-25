@@ -1,2 +1,2 @@
 ./opt/qt4-maemo5/bin/qmlviewer
-qmlviewer-experimental-desktop/QMLViewer-experimental.desktop usr/share/applications/hildon
+usr/share/applications/hildon/QMLViewer-experimental.desktop

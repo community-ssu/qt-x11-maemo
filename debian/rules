@@ -127,6 +127,7 @@ build-dbus-tools:
 	$(MAKE) -C tools/qdbus/qdbuscpp2xml
 
 build-qml-tool:
+	bin/qmake -o debian/qmlviewer-experimental-desktop/Makefile debian/qmlviewer-experimental-desktop/qmlviewer-experimental-desktop.pro
 	bin/qmake -o tools/qml/Makefile tools/qml/qml.pro
 	$(MAKE) -C tools/qml
 
@@ -162,6 +163,7 @@ install-uitools:
 	$(MAKE) -C tools/designer/src/uitools $(DEB_MAKE_INSTALL_TARGET)
 
 install-qml-tool:
+	$(MAKE) -C debian/qmlviewer-experimental-desktop $(DEB_MAKE_INSTALL_TARGET)
 	$(MAKE) -C tools/qml $(DEB_MAKE_INSTALL_TARGET)
 
 clean::
