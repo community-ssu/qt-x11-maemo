@@ -851,12 +851,11 @@ int GestureItem::InstanceCount = 0;
 
 void tst_Gestures::graphicsItemGesture()
 {
-#ifdef Q_WS_MAEMO_5
-    QSKIP("On Maemo 5 we don't support any gestures", SkipAll);
-#endif
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item = new GestureItem("item");
     scene.addItem(item);
@@ -864,7 +863,7 @@ void tst_Gestures::graphicsItemGesture()
 
     view.show();
     QTest::qWaitForWindowShown(&view);
-    QTest::qWait(500);
+    QTest::qWait(5000);
     view.ensureVisible(scene.sceneRect());
 
     item->grabGesture(CustomGesture::GestureType);
@@ -919,7 +918,9 @@ void tst_Gestures::graphicsView()
 {
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item = new GestureItem("item");
     scene.addItem(item);
@@ -984,7 +985,9 @@ void tst_Gestures::graphicsItemTreeGesture()
 {
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item1 = new GestureItem("item1");
     item1->setPos(100, 100);
@@ -1039,13 +1042,11 @@ void tst_Gestures::graphicsItemTreeGesture()
 
 void tst_Gestures::explicitGraphicsObjectTarget()
 {
-#ifdef Q_WS_MAEMO_5
-    QSKIP("On Maemo 5 we don't support any gestures", SkipAll);
-#endif
-
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item1 = new GestureItem("item1");
     scene.addItem(item1);
@@ -1566,10 +1567,6 @@ void tst_Gestures::autoCancelGestures()
 
 void tst_Gestures::autoCancelGestures2()
 {
-#ifdef Q_WS_MAEMO_5
-    QSKIP("On Maemo 5 we don't support any gestures", SkipAll);
-#endif
-
     class MockItem : public GestureItem {
       public:
         MockItem(const char *name) : GestureItem(name) { }
@@ -1588,7 +1585,9 @@ void tst_Gestures::autoCancelGestures2()
 
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     MockItem *parent = new MockItem("parent");
     GestureItem *child = new GestureItem("child");
@@ -1623,7 +1622,9 @@ void tst_Gestures::graphicsViewParentPropagation()
 {
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item0 = new GestureItem("item0");
     scene.addItem(item0);
@@ -1685,7 +1686,9 @@ void tst_Gestures::panelPropagation()
 {
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item0 = new GestureItem("item0");
     scene.addItem(item0);
@@ -1819,7 +1822,9 @@ void tst_Gestures::panelStacksBehindParent()
 {
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item1 = new GestureItem("item1");
     item1->grabGesture(CustomGesture::GestureType);
@@ -1907,7 +1912,9 @@ void tst_Gestures::deleteGestureTargetItem()
 
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item1 = new GestureItem("item1");
     item1->grabGesture(CustomGesture::GestureType);
@@ -1960,7 +1967,9 @@ void tst_Gestures::viewportCoordinates()
     QGraphicsScene scene;
     GraphicsView view(&scene);
     view.setViewportMargins(10,20,15,25);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item1 = new GestureItem("item1");
     item1->grabGesture(CustomGesture::GestureType);
@@ -1983,7 +1992,9 @@ void tst_Gestures::partialGesturePropagation()
 {
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item1 = new GestureItem("item1");
     item1->grabGesture(CustomGesture::GestureType);
@@ -2189,7 +2200,9 @@ void tst_Gestures::testReuseCanceledGestures()
             new ReuseCanceledGesturesRecognizer(ReuseCanceledGesturesRecognizer::LmbType));
 
     QMainWindow mw;
+#ifndef Q_WS_MAEMO_5
     mw.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
     QGraphicsView *gv = new QGraphicsView(&mw);
     QGraphicsScene *scene = new QGraphicsScene;
 
@@ -2266,7 +2279,9 @@ void tst_Gestures::conflictingGesturesInGraphicsView()
 {
     QGraphicsScene scene;
     GraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item1 = new GestureItem("item1");
     item1->grabGesture(CustomGesture::GestureType);
