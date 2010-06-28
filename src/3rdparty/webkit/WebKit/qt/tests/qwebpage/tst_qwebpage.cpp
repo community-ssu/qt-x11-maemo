@@ -219,6 +219,9 @@ public slots:
 
 void tst_QWebPage::infiniteLoopJS()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("InfiniteLoops are currently not stopped automatically :  Bug 38538 ", SkipAll);
+#endif
     JSTestPage* newPage = new JSTestPage(m_view);
     m_view->setPage(newPage);
     m_view->setHtml(QString("<html><bodytest</body></html>"), QUrl());
