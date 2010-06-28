@@ -745,7 +745,7 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     }
 
     /* Hardware keyboard autocapitalization  */
-    if (autoUpper && inputMode & HILDON_GTK_INPUT_MODE_AUTOCAP)
+    if (autoUpper && (inputMode & HILDON_GTK_INPUT_MODE_AUTOCAP))
     {
         qHimDebug() << "AutoCAP";
         QChar currentChar;
@@ -1258,6 +1258,9 @@ void QHildonInputContext::checkSentenceStart()
 {
     qHimDebug() << "HIM: checkSentenceStart()";
 
+    if (!(options & HILDON_IM_AUTOCASE))
+        return;
+
     QWidget *w = focusWidget();
     if (!w)
         return;
@@ -1300,11 +1303,9 @@ void QHildonInputContext::checkSentenceStart()
     // not very nice, but QTextBoundaryFinder doesn't really work here
     static const QString punctuation = QLatin1String(".!?\xa1\xbf"); // spanish inverted ! and ?
 
-    if (!cpos || analyze.length() == spaces) {
+    if (!cpos || analyze.length() == spaces ||
+        (spaces && punctuation.contains(analyze.at(analyze.length() - spaces - 1)))) {
         autoUpper = true;
-        sendHildonCommand(HILDON_IM_SHIFT_STICKY, w);
-    } else if (spaces && punctuation.contains(analyze.at(analyze.length() - spaces - 1))) {
-        autoUpper = options & HILDON_IM_AUTOCASE;
         sendHildonCommand(HILDON_IM_SHIFT_STICKY, w);
     } else {
         autoUpper = false;
