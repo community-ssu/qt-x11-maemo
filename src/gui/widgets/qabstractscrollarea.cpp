@@ -53,6 +53,8 @@
 #include "qpainter.h"
 #include "qmargins.h"
 
+#include <QDebug>
+
 #include "qabstractscrollarea_p.h"
 #include <qwidget.h>
 
@@ -206,7 +208,7 @@ protected:
             case QEvent::ChildAdded:
             case QEvent::ChildRemoved: {
                 QChildEvent *ce = static_cast<QChildEvent *>(e);
-                if (ce->child()->isWidgetType()) {
+                if (ce->child()->isWidgetType() && !static_cast<QWidget*>(ce->child())->isWindow()) {
                     fixEventFilterRecursive(ce->child(), ce->added());
                 }
                 break;
@@ -335,9 +337,9 @@ private:
         if (!widget)
             return;
 
-        foreach (QWidget* child, widget->findChildren<QWidget *>()) {
+        foreach (QObject* child, widget->children()) {
             if (child->isWidgetType() && !static_cast<QWidget*>(child)->isWindow())
-                fixEventFilterRecursive(child, install);
+                fixEventFilterRecursive(static_cast<QWidget*>(child), install);
         }
 
         if (install)

@@ -5831,7 +5831,6 @@ void tst_QWidget::setFocus()
         window.activateWindow();
         QApplication::processEvents();
 #endif
-
         child1.setFocus();
         QTRY_VERIFY(child1.hasFocus());
         QCOMPARE(window.focusWidget(), &child1);
@@ -10359,6 +10358,9 @@ void tst_QWidget::taskQTBUG_7532_tabOrderWithFocusProxy()
 
 void tst_QWidget::movedAndResizedAttributes()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("On Maemo 5 windows can't be moved or resized, they are always maximized", SkipAll);
+#endif
 #if defined (Q_OS_MAC) || defined(Q_WS_QWS) || defined(Q_OS_SYMBIAN)
     QEXPECT_FAIL("", "FixMe, QTBUG-8941 and QTBUG-8977", Abort);
     QVERIFY(false);

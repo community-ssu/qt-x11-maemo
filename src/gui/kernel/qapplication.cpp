@@ -3012,7 +3012,7 @@ bool QApplicationPrivate::sendTouchEvent(QWidget *receiver, QEvent::Type type, c
         touchPoint.setState(Qt::TouchPointMoved);
         break;
     default:
-        qDebug("Unhandled mouse event");
+        return false; // double clicks and such don't need to be translated
     }
 
     touchPoint.setPressure(1.0);

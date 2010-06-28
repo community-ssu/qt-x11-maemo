@@ -531,6 +531,8 @@ void QComboBoxPrivateContainer::setItemView(QAbstractItemView *itemView)
 {
     Q_ASSERT(itemView);
 
+qDebug()<<"setItemView:"<<itemView<<"for"<<this;
+
     // clean up old one
     if (view) {
         view->removeEventFilter(this);
@@ -2519,7 +2521,7 @@ void QComboBox::showPopup()
     bool editable = isEditable();
 
     container->setAttribute(Qt::WA_X11NetWmWindowTypeCombo, editable);
-    container->setWindowFlags((windowFlags() & ~Qt::WindowType_Mask) | (editable ? Qt::Popup : Qt::Dialog));
+    container->setWindowFlags((container->windowFlags() & ~Qt::WindowType_Mask) | (editable ? Qt::Popup : Qt::Dialog));
 
     view()->setSizePolicy(editable ? QSizePolicy::Ignored : QSizePolicy::Expanding,
                           editable ? QSizePolicy::Ignored : QSizePolicy::Expanding);

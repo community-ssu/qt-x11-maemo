@@ -278,7 +278,8 @@ QPalette QGtkStyle::standardPalette() const
         palette.setColor(QPalette::Disabled, QPalette::ButtonText, disabled);
         palette.setColor(QPalette::Highlight, highlight);
         // calculate disabled colors by removing saturation
-        highlight.setHsv(highlight.hue(), 0, highlight.value(), highlight.alpha());
+        // Maemo5 patch, just tone down and make it a little darker
+        highlight.setHsv(highlight.hue(), highlight.saturation()/2, highlight.value()/2, highlight.alpha());
         highlightText.setHsv(highlightText.hue(), 0, highlightText.value(), highlightText.alpha());
         palette.setColor(QPalette::Disabled, QPalette::Highlight, highlight);
         palette.setColor(QPalette::Disabled, QPalette::HighlightedText, highlightText);

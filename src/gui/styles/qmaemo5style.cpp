@@ -53,6 +53,7 @@
 #include <QtGui/QCommandLinkButton>
 #include <QtGui/QAbstractScrollArea>
 #include <QtGui/QAbstractItemView>
+#include <QtGui/QStyledItemDelegate>
 #include <QtGui/QScrollBar>
 #include <QtGui/QPlainTextEdit>
 #include <QtGui/QTextEdit>
@@ -989,6 +990,21 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
         }
         break;
     }
+
+    case PE_PanelItemViewRow:
+        // This primitive is only used to draw selection behind selected expander arrows.
+        // We try not to decorate the tree branch background unless you inherit from StyledItemDelegate
+        // The reason for this is that a lot of code that relies on custom item delegates will look odd having
+        // a gradient on the branch but a flat shaded color on the item itself.
+        QCommonStyle::drawPrimitive(element, option, painter, widget);
+        if (!option->state & State_Selected) {
+            break;
+        } else {
+            if (const QAbstractItemView *view = qobject_cast<const QAbstractItemView*>(widget)) {
+                if (!qobject_cast<QStyledItemDelegate*>(view->itemDelegate()))
+                    break;
+            }
+        } // fall through
     case PE_PanelItemViewItem: {
 
             //To improve the performance we won't cache unusable states
