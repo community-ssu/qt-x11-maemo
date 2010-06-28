@@ -236,7 +236,7 @@ tst_Suite::tst_Suite()
     addExpectedFailure("global-const-var-conflicts", "false", "true", willFixInNextReleaseMessage);
     addExpectedFailure("string-lastindexof", "0", "-1", "test is wrong?");
 
-#ifndef Q_OS_LINUX
+#if !defined(Q_OS_LINUX) || defined(Q_WS_MAEMO_5)
     addExpectedFailure("to-precision", "1.235e+27", "1.234e+27", "QTBUG-8053: toPrecision(4) gives wrong result on Mac");
 #endif
 
