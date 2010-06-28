@@ -471,7 +471,11 @@ void tst_QComboBox::setPalette()
     for (int i = 0; i < comboChildren.size(); ++i) {
         QObject *o = comboChildren.at(i);
         if (o->isWidgetType()) {
+#ifdef Q_WS_MAEMO_5 //On Maemo5 some widgets have a custom palette. The test have to verify only the base Color
+            QVERIFY(((QWidget*)o)->palette().base() == pal.base());
+#else
             QVERIFY(((QWidget*)o)->palette() == pal);
+#endif
         }
     }
 }
