@@ -871,8 +871,9 @@ void tst_QGL::graphicsViewClipping()
     QImage image = viewport->grabFrameBuffer();
     QImage expected = image;
 
+    QPalette pal = QApplication::palette();
     QPainter p(&expected);
-    p.fillRect(expected.rect(), Qt::white);
+    p.fillRect(expected.rect(), pal.base());
     p.fillRect(QRect(0, 0, size, size), Qt::black);
     p.end();
 
