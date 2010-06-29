@@ -586,6 +586,9 @@ QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
     systemCerts.append(QSslCertificate::fromPath(QLatin1String("/usr/share/ssl/*.pem"), QSsl::Pem, QRegExp::Wildcard)); // Centos, Redhat, SuSE
     systemCerts.append(QSslCertificate::fromPath(QLatin1String("/usr/local/ssl/*.pem"), QSsl::Pem, QRegExp::Wildcard)); // Normal OpenSSL Tarball
 #endif
+#if defined(Q_WS_MAEMO_5)
+    systemCerts.append(QSslCertificate::fromPath(QLatin1String("/etc/certs/common-ca/*.pem"), QSsl::Pem, QRegExp::Wildcard));
+#endif
     return systemCerts;
 }
 
