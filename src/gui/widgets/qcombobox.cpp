@@ -531,8 +531,6 @@ void QComboBoxPrivateContainer::setItemView(QAbstractItemView *itemView)
 {
     Q_ASSERT(itemView);
 
-qDebug()<<"setItemView:"<<itemView<<"for"<<this;
-
     // clean up old one
     if (view) {
         view->removeEventFilter(this);
