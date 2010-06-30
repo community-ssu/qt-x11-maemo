@@ -1,6 +1,7 @@
 TARGET     = QtGui
 QPRO_PWD   = $$PWD
 QT = core
+maemo5:QT += dbus
 DEFINES   += QT_BUILD_GUI_LIB QT_NO_USING_NAMESPACE
 win32-msvc*|win32-icc:QMAKE_LFLAGS += /BASE:0x65000000
 irix-cc*:QMAKE_CXXFLAGS += -no_prelink -ptused
@@ -8,6 +9,7 @@ irix-cc*:QMAKE_CXXFLAGS += -no_prelink -ptused
 !win32:!embedded:!mac:!symbian:CONFIG      += x11
 
 unix:QMAKE_PKGCONFIG_REQUIRES = QtCore
+maemo5:QMAKE_PKGCONFIG_REQUIRES += QtDBus
 
 include(../qbase.pri)
 

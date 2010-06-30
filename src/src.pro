@@ -94,6 +94,7 @@ src_maemo5.target = sub-maemo5
 !wince*:!ordered:!symbian-abld:!symbian-sbsv2 {
    src_corelib.depends = src_tools_moc src_tools_rcc
    src_gui.depends = src_corelib src_tools_uic
+   maemo5: src_gui.depends += src_dbus
    embedded: src_gui.depends += src_network
    src_xml.depends = src_corelib
    src_xmlpatterns.depends = src_corelib src_network
