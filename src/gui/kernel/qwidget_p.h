@@ -992,6 +992,39 @@ inline QWidgetBackingStore *QWidgetPrivate::maybeBackingStore() const
     return x ? x->backingStore.data() : 0;
 }
 
+#ifdef Q_WS_MAEMO_5
+
+extern void maemo5CheckOrientation(QWidget *);
+
+class QMaemo5OrientationManager : public QObject
+{
+    Q_OBJECT
+public:
+    static QMaemo5OrientationManager *instance();
+    ~QMaemo5OrientationManager();
+
+    bool manageWindow(QWidget *w, bool add);
+    void applyOrientation(QWidget *w);
+
+private slots:
+    void orientationChanged(const QString &orientation);
+    void windowDestroyed();
+
+private:
+    static Qt::Orientation toOrientation(const QString &nativeOrientation);
+
+    QMaemo5OrientationManager();
+    void enableDBus(bool doConnect);
+    void applyOrientation();
+
+    static QMaemo5OrientationManager *inst;
+    QList<QPointer<QWidget> > windows;
+    Qt::Orientation lastOrientation;
+
+    friend void maemo5CheckOrientation(QWidget *);
+};
+#endif // Q_WS_MAEMO_5
+
 QT_END_NAMESPACE
 
 #endif // QWIDGET_P_H

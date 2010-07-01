@@ -2269,7 +2269,11 @@ void tst_QTcpSocket::taskQtBug7054TimeoutErrorResetting()
     QTcpSocket *socket = newSocket();
 
     socket->connectToHost(QtNetworkSettings::serverName(), 443);
+#ifdef Q_WS_MAEMO_5
+    QVERIFY(socket->waitForConnected(10*1000));
+#else
     QVERIFY(socket->waitForConnected(5*1000));
+#endif
     QVERIFY(socket->error() == QAbstractSocket::UnknownSocketError);
 
     // We connected to the HTTPS port. Wait two seconds to receive data. We will receive

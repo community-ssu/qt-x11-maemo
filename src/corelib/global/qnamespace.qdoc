@@ -1246,8 +1246,12 @@
     to this top level window. This attribute has no effect on non-X11
     platforms.
 
-    \value WA_Maemo5StackedWindow Flags this window to be part of a
-    Maemo 5 Window Stack. This flag is only available on Maemo 5.
+    \value WA_Maemo5StackedWindow Flags this window to be part of a Maemo 5
+    Window Stack.  Since the Maemo 5 window manager can only handle window
+    stacks where all windows have the same orientation, you should either
+    set your desired orientation attribute on the stack's root window only
+    or on all windows in stack (using the same attribute value).
+    This flag is only available on Maemo 5.
 
     \value WA_Maemo5LandscapeOrientation Forces this window
     into landscape orientation, independent of the device's prior

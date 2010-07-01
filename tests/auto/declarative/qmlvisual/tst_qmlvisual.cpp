@@ -89,6 +89,8 @@ QString tst_qmlvisual::viewer()
     qmlruntime = QDir(binaries).absoluteFilePath("QMLViewer.app/Contents/MacOS/QMLViewer");
 #elif defined(Q_WS_WIN) || defined(Q_WS_S60)
     qmlruntime = QDir(binaries).absoluteFilePath("qmlviewer.exe");
+#elif defined(Q_WS_MAEMO_5)
+    qmlruntime = QDir("../../../../bin").absoluteFilePath("qmlviewer");
 #else
     qmlruntime = QDir(binaries).absoluteFilePath("qmlviewer");
 #endif
@@ -152,6 +154,9 @@ void tst_qmlvisual::visual_data()
 
 void tst_qmlvisual::visual()
 {
+#ifdef Q_WS_MAEMO_5
+    QSKIP("This test will not work on Maemoe 5 due to Image comparision", SkipAll);
+#endif
     QFETCH(QString, file);
     QFETCH(QString, testdata);
 

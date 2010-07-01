@@ -55,6 +55,7 @@
 #include <private/qkeymapper_p.h>
 
 #include "qgraphicsview.h"
+#include "qtimer.h"
 #ifndef QT_NO_GRAPHICSVIEW
 #include "qgraphicsitem.h"
 #include "qgraphicsproxywidget.h"
@@ -475,6 +476,8 @@ void QHildonInputContext::setFocusWidget(QWidget *w)
     realFocus = resolveFocusWidget(w);
 
     updateInputMethodHints();
+    if(realFocus)
+        sendHildonCommand(HILDON_IM_SETCLIENT, realFocus);
 
     QInputContext::setFocusWidget(w);
 
@@ -516,8 +519,6 @@ void QHildonInputContext::updateInputMethodHints()
         if (qobject_cast<QTextEdit *>(realFocus) || qobject_cast<QPlainTextEdit *>(realFocus))
             inputMode |= HILDON_GTK_INPUT_MODE_MULTILINE;
 
-        sendHildonCommand(HILDON_IM_SETCLIENT, realFocus);
-
         qHimDebug("Mapped hint: 0x%x to mode: 0x%x", int(hints), int(inputMode));
     } else {
         inputMode = 0;
@@ -545,7 +546,7 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
                 le->clear();
         }
 
-        sendHildonCommand(HILDON_IM_SETNSHOW, realFocus);
+        QTimer::singleShot(0,this,SLOT(showSoftKeyboard()));
         return true;
     }
     case QEvent::KeyPress:
@@ -557,6 +558,12 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
         break;
     }
     return QInputContext::filterEvent(event);
+}
+
+void QHildonInputContext::showSoftKeyboard()
+{
+    realFocus = resolveFocusWidget(QInputContext::focusWidget());
+    sendHildonCommand(HILDON_IM_SETNSHOW, realFocus);
 }
 
 //TODO

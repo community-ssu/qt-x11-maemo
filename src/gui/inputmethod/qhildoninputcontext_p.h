@@ -91,6 +91,9 @@ protected:
     bool filterKeyPress(QWidget *w, const QKeyEvent *ev);
     bool x11FilterEvent(QWidget *keywidget, XEvent *event);
 
+private slots:
+    void showSoftKeyboard();
+
 private:
     void insertUtf8(int flag, const QString& text);
     void clearSelection();

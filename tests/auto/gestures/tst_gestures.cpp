@@ -1099,7 +1099,9 @@ void tst_Gestures::gestureOverChildGraphicsItem()
 {
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item0 = new GestureItem("item0");
     scene.addItem(item0);
@@ -1414,7 +1416,10 @@ void tst_Gestures::testMapToScene()
 
     QGraphicsScene scene;
     QGraphicsView view(&scene);
+
+#ifndef Q_WS_MAEMO_5
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
 
     GestureItem *item0 = new GestureItem;
     scene.addItem(item0);
@@ -1535,7 +1540,10 @@ void tst_Gestures::autoCancelGestures()
 
     MockWidget parent("parent"); // this one sets the cancel policy to CancelAllInContext
     parent.resize(300, 100);
+
+#ifndef Q_WS_MAEMO_5
     parent.setWindowFlags(Qt::X11BypassWindowManagerHint);
+#endif
     GestureWidget *child = new GestureWidget("child", &parent);
     child->setGeometry(10, 10, 100, 80);
 
@@ -1599,6 +1607,9 @@ void tst_Gestures::autoCancelGestures2()
     child->grabGesture(secondGesture);
 
     view.show();
+#ifdef Q_WS_X11
+    qt_x11_wait_for_window_manager(&view);
+#endif
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
@@ -1646,6 +1657,9 @@ void tst_Gestures::graphicsViewParentPropagation()
     item1_c1_c1->setPos(0, 0);
 
     view.show();
+#ifdef Q_WS_X11
+    qt_x11_wait_for_window_manager(&view);
+#endif
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
@@ -1720,6 +1734,9 @@ void tst_Gestures::panelPropagation()
     item1_child1_child1->setZValue(10);
 
     view.show();
+#ifdef Q_WS_X11
+    qt_x11_wait_for_window_manager(&view);
+#endif
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
@@ -1843,6 +1860,9 @@ void tst_Gestures::panelStacksBehindParent()
     panel->setZValue(5);
 
     view.show();
+#ifdef Q_WS_X11
+    qt_x11_wait_for_window_manager(&view);
+#endif
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 
@@ -2017,6 +2037,9 @@ void tst_Gestures::partialGesturePropagation()
     scene.addItem(item4);
 
     view.show();
+#ifdef Q_WS_X11
+    qt_x11_wait_for_window_manager(&view);
+#endif
     QTest::qWaitForWindowShown(&view);
     view.ensureVisible(scene.sceneRect());
 

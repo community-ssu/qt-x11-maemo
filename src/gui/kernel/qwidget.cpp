@@ -10694,6 +10694,7 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
                     setAttribute_internal(maemo5Orientations[i], false, data, d);
             }
         }
+        QMaemo5OrientationManager::instance()->manageWindow(this, (attribute == Qt::WA_Maemo5AutoOrientation) ? on : false);
         // fall through
     case Qt::WA_Maemo5NonComposited:
     case Qt::WA_Maemo5StackedWindow:
