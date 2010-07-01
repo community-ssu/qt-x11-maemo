@@ -55,6 +55,7 @@
 #include <private/qkeymapper_p.h>
 
 #include "qgraphicsview.h"
+#include "qtimer.h"
 #ifndef QT_NO_GRAPHICSVIEW
 #include "qgraphicsitem.h"
 #include "qgraphicsproxywidget.h"
@@ -545,7 +546,7 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
                 le->clear();
         }
 
-        sendHildonCommand(HILDON_IM_SETNSHOW, realFocus);
+        QTimer::singleShot(0,this,SLOT(showSoftKeyboard()));
         return true;
     }
     case QEvent::KeyPress:
@@ -557,6 +558,12 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
         break;
     }
     return QInputContext::filterEvent(event);
+}
+
+void QHildonInputContext::showSoftKeyboard()
+{
+    realFocus = resolveFocusWidget(QInputContext::focusWidget());
+    sendHildonCommand(HILDON_IM_SETNSHOW, realFocus);
 }
 
 //TODO
