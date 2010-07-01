@@ -11,6 +11,7 @@ maemo5:SUBDIRS = widgets \
                  kineticscroller \
                  zoom \
                  menu \
+                 gesture \
                  widgetgallery \
                  textedit \
                  datetime
