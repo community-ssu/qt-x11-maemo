@@ -1560,7 +1560,7 @@ QList<QSslError> QSslSocket::sslErrors() const
 */
 bool QSslSocket::supportsSsl()
 {
-    return QSslSocketPrivate::ensureInitialized();
+    return QSslSocketPrivate::supportsSsl();
 }
 
 /*!

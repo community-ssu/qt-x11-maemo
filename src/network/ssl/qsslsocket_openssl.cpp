@@ -72,6 +72,9 @@
 
 QT_BEGIN_NAMESPACE
 
+bool QSslSocketPrivate::s_libraryLoaded = false;
+bool QSslSocketPrivate::s_loadedCiphersAndCerts = false;
+
 // Useful defines
 #define SSL_ERRORSTR() QString::fromLocal8Bit(q_ERR_error_string(q_ERR_get_error(), NULL))
 
@@ -296,8 +299,20 @@ init_context:
     }
 
     // Add all our CAs to this store.
-    foreach (const QSslCertificate &caCertificate, q->caCertificates())
+    QList<QSslCertificate> expiredCerts;
+    foreach (const QSslCertificate &caCertificate, q->caCertificates()) {
+        // add expired certs later, so that the
+        // valid ones are used before the expired ones
+        if (! caCertificate.isValid()) {
+            expiredCerts.append(caCertificate);
+        } else {
+            q_X509_STORE_add_cert(ctx->cert_store, (X509 *)caCertificate.handle());
+        }
+    }
+    // now add the expired certs
+    foreach (const QSslCertificate &caCertificate, expiredCerts) {
         q_X509_STORE_add_cert(ctx->cert_store, (X509 *)caCertificate.handle());
+    }
 
     // Register a custom callback to get all verification errors.
     X509_STORE_set_verify_cb_func(ctx->cert_store, q_X509Callback);
@@ -398,19 +413,24 @@ void QSslSocketPrivate::deinitialize()
 /*!
     \internal
 
-    Declared static in QSslSocketPrivate, makes sure the SSL libraries have
-    been initialized.
+    Does the minimum amount of initialization to determine whether SSL
+    is supported or not.
 */
-bool QSslSocketPrivate::ensureInitialized()
+
+bool QSslSocketPrivate::supportsSsl()
+{
+    return ensureLibraryLoaded();
+}
+
+bool QSslSocketPrivate::ensureLibraryLoaded()
 {
     if (!q_resolveOpenSslSymbols())
         return false;
 
     // Check if the library itself needs to be initialized.
     QMutexLocker locker(openssl_locks()->initLock());
-    static int q_initialized = false;
-    if (!q_initialized) {
-        q_initialized = true;
+    if (!s_libraryLoaded) {
+        s_libraryLoaded = true;
 
         // Initialize OpenSSL.
         q_CRYPTO_set_id_callback(id_function);
@@ -447,10 +467,33 @@ bool QSslSocketPrivate::ensureInitialized()
             if (!attempts)
                 return false;
         }
-
-        resetDefaultCiphers();
-        setDefaultCaCertificates(systemCaCertificates());
     }
+    return true;
+}
+
+void QSslSocketPrivate::ensureCiphersAndCertsLoaded()
+{
+    if (s_loadedCiphersAndCerts)
+        return;
+    s_loadedCiphersAndCerts = true;
+
+    resetDefaultCiphers();
+    setDefaultCaCertificates(systemCaCertificates());
+}
+
+/*!
+    \internal
+
+    Declared static in QSslSocketPrivate, makes sure the SSL libraries have
+    been initialized.
+*/
+
+void QSslSocketPrivate::ensureInitialized()
+{
+    if (!supportsSsl())
+        return;
+
+    ensureCiphersAndCertsLoaded();
 
     //load symbols needed to receive certificates from system store
 #if defined(Q_OS_MAC)
@@ -481,7 +524,6 @@ bool QSslSocketPrivate::ensureInitialized()
         qWarning("could not load crypt32 library"); // should never happen
     }
 #endif
-    return true;
 }
 
 /*!
@@ -567,7 +609,7 @@ QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
                 if(!pc)
                     break;
                 QByteArray der((const char *)(pc->pbCertEncoded), static_cast<int>(pc->cbCertEncoded));
-                QSslCertificate cert(der,QSsl::Der);
+                QSslCertificate cert(der, QSsl::Der);
                 systemCerts.append(cert);
             }
             ptrCertCloseStore(hSystemStore, 0);
