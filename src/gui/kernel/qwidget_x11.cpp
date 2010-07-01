@@ -158,18 +158,52 @@ Qt::Orientation QMaemo5OrientationManager::toOrientation(const QString &nativeOr
 }
 
 QMaemo5OrientationManager::QMaemo5OrientationManager()
-    : QObject(QApplication::instance())
+    : QObject(QApplication::instance()), lastOrientation(Qt::Horizontal), lastSlideOut(false)
 {
     // connect to the orientation change signal
     QDBusConnection::systemBus().connect(QString(), QLatin1String(MCE_SIGNAL_PATH), QLatin1String(MCE_SIGNAL_IF),
             QLatin1String(MCE_DEVICE_ORIENTATION_SIG),
             this,
             SLOT(orientationChanged(QString)));
+
+    // connect to the keyboard slide in/out signal
+    QDBusConnection::systemBus().connect(QString(), QLatin1String("/org/freedesktop/Hal/devices/platform_slide"), QLatin1String("org.freedesktop.Hal.Device"),
+            QLatin1String("Condition"),
+            this,
+            SLOT(halConditionChanged(QString, QString)));
 }
 
 QMaemo5OrientationManager::~QMaemo5OrientationManager()
 {
     inst = 0;
+}
+
+void QMaemo5OrientationManager::halConditionChanged(const QString &action, const QString &what)
+{
+    if (action != QLatin1String("ButtonPressed") || what != QLatin1String("cover"))
+        return;
+
+    bool slideOut = slideOutState();
+
+    if (slideOut != lastSlideOut) {
+        lastSlideOut = slideOut;
+        applyOrientation();
+    }
+}
+
+bool QMaemo5OrientationManager::slideOutState()
+{
+    QDBusMessage msg = QDBusMessage::createMethodCall(QLatin1String("org.freedesktop.Hal"), QLatin1String("/org/freedesktop/Hal/devices/platform_slide"),
+                                                      QLatin1String("org.freedesktop.Hal.Device"), QLatin1String("GetProperty"));
+    msg << QString::fromLatin1("button.state.value");
+    QDBusMessage reply = QDBusConnection::systemBus().call(msg);
+
+    if (reply.type() == QDBusMessage::ErrorMessage) {
+        qWarning("Unable to retrieve keyboard slide status: %s", qPrintable(reply.errorMessage()));
+        return false;
+    } else {
+        return !reply.arguments().value(0).toBool();
+    }
 }
 
 void QMaemo5OrientationManager::enableDBus(bool doConnect)
@@ -189,6 +223,10 @@ void QMaemo5OrientationManager::enableDBus(bool doConnect)
         } else {
             lastOrientation = toOrientation(reply.arguments().value(0).toString());
         }
+
+        //query the current keyboard slide out state
+        lastSlideOut = slideOutState();
+
         applyOrientation();
     } else { // disconnect
         // disable the orientation sensor
@@ -226,8 +264,10 @@ void QMaemo5OrientationManager::applyOrientation(QWidget *w)
     }
 
     if (orientation == Qt::WA_Maemo5AutoOrientation) {
-        orientation = (lastOrientation == Qt::Vertical) ? Qt::WA_Maemo5PortraitOrientation
-                                                        : Qt::WA_Maemo5LandscapeOrientation;
+        if (!lastSlideOut && (lastOrientation == Qt::Vertical))
+            orientation = Qt::WA_Maemo5PortraitOrientation;
+        else
+            orientation = Qt::WA_Maemo5LandscapeOrientation;
     }
 
     if (orientation == Qt::WA_Maemo5PortraitOrientation) {
