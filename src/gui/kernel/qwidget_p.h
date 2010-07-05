@@ -996,6 +996,8 @@ inline QWidgetBackingStore *QWidgetPrivate::maybeBackingStore() const
 
 extern void maemo5CheckOrientation(QWidget *);
 
+class QDBusMessage;
+
 class QMaemo5OrientationManager : public QObject
 {
     Q_OBJECT
@@ -1009,17 +1011,20 @@ public:
 private slots:
     void orientationChanged(const QString &orientation);
     void windowDestroyed();
+    void halConditionChanged(const QString &action, const QString &what);
 
 private:
     static Qt::Orientation toOrientation(const QString &nativeOrientation);
 
     QMaemo5OrientationManager();
     void enableDBus(bool doConnect);
+    bool slideOutState();
     void applyOrientation();
 
     static QMaemo5OrientationManager *inst;
     QList<QPointer<QWidget> > windows;
     Qt::Orientation lastOrientation;
+    bool lastSlideOut;
 
     friend void maemo5CheckOrientation(QWidget *);
 };

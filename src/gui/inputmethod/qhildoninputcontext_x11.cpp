@@ -408,11 +408,13 @@ QString QHildonInputContext::language()
 }
 
 /*! \internal
- *  Resolves the focus for a widget inside a QGraphicsView.
- *  Returns the Widget really holding the focus in this case.
+ *  Resolves the focus for a widget inside a QGraphicsProxyWidget.
+ *  Returns that widget (holding the focus) or 0 otherwise.
  */
-QWidget *resolveFocusWidget(QWidget *w)
+QWidget *resolveFocusWidget(QWidget *testw)
 {
+    QWidget *w = testw;
+
 #ifndef QT_NO_GRAPHICSVIEW
     while (QGraphicsView *view = qobject_cast<QGraphicsView *>(w)) {
 
@@ -431,12 +433,12 @@ QWidget *resolveFocusWidget(QWidget *w)
     }
 #endif
 
-    return w;
+    return (w == testw) ? 0 : w;
 }
 
 QWidget *QHildonInputContext::focusWidget() const
 {
-    return realFocus ? realFocus : lastFocus;
+    return QInputContext::focusWidget() ? QInputContext::focusWidget() : lastFocus.data();
 }
 
 /*!\internal
@@ -446,8 +448,8 @@ void QHildonInputContext::reset()
 {
     qHimDebug() << "HIM: reset()";
 
-    if (realFocus)
-        sendHildonCommand(HILDON_IM_CLEAR, realFocus);
+    if (QInputContext::focusWidget())
+        sendHildonCommand(HILDON_IM_CLEAR, QInputContext::focusWidget());
 
     cancelPreedit();
     updateInputMethodHints();
@@ -468,26 +470,26 @@ void QHildonInputContext::setFocusWidget(QWidget *w)
     // it is also activated, which essentially steals our focus.
     // The same happens for the symbol picker.
     // This is a bug in the HIM, that we try to work around here.
-    lastFocus = realFocus;
+    lastFocus = QInputContext::focusWidget();
 
     // Another work around for the GraphicsView.
     // In case of a Widget inside a GraphicsViewProxyWidget we need to remember
     // that it had the focus
     realFocus = resolveFocusWidget(w);
 
-    updateInputMethodHints();
-    if(realFocus)
-        sendHildonCommand(HILDON_IM_SETCLIENT, realFocus);
-
     QInputContext::setFocusWidget(w);
+
+    updateInputMethodHints();
+    if(w)
+        sendHildonCommand(HILDON_IM_SETCLIENT, w);
 
     qHimDebug() << "HIM: setFocusWidget: " << w << " (real: " << realFocus << " / last: " << lastFocus << ")";
 }
 
 void QHildonInputContext::updateInputMethodHints()
 {
-    if (realFocus) {
-        Qt::InputMethodHints hints = realFocus->inputMethodHints();
+    if (QInputContext::focusWidget()) {
+        Qt::InputMethodHints hints = QInputContext::focusWidget()->inputMethodHints();
 
         // restrictions
         if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhDialableCharactersOnly) {
@@ -516,10 +518,12 @@ void QHildonInputContext::updateInputMethodHints()
 
         // multi-line support
         // TODO: this really needs to fixed in Qt
-        if (qobject_cast<QTextEdit *>(realFocus) || qobject_cast<QPlainTextEdit *>(realFocus))
+        QWidget *testmulti = realFocus ? realFocus.data() : QInputContext::focusWidget();
+
+        if (qobject_cast<QTextEdit *>(testmulti) || qobject_cast<QPlainTextEdit *>(testmulti))
             inputMode |= HILDON_GTK_INPUT_MODE_MULTILINE;
 
-        qHimDebug("Mapped hint: 0x%x to mode: 0x%x", int(hints), int(inputMode));
+        qHimDebug("HIM: Mapped hint: 0x%x to mode: 0x%x", int(hints), int(inputMode));
     } else {
         inputMode = 0;
     }
@@ -527,9 +531,9 @@ void QHildonInputContext::updateInputMethodHints()
 
 bool QHildonInputContext::filterEvent(const QEvent *event)
 {
-     QWidget *w = realFocus;
-     if (!w)
-         return false;
+    QWidget *w = QInputContext::focusWidget();
+    if (!w)
+        return false;
 
     switch (event->type()){
     case QEvent::RequestSoftwareInputPanel:{
@@ -538,7 +542,7 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
 
         // workaround for a very weird interaction between QLineEdit (which
         // changes its internal editing:yes/no state on focus out) and the
-        // Hildon fullscreen keyboard, which steals the focus from the
+        // Hildon fullscreen keyboard, whiccheckh steals the focus from the
         // application (NOT when it shows up, but as only soon as the user
         // clicks on any button within the keyboard)
         if (QLineEdit *le = qobject_cast<QLineEdit *>(w)) {
@@ -555,6 +559,7 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
         return filterKeyPress(w, static_cast<const QKeyEvent *>(event));
 
     default:
+        qWarning() << "Filter: " << event->type();
         break;
     }
     return QInputContext::filterEvent(event);
@@ -562,15 +567,19 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
 
 void QHildonInputContext::showSoftKeyboard()
 {
-    realFocus = resolveFocusWidget(QInputContext::focusWidget());
-    sendHildonCommand(HILDON_IM_SETNSHOW, realFocus);
+    QWidget *newFocus = resolveFocusWidget(QInputContext::focusWidget());
+    qWarning() << "old: " << realFocus << "  new: " << newFocus;
+    if (realFocus && (newFocus != realFocus)) {
+        cancelPreedit();
+        realFocus = newFocus;
+    }
+    sendHildonCommand(HILDON_IM_SETNSHOW, QInputContext::focusWidget());
 }
 
 //TODO
 void QHildonInputContext::update()
 {
     qHimDebug() << "HIM: update(): lastInternalChange =" << lastInternalChange;
-
     updateInputMethodHints();
 
     if (lastInternalChange) {
@@ -596,7 +605,7 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     const quint32 keycode = event->nativeScanCode();
     quint32 keysym= event->nativeVirtualKey();
     const int qtkeycode = event->key();
-    Qt::InputMethodHints hints = realFocus->inputMethodHints();
+    Qt::InputMethodHints hints = QInputContext::focusWidget()->inputMethodHints();
 
     qHimDebug("HIM: filterKeyPress Mask: %x state: %x options: %x keycode: %d keysym: %x QtKey: %x Text: \"%s\"",
               mask, state, options, keycode, keysym, qtkeycode, event->text().toUtf8().constData());
@@ -1201,6 +1210,8 @@ void QHildonInputContext::cancelPreedit()
 
     QInputMethodEvent e;
     QApplication::sendEvent(w, &e);
+    if (realFocus)
+        QApplication::sendEvent(realFocus, &e);
 }
 
 void QHildonInputContext::sendHildonCommand(HildonIMCommand cmd, QWidget *widget)
@@ -1268,7 +1279,7 @@ void QHildonInputContext::checkSentenceStart()
     if (!(options & HILDON_IM_AUTOCASE))
         return;
 
-    QWidget *w = focusWidget();
+    QWidget *w = QInputContext::focusWidget();
     if (!w)
         return;
 
@@ -1517,9 +1528,9 @@ void QHildonInputContext::setMaskState(int *mask,
     {
         /* Pressing the key while already locked clears the state */
         if (lock_mask & HILDON_IM_SHIFT_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_SHIFT_UNLOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_SHIFT_UNLOCKED, QInputContext::focusWidget());
         else if (lock_mask & HILDON_IM_LEVEL_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_MOD_UNLOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_MOD_UNLOCKED, QInputContext::focusWidget());
 
         *mask &= ~(lock_mask | sticky_mask);
     } else if (*mask & sticky_mask) {
@@ -1527,9 +1538,9 @@ void QHildonInputContext::setMaskState(int *mask,
         *mask |= lock_mask;
 
         if (lock_mask & HILDON_IM_SHIFT_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_SHIFT_LOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_SHIFT_LOCKED, QInputContext::focusWidget());
         else if (lock_mask & HILDON_IM_LEVEL_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_MOD_LOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_MOD_LOCKED, QInputContext::focusWidget());
     }else if (was_press_and_release){
         /* Pressing the key for the first time stickies the key for one character,
          * but only if no characters were entered while holding the key down */

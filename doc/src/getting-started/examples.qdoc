@@ -957,5 +957,6 @@
     \o \l{maemo5/textedit}{Maemo 5 Text Edit Example}\raisedaster
     \o \l{maemo5/webview}{Maemo 5 QWebView Example}\raisedaster
     \o \l{maemo5/graphicswebview}{Maemo 5 QGraphicsWebView Example}\raisedaster
+    \o \l{maemo5/gesture}{Maemo 5 Gesture Example}\raisedaster
     \endlist
 */
