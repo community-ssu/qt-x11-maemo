@@ -997,7 +997,7 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
         // The reason for this is that a lot of code that relies on custom item delegates will look odd having
         // a gradient on the branch but a flat shaded color on the item itself.
         QCommonStyle::drawPrimitive(element, option, painter, widget);
-        if (!option->state & State_Selected) {
+        if (!option->state & State_Selected || option->rect.size().isEmpty()) {
             break;
         } else {
             if (const QAbstractItemView *view = qobject_cast<const QAbstractItemView*>(widget)) {
