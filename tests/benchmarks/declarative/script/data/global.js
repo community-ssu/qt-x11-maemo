@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -37,60 +37,18 @@
 **
 ** $QT_END_LICENSE$
 **
-** WARNING:
-**      A separate license from Unisys may be required to use the gif
-**      reader. See http://www.unisys.com/about__unisys/lzw/
-**      for information from Unisys
-**
 ****************************************************************************/
 
-#ifndef QGIFHANDLER_H
-#define QGIFHANDLER_H
+var incVar = 1;
+var total;
 
-#include <QtGui/qimageiohandler.h>
-#include <QtGui/qimage.h>
-#include <QtCore/qbytearray.h>
+function doSomething() {
+    for (var i = 0; i < 10000; ++i)
+        Math.sin(90);
+}
 
-QT_BEGIN_NAMESPACE
-
-class QGIFFormat;
-class QGifHandler : public QImageIOHandler
-{
-public:
-    QGifHandler();
-    ~QGifHandler();
-
-    bool canRead() const;
-    bool read(QImage *image);
-    bool write(const QImage &image);
-
-    QByteArray name() const;
-
-    static bool canRead(QIODevice *device);
-
-    QVariant option(ImageOption option) const;
-    void setOption(ImageOption option, const QVariant &value);
-    bool supportsOption(ImageOption option) const;
-
-    int imageCount() const;
-    int loopCount() const;
-    int nextImageDelay() const;
-    int currentImageNumber() const;
-
-private:
-    bool imageIsComing() const;
-    QGIFFormat *gifFormat;
-    QString fileName;
-    mutable QByteArray buffer;
-    mutable QImage lastImage;
-
-    mutable int nextDelay;
-    mutable int loopCnt;
-    int frameNumber;
-    mutable QVector<QSize> imageSizes;
-    mutable bool scanIsCached;
-};
-
-QT_END_NAMESPACE
-
-#endif // QGIFHANDLER_H
+function doIncrement() {
+    total = 0;
+    for (var i = 0; i < 100000; ++i)
+        total += incVar;
+}

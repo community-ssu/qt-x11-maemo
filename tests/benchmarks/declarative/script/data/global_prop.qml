@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -39,40 +39,15 @@
 **
 ****************************************************************************/
 
-#ifndef QTIFFHANDLER_H
-#define QTIFFHANDLER_H
+import Qt 4.7
+import "global.js" as Program
 
-#include <QtGui/qimageiohandler.h>
+Rectangle {
+    width: 200; height: 200
 
-QT_BEGIN_NAMESPACE
+    signal triggered
+    signal incrementTriggered
 
-class QTiffHandler : public QImageIOHandler
-{
-public:
-    QTiffHandler();
-
-    bool canRead() const;
-    bool read(QImage *image);
-    bool write(const QImage &image);
-
-    QByteArray name() const;
-
-    static bool canRead(QIODevice *device);
-
-    QVariant option(ImageOption option) const;
-    void setOption(ImageOption option, const QVariant &value);
-    bool supportsOption(ImageOption option) const;
-
-    enum Compression {
-        NoCompression = 0,
-        LzwCompression = 1
-    };
-private:
-    void convert32BitOrder(void *buffer, int width);
-    void convert32BitOrderBigEndian(void *buffer, int width);
-    int compression;
-};
-
-QT_END_NAMESPACE
-
-#endif // QTIFFHANDLER_H
+    onTriggered: Program.doSomething();
+    onIncrementTriggered: Program.doIncrement();
+}

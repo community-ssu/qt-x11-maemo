@@ -269,9 +269,9 @@ public:
 
     } *symbian_menubar;
     static int symbianCommands(int command);
+#endif
 #ifdef QT_SOFTKEYS_ENABLED
     QAction *menuBarAction;
-#endif
 #endif
 #ifdef Q_WS_MAEMO_5
     static void maemoResetApplicationMenuAtom(QWidget *w);

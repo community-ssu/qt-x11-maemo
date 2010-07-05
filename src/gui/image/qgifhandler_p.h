@@ -37,23 +37,28 @@
 **
 ** $QT_END_LICENSE$
 **
+** WARNING:
+**      A separate license from Unisys may be required to use the gif
+**      reader. See http://www.unisys.com/about__unisys/lzw/
+**      for information from Unisys
+**
 ****************************************************************************/
 
-#ifndef QJPEGHANDLER_H
-#define QJPEGHANDLER_H
+#ifndef QGIFHANDLER_P_H
+#define QGIFHANDLER_P_H
 
 #include <QtGui/qimageiohandler.h>
-#include <QtCore/QSize>
-#include <QtCore/QRect>
+#include <QtGui/qimage.h>
+#include <QtCore/qbytearray.h>
 
 QT_BEGIN_NAMESPACE
 
-class QJpegHandlerPrivate;
-class QJpegHandler : public QImageIOHandler
+class QGIFFormat;
+class QGifHandler : public QImageIOHandler
 {
 public:
-    QJpegHandler();
-    ~QJpegHandler();
+    QGifHandler();
+    ~QGifHandler();
 
     bool canRead() const;
     bool read(QImage *image);
@@ -67,10 +72,25 @@ public:
     void setOption(ImageOption option, const QVariant &value);
     bool supportsOption(ImageOption option) const;
 
+    int imageCount() const;
+    int loopCount() const;
+    int nextImageDelay() const;
+    int currentImageNumber() const;
+
 private:
-    QJpegHandlerPrivate *d;
+    bool imageIsComing() const;
+    QGIFFormat *gifFormat;
+    QString fileName;
+    mutable QByteArray buffer;
+    mutable QImage lastImage;
+
+    mutable int nextDelay;
+    mutable int loopCnt;
+    int frameNumber;
+    mutable QVector<QSize> imageSizes;
+    mutable bool scanIsCached;
 };
 
 QT_END_NAMESPACE
 
-#endif // QJPEGHANDLER_H
+#endif // QGIFHANDLER_P_H

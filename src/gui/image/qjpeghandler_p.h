@@ -39,45 +39,38 @@
 **
 ****************************************************************************/
 
-#ifndef QMNGHANDLER_H
-#define QMNGHANDLER_H
+#ifndef QJPEGHANDLER_P_H
+#define QJPEGHANDLER_P_H
 
-#include <QtCore/qscopedpointer.h>
 #include <QtGui/qimageiohandler.h>
+#include <QtCore/QSize>
+#include <QtCore/QRect>
 
 QT_BEGIN_NAMESPACE
 
-class QImage;
-class QByteArray;
-class QIODevice;
-class QVariant;
-class QMngHandlerPrivate;
-
-class QMngHandler : public QImageIOHandler
+class QJpegHandlerPrivate;
+class QJpegHandler : public QImageIOHandler
 {
-    public:
-    QMngHandler();
-    ~QMngHandler();
-    virtual bool canRead() const;
-    virtual QByteArray name() const;
-    virtual bool read(QImage *image);
-    virtual bool write(const QImage &image);
-    virtual int currentImageNumber() const;
-    virtual int imageCount() const;
-    virtual bool jumpToImage(int imageNumber);
-    virtual bool jumpToNextImage();
-    virtual int loopCount() const;
-    virtual int nextImageDelay() const;
-    static bool canRead(QIODevice *device);
-    virtual QVariant option(ImageOption option) const;
-    virtual void setOption(ImageOption option, const QVariant & value);
-    virtual bool supportsOption(ImageOption option) const;
+public:
+    QJpegHandler();
+    ~QJpegHandler();
 
-    private:
-    Q_DECLARE_PRIVATE(QMngHandler)
-    QScopedPointer<QMngHandlerPrivate> d_ptr;
+    bool canRead() const;
+    bool read(QImage *image);
+    bool write(const QImage &image);
+
+    QByteArray name() const;
+
+    static bool canRead(QIODevice *device);
+
+    QVariant option(ImageOption option) const;
+    void setOption(ImageOption option, const QVariant &value);
+    bool supportsOption(ImageOption option) const;
+
+private:
+    QJpegHandlerPrivate *d;
 };
 
 QT_END_NAMESPACE
 
-#endif // QMNGHANDLER_H
+#endif // QJPEGHANDLER_P_H
