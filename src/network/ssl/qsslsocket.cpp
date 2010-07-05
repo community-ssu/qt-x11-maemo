@@ -1702,7 +1702,8 @@ void QSslSocket::connectToHostImplementation(const QString &hostName, quint16 po
     }
 
 #ifdef Q_WS_MAEMO_5
-    QMaemoInternetConnectivity::connectionRequest();
+    if (QMaemoInternetConnectivity::isAutoConnectEnabled())
+        QMaemoInternetConnectivity::connectionRequest();
 #endif
 
 #ifndef QT_NO_NETWORKPROXY

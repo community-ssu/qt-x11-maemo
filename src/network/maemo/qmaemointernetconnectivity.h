@@ -58,6 +58,9 @@ public:
     static QString currentAPName(); 
     static void connectionRequest();
     static bool isHttpProxyUsed();
+
+    static bool isAutoConnectEnabled();
+    static void setAutoConnectEnabled(bool enabled);
 };
 
 QT_END_NAMESPACE
