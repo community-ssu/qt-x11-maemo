@@ -51,6 +51,8 @@
 #include <QtGui/qlayout.h>
 #include <QtWebKit/qwebview.h>
 
+#include <QApplication>
+
 class ExampleWidget : public QWidget
 {
     Q_OBJECT
@@ -78,7 +80,13 @@ public:
 //! [0]
         suppressor = new QWebViewSelectionSuppressor(view);
 //! [0]
-        view->setHtml(QLatin1String(exampleText));
+        QString url = QApplication::arguments().value(1);
+        if (url.isEmpty()) {
+            view->setHtml(QLatin1String(exampleText));
+        } else {
+            view->settings()->setAttribute(QWebSettings::PluginsEnabled, true);
+            view->load(url);
+        }
 
         layout->addWidget(view);
 
