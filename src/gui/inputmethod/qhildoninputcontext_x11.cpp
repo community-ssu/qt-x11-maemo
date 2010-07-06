@@ -559,7 +559,6 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
         return filterKeyPress(w, static_cast<const QKeyEvent *>(event));
 
     default:
-        qWarning() << "Filter: " << event->type();
         break;
     }
     return QInputContext::filterEvent(event);
@@ -567,16 +566,18 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
 
 void QHildonInputContext::showSoftKeyboard()
 {
+    // Hacky fix for the misbehaving QGraphicsProxyWidget:
+    // we do not get any notification if the input focus changes to another
+    // widget inside a single QGraphicsProxyWidget
     QWidget *newFocus = resolveFocusWidget(QInputContext::focusWidget());
-    qWarning() << "old: " << realFocus << "  new: " << newFocus;
     if (realFocus && (newFocus != realFocus)) {
         cancelPreedit();
         realFocus = newFocus;
+        updateInputMethodHints();
     }
     sendHildonCommand(HILDON_IM_SETNSHOW, QInputContext::focusWidget());
 }
 
-//TODO
 void QHildonInputContext::update()
 {
     qHimDebug() << "HIM: update(): lastInternalChange =" << lastInternalChange;
@@ -891,29 +892,25 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     }
 
     // check for input mode restrictions
-    if (!commitString.isEmpty() && hints) {
+    if (!commitString.isEmpty() && (hints & Qt::ImhExclusiveInputMask)) {
         for (int i = 0; i < commitString.length(); ++i) {
             QChar c = commitString.at(i);
-            bool isnumeric = c.isDigit() || c == QLatin1Char('-');
-            bool istele = c.isDigit() || QString::fromLatin1("#*+pP").contains(c, Qt::CaseSensitive);
-            bool isemail = c.isLetterOrNumber() || QString::fromLatin1("!#$%&'*+-/=?^_`{|}~@.").contains(c, Qt::CaseSensitive);
-            bool isurl = c.isLetterOrNumber() || QString::fromLatin1("$-_.+!*'(),").contains(c, Qt::CaseSensitive);
-            bool isFormattedNumber = c.isDigit() || QString::fromLatin1("-.,").contains(c, Qt::CaseSensitive);
-
             bool ok = false;
-            ok |= ((hints & Qt::ImhFormattedNumbersOnly) && isFormattedNumber);
-            ok |= ((hints & Qt::ImhDigitsOnly) && isnumeric);
-            ok |= ((hints & Qt::ImhDialableCharactersOnly) && istele);
-            ok |= ((hints & Qt::ImhEmailCharactersOnly) && isemail);
-            ok |= ((hints & Qt::ImhUrlCharactersOnly) && isurl);
 
-            if ((hints & Qt::ImhUppercaseOnly) && c.isLetter()) {
-                ok = true;
-                commitString = commitString.toUpper();
-            } else if ((hints & Qt::ImhLowercaseOnly) && c.isLetter()) {
-                ok = true;
-                commitString = commitString.toLower();
-            }
+            if (hints & Qt::ImhDigitsOnly)
+                ok |= c.isDigit() || c == QLatin1Char('-');
+            if (hints & Qt::ImhFormattedNumbersOnly)
+                ok |= c.isDigit() || QString::fromLatin1("-.,").contains(c, Qt::CaseSensitive);
+            if (hints & Qt::ImhUppercaseOnly)
+                ok |= c.isLetter() && c.isUpper();
+            if (hints & Qt::ImhLowercaseOnly)
+                ok |= c.isLetter() && c.isLower();
+            if (hints & Qt::ImhDialableCharactersOnly)
+                ok |= c.isDigit() || QString::fromLatin1("#*+pP").contains(c, Qt::CaseSensitive);
+            if (hints & Qt::ImhEmailCharactersOnly)
+                ok |= c.isLetterOrNumber() || QString::fromLatin1("!#$%&'*+-/=?^_`{|}~@.").contains(c, Qt::CaseSensitive);
+            if (hints & Qt::ImhUrlCharactersOnly)
+                ok |= c.isLetterOrNumber() || QString::fromLatin1("$-_.+!*'(),").contains(c, Qt::CaseSensitive);
 
             if (!ok) {
                 cancelPreedit();
