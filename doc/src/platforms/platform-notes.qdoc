@@ -624,6 +624,12 @@
     QTextEdit, QPlainTextEdit, QProgressBar, QAbstractItemView (and derived
     classes).
 
+    \o Qt's built-in dialogs are deprecated since they do not follow the Maemo 5
+    style guide. For QFileDialog, only the static functions are supported, since
+    they use the native, style guide compliant Maemo file dialogs. Maemo 5 pickers
+    (see QMaemo5AbstractPickSelector) should be used for letting the user choose
+    values. Instead of QFontDialog, a QFontComboBox can be used.
+
     \o Qt for Maemo 5 ships with a separate library (QtMaemo5) which
     implements all the special Hildon UI elements that could not be mapped
     to already existing Qt widgets: QMaemo5ValueButton,
