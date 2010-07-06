@@ -331,9 +331,9 @@ void QMaemo5StylePrivate::setupGtkFileChooser(GtkWidget* gtkFileChooser, QWidget
                 if (extension.compare(QLatin1String("*")) == 0)
                     qWarning("'*' is not a valid extension for a save dialog");
                 ext_names[i]= (char*) malloc(name.count()+1);
-                memcpy(ext_names[i], qPrintable(name), name.count());
+                memcpy(ext_names[i], qPrintable(name), name.count()+1);
                 extensions[i]= (char*) malloc(extension.count()+1);
-                memcpy(extensions[i], qPrintable(extension), extension.count());
+                memcpy(extensions[i], qPrintable(extension), extension.count()+1);
             }
             ext_names[Nfilters] = NULL;
             extensions[Nfilters] = NULL;
