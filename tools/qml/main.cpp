@@ -335,6 +335,10 @@ int main(int argc, char ** argv)
             usage();
         }
     }
+#ifdef Q_WS_MAEMO_5
+    if(fullScreen)
+       frameless=false;
+#endif
 
     QTranslator qmlTranslator;
     if (!translationFile.isEmpty()) {
