@@ -684,21 +684,6 @@
        QRadioButton).  We recommend using local style sheets on specific
        widgets only, instead of setting one via
        QApplication::setStyleSheet().
+    \o Qt3Support is not available.
     \endlist
-
-    In addition, the PR 1.1 firmware release for the N900 contains several
-    known issues that will be resolved with the next (PR 1.2) firmware
-    release.
-
-    \list
-    \o Hildon Banners and Notifications will display with the wrong text color.
-    \o Qt::WA_Maemo5AutoOrientation is not supported.
-    \o There are styling issues with QComboBox.
-    \endlist
-
-    If you still want to test Qt 4.6 on PR 1.1, you have to use the
-    unsupported \bold libqt4-maemo5- prefixed packages from the Maemo \bold
-    extras-devel repository which will install to \bold /opt.
-    On PR 1.2 however, Qt 4.6 is already a part of the firmware and is
-    installed in \bold /usr.
 */
