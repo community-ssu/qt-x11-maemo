@@ -61,6 +61,73 @@ static const Properties sliderProperties = Properties()
             << Property("orientation", Qt::Horizontal)
             << Property("value", 42);
 
+class InputHintsCreator : public QObject {
+    Q_OBJECT
+public:
+    static void createWidget(QMainWindow *parent, const Properties &)
+    {
+        QWidget *topLevel = newToplevel(parent);
+
+        QVBoxLayout *layout = new QVBoxLayout(topLevel);
+
+        QListWidget *list = new QListWidget;
+        QLineEdit *le = new QLineEdit;
+
+        list->setFocusPolicy(Qt::NoFocus);
+        new InputHintsCreator(list, le);
+
+        insertItem(list, "Hidden Text", Qt::ImhHiddenText);
+        insertItem(list, "No Auto Uppercase", Qt::ImhNoAutoUppercase);
+        insertItem(list, "Prefer Numbers", Qt::ImhPreferNumbers);
+        insertItem(list, "Prefer Uppercase", Qt::ImhPreferUppercase);
+        insertItem(list, "Prefer Lowercase", Qt::ImhPreferLowercase);
+        insertItem(list, "No Predicitive Text", Qt::ImhNoPredictiveText);
+        insertItem(list, "Digits only", Qt::ImhDigitsOnly);
+        insertItem(list, "Numbers only", Qt::ImhFormattedNumbersOnly);
+        insertItem(list, "Uppercase only", Qt::ImhUppercaseOnly);
+        insertItem(list, "Lowercase only", Qt::ImhLowercaseOnly);
+        insertItem(list, "Dialable only", Qt::ImhDialableCharactersOnly);
+        insertItem(list, "eMail only", Qt::ImhEmailCharactersOnly);
+        insertItem(list, "URL only", Qt::ImhUrlCharactersOnly);
+
+        layout->addWidget(list);
+        layout->addWidget(le);
+
+        topLevel->setWindowTitle("QLineEdit with InputMethodHints");
+        topLevel->show();
+    }
+    static void insertItem(QListWidget *list, const char *text, int hints)
+    {
+        QListWidgetItem *lwi = new QListWidgetItem(QLatin1String(text), list);
+        lwi->setData(Qt::UserRole, hints);
+        lwi->setFlags(lwi->flags() | Qt::ItemIsUserCheckable);
+        lwi->setCheckState(Qt::Unchecked);
+    }
+
+    InputHintsCreator(QListWidget *list, QLineEdit *le)
+        : m_listwidget(list), m_lineedit(le)
+    {
+        connect(list, SIGNAL(itemChanged(QListWidgetItem *)), this, SLOT(itemChanged(QListWidgetItem *)));
+    }
+
+private slots:
+    void itemChanged(QListWidgetItem *item)
+    {
+        if (item) {
+            Qt::InputMethodHints hints = m_lineedit->inputMethodHints();
+            Qt::InputMethodHint flag = static_cast<Qt::InputMethodHint>(item->data(Qt::UserRole).toInt());
+            if (item->checkState() == Qt::Checked)
+                hints |= flag;
+            else
+                hints &= ~flag;
+            m_lineedit->setInputMethodHints(hints);
+        }
+    }
+private:
+    QListWidget *m_listwidget;
+    QLineEdit *m_lineedit;
+};
+
 const PreviewWidget inputWidgets[] =
 {
     { "QComboBox (r/o)",    WidgetCreator<QComboBox, ModelSetter<QComboBox> >::createWidget, 0 },
@@ -68,6 +135,7 @@ const PreviewWidget inputWidgets[] =
     { "QFontComboBox",      WidgetCreator<QFontComboBox>::createWidget, 0 },
     { "QLineEdit",          WidgetCreator<QLineEdit>::createWidget, 0 },
     { "QLineEdit (Password)", WidgetCreator<QLineEdit>::createWidget, &passwordEcho },
+    { "QLineEdit with Input Hints", InputHintsCreator::createWidget, 0 },
     { "QTextEdit",          WidgetCreator<QTextEdit>::createWidget, &plainTextProperties },
     { "QPlainTextEdit",     WidgetCreator<QPlainTextEdit>::createWidget, &plainTextProperties },
     { "QSpinBox",           WidgetCreator<QSpinBox>::createWidget, &valueProperties },
@@ -80,4 +148,4 @@ const PreviewWidget inputWidgets[] =
     { 0, 0, 0 }
 };
 
-
+#include "input.moc"
