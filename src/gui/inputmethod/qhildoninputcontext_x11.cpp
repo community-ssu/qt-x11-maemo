@@ -499,7 +499,8 @@ void QHildonInputContext::updateInputMethodHints()
             inputMode = HILDON_GTK_INPUT_MODE_ALPHA;
         } else if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhDigitsOnly) {
             inputMode = HILDON_GTK_INPUT_MODE_NUMERIC;
-        } else if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhFormattedNumbersOnly) {
+        } else if (((hints & Qt::ImhExclusiveInputMask) == Qt::ImhFormattedNumbersOnly) ||
+                   ((hints & Qt::ImhExclusiveInputMask) == (Qt::ImhFormattedNumbersOnly | Qt::ImhDigitsOnly))) {
             inputMode = HILDON_GTK_INPUT_MODE_NUMERIC | HILDON_GTK_INPUT_MODE_SPECIAL;
         } else {
             inputMode = HILDON_GTK_INPUT_MODE_FULL;
@@ -684,44 +685,39 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     }
 
     // Invert the level key when in tele or special mode
-    bool should_invert = false;
+    bool invertLevelKey = false;
     if ((inputMode & HILDON_GTK_INPUT_MODE_FULL) != HILDON_GTK_INPUT_MODE_FULL)
-        should_invert = (inputMode & HILDON_GTK_INPUT_MODE_ALPHA) == 0  &&
-                        (inputMode & HILDON_GTK_INPUT_MODE_HEXA)  == 0  &&
-                        ((inputMode & HILDON_GTK_INPUT_MODE_TELE) ||
-                        (inputMode & HILDON_GTK_INPUT_MODE_SPECIAL));
+        invertLevelKey = (inputMode & HILDON_GTK_INPUT_MODE_ALPHA) == 0  &&
+                         (inputMode & HILDON_GTK_INPUT_MODE_HEXA)  == 0  &&
+                         ((inputMode & HILDON_GTK_INPUT_MODE_TELE) ||
+                         (inputMode & HILDON_GTK_INPUT_MODE_SPECIAL));
+    bool isShifted = (mask & (HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK)) || (state & STATE_SHIFT_MASK);
+    bool isLeveled = (mask & (HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK)) || (state & STATE_LEVEL_MASK);
 
     /* 5. When the level key is in sticky or locked state, translate the
      *    keyboard state as if that level key was being held down.
      */
-    if ((mask & (HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK)) ||
-        (state & STATE_LEVEL_MASK)) {
+    if (isLeveled) {
         commitString = translateKeycodeAndState(keycode, STATE_LEVEL_MASK, keysym);
     }
-
     /* If the input mode is strictly numeric and the digits are level
      *  shifted on the layout, it's not necessary for the level key to
      *  be pressed at all.
      */
-    if (((options & HILDON_IM_AUTOLEVEL_NUMERIC) &&
-            ((inputMode & HILDON_GTK_INPUT_MODE_FULL) == HILDON_GTK_INPUT_MODE_NUMERIC))
-            || should_invert) {
+    else if (invertLevelKey || ((options & HILDON_IM_AUTOLEVEL_NUMERIC) &&
+        ((inputMode & HILDON_GTK_INPUT_MODE_FULL) == HILDON_GTK_INPUT_MODE_NUMERIC))) {
 
         /* the level key is inverted
         when level or shift key is pressed use normal level
         otherwise use numeric level*/
-        if (!((state & STATE_LEVEL_MASK) || (state & STATE_SHIFT_MASK)
-            ||(mask & (HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK))
-            ||(mask & (HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK)))) {
+        if (!isShifted && !isLeveled) {
             KeySym ks = getKeySymForLevel(keycode, NUMERIC_LEVEL);
             QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
             if (!string.isEmpty()) {
                 keysym = ks;
                 commitString = string;
             }
-        }
-        else
-        {
+        } else {
             KeySym ks = getKeySymForLevel(keycode, BASE_LEVEL);
             QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
             if (!string.isEmpty()) {
@@ -745,7 +741,7 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
             XConvertCase(ks, &lower, &upper);
 
             if (string.at(0).isPrint()) {
-                if ((mask & (HILDON_IM_SHIFT_LOCK_MASK | HILDON_IM_SHIFT_STICKY_MASK)) || (state & STATE_SHIFT_MASK)) {
+                if (isShifted) {
                     commitString = string.toUpper();
                     keysym = upper;
                 } else {
@@ -755,32 +751,31 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
             }
         }
     }
-    //6. Shift lock or holding the shift down forces uppercase, ignoring autocap
-    if ((mask & (HILDON_IM_SHIFT_LOCK_MASK | HILDON_IM_SHIFT_STICKY_MASK )) ||
-        (state & STATE_SHIFT_MASK)){
+    // 6. Shift lock or holding the shift down forces uppercase, ignoring autocap
+    else if (isShifted) {
         commitString = translateKeycodeAndState(keycode, STATE_SHIFT_MASK, keysym);
     }
 
     /* Hardware keyboard autocapitalization  */
     if (autoUpper && (inputMode & HILDON_GTK_INPUT_MODE_AUTOCAP))
     {
-        qHimDebug() << "AutoCAP";
+        qHimDebug() << "HIM: Auto-cap";
         QChar currentChar;
         KeySym lower = NoSymbol;
         KeySym upper = NoSymbol;
 
-        if (commitString.isEmpty()){
+        if (commitString.isEmpty()) {
             QString ks = QKeyMapperPrivate::maemo5TranslateKeySym(keysym);
             if (!ks.isEmpty())
                 currentChar = ks.at(0);
-        }else{
+        } else {
             currentChar = commitString.at(0);
         }
 
         XConvertCase(keysym, &lower, &upper);
 
-        if (currentChar.isPrint()){
-            if (state & STATE_SHIFT_MASK){
+        if (currentChar.isPrint()) {
+            if (state & STATE_SHIFT_MASK) {
                 currentChar = currentChar.toLower();
                 keysym = lower;
             } else {
