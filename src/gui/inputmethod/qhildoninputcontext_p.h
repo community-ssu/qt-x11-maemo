@@ -106,7 +106,6 @@ private:
     void checkSentenceStart();
     void commitPreeditBuffer();
     void sendSurrounding(bool sendAllContents = false);
-    void inputModeChanged();
     void sendInputMode();
     void setClientCursorLocation(bool offsetIsRelative, int cursorOffset);
     void setCommitMode(HildonIMCommitMode mode, bool clearPreEdit = true);
