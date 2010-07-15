@@ -55,6 +55,8 @@
 #include <QDeclarativeView>
 #include <QStyle>
 #include <QInputContext>
+#include <private/qapplication_p.h>
+#include <private/qtextcontrol_p.h>
 
 #ifdef Q_OS_SYMBIAN
 // In Symbian OS test data is located in applications private dir
@@ -94,6 +96,7 @@ private slots:
     void delegateLoading();
     void navigation();
     void readOnly();
+    void copyAndPaste();
     void openInputPanelOnClick();
     void openInputPanelOnFocus();
     void geometrySignals();
@@ -206,7 +209,7 @@ void tst_qdeclarativetextedit::width()
         QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit*>(texteditComponent.create());
 
         QVERIFY(textEditObject != 0);
-        QCOMPARE(textEditObject->width(), 1.);//+1 for cursor
+        QCOMPARE(textEditObject->width(), 0.0);
     }
 
     for (int i = 0; i < standard.size(); i++)
@@ -222,7 +225,7 @@ void tst_qdeclarativetextedit::width()
         QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit*>(texteditComponent.create());
 
         QVERIFY(textEditObject != 0);
-        QCOMPARE(textEditObject->width(), qreal(metricWidth + 1 + 3));//+3 is the current way of accounting for space between cursor and last character.
+        QCOMPARE(textEditObject->width(), qreal(metricWidth));
     }
 
     for (int i = 0; i < richText.size(); i++)
@@ -239,7 +242,7 @@ void tst_qdeclarativetextedit::width()
         QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit*>(texteditComponent.create());
 
         QVERIFY(textEditObject != 0);
-        QCOMPARE(textEditObject->width(), qreal(documentWidth + 1 + 3));
+        QCOMPARE(textEditObject->width(), qreal(documentWidth));
     }
 }
 
@@ -353,7 +356,9 @@ void tst_qdeclarativetextedit::alignments()
 
 #ifdef Q_WS_X11
     // Font-specific, but not likely platform-specific, so only test on one platform
-    QCOMPARE(actual,expect);
+    if (QApplicationPrivate::graphics_system_name == "raster" || QApplicationPrivate::graphics_system_name == "") {
+        QCOMPARE(actual,expect);
+    }
 #endif
 }
 
@@ -489,6 +494,23 @@ void tst_qdeclarativetextedit::font()
 
 void tst_qdeclarativetextedit::color()
 {
+    //test initial color
+    {
+        QString componentStr = "import Qt 4.7\nTextEdit { text: \"Hello World\" }";
+        QDeclarativeComponent texteditComponent(&engine);
+        texteditComponent.setData(componentStr.toLatin1(), QUrl());
+        QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit*>(texteditComponent.create());
+
+        QDeclarativeTextEditPrivate *textEditPrivate = static_cast<QDeclarativeTextEditPrivate*>(QDeclarativeItemPrivate::get(textEditObject));
+
+        QVERIFY(textEditObject);
+        QVERIFY(textEditPrivate);
+        QVERIFY(textEditPrivate->control);
+
+        QPalette pal = textEditPrivate->control->palette();
+        QCOMPARE(textEditPrivate->color, QColor("black"));
+        QCOMPARE(textEditPrivate->color, pal.color(QPalette::Text));
+    }
     //test normal
     for (int i = 0; i < colorStrings.size(); i++)
     { 
@@ -819,6 +841,40 @@ void tst_qdeclarativetextedit::navigation()
     QVERIFY(input->hasFocus() == false);
     simulateKey(canvas, Qt::Key_Left);
     QVERIFY(input->hasFocus() == true);
+}
+
+void tst_qdeclarativetextedit::copyAndPaste() {
+#ifndef QT_NO_CLIPBOARD
+    QString componentStr = "import Qt 4.7\nTextEdit { text: \"Hello world!\" }";
+    QDeclarativeComponent textEditComponent(&engine);
+    textEditComponent.setData(componentStr.toLatin1(), QUrl());
+    QDeclarativeTextEdit *textEdit = qobject_cast<QDeclarativeTextEdit*>(textEditComponent.create());
+    QVERIFY(textEdit != 0);
+
+    // copy and paste
+    QCOMPARE(textEdit->text().length(), 12);
+    textEdit->select(0, textEdit->text().length());;
+    textEdit->copy();
+    QCOMPARE(textEdit->selectedText(), QString("Hello world!"));
+    QCOMPARE(textEdit->selectedText().length(), 12);
+    textEdit->setCursorPosition(0);
+    textEdit->paste();
+    QCOMPARE(textEdit->text(), QString("Hello world!Hello world!"));
+    QCOMPARE(textEdit->text().length(), 24);
+
+    // select word
+    textEdit->setCursorPosition(0);
+    textEdit->selectWord();
+    QCOMPARE(textEdit->selectedText(), QString("Hello"));
+
+    // select all and cut
+    textEdit->selectAll();
+    textEdit->cut();
+    QCOMPARE(textEdit->text().length(), 0);
+    textEdit->paste();
+    QCOMPARE(textEdit->text(), QString("Hello world!Hello world!"));
+    QCOMPARE(textEdit->text().length(), 24);
+#endif
 }
 
 void tst_qdeclarativetextedit::readOnly()

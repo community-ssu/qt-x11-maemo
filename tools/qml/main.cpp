@@ -55,6 +55,8 @@ QT_USE_NAMESPACE
 
 QtMsgHandler systemMsgOutput = 0;
 
+
+
 #if defined (Q_OS_SYMBIAN)
 #include <unistd.h>
 #include <sys/types.h>
@@ -200,6 +202,8 @@ int main(int argc, char ** argv)
     app.setOrganizationName("Nokia");
     app.setOrganizationDomain("nokia.com");
 
+
+    
     QDeclarativeViewer::registerTypes();
     QDeclarativeTester::registerTypes();
 
