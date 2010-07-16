@@ -354,6 +354,7 @@ static const char * x11_atomnames = {
     "_HILDON_IM_INPUT_MODE\0"
     "_HILDON_IM_PREEDIT_COMMITTED\0"
     "_HILDON_IM_PREEDIT_COMMITTED_CONTENT\0"
+    "_HILDON_IM_LONG_PRESS_SETTINGS\0"
 #endif
 
     // XEMBED
