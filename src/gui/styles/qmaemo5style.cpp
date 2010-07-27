@@ -867,7 +867,7 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
 
         if (gtkButton) {
             gtkPainter.paintBox(gtkButton, "button", option->rect, state, shadow,
-                                gtkButton->style, QString());
+                                gtkButton->style, QString(), 70);
         }
         break;
     }
@@ -1487,7 +1487,7 @@ void QMaemo5Style::drawControl(ControlElement element,
                     }
                     if (gtkButton) {
                         gtkPainter.paintBox(gtkButton, "button", option->rect, state, shadow,
-                                            gtkButton->style, QString());
+                                            gtkButton->style, QString(), 70);
                     }
                     handled = true;
                 }

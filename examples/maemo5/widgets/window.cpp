@@ -204,9 +204,11 @@ MainWindow::MainWindow()
 
     QPushButton *pb;
     pb = new QPushButton(tr("Show various Widgets"));
+    pb->setFixedHeight(160);
     lay->addWidget(pb, 0, 0);
     connect(pb, SIGNAL(clicked()), this, SLOT(showWidgets1()));
     pb = new QPushButton(tr("Show an editable List"));
+    pb->setFixedHeight(160);
     lay->addWidget(pb, 0, 0);
     connect(pb, SIGNAL(clicked()), this, SLOT(showWidgets2()));
 

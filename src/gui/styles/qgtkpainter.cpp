@@ -291,7 +291,7 @@ void QGtkPainter::paintBoxGap(GtkWidget *gtkWidget, const gchar* part,
 void QGtkPainter::paintBox(GtkWidget *gtkWidget, const gchar* part,
                            const QRect &paintRect, GtkStateType state,
                            GtkShadowType shadow, GtkStyle *style,
-                           const QString &pmKey)
+                           const QString &pmKey, int scaleIfHigherThan)
 {
     if (!paintRect.isValid())
         return;
@@ -302,11 +302,17 @@ void QGtkPainter::paintBox(GtkWidget *gtkWidget, const gchar* part,
     // To avoid exhausting cache on large tabframes we cheat a bit by
     // tiling the center part.
 
+#ifdef Q_WS_MAEMO_5
+    const int border = scaleIfHigherThan / 2;
+    if (scaleIfHigherThan > 0 && rect.height() > scaleIfHigherThan)
+        rect.setHeight(scaleIfHigherThan);
+#else
     const int maxHeight = 256;
     const int maxArea = 256*512;
     const int border = 32;
     if (rect.height() > maxHeight && (rect.width()*rect.height() > maxArea))
         rect.setHeight(2 * border + 1);
+#endif
 
     QString pixmapName = uniqueName(QLS(part), state, shadow,
                                     rect.size(), gtkWidget) % pmKey;
