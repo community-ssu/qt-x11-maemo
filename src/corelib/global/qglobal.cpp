@@ -1627,6 +1627,15 @@ bool qSharedBuild()
   \sa Q_WS_MAC, Q_WS_WIN, Q_WS_X11, Q_WS_QWS
  */
 
+/*!
+  \macro Q_WS_MAEMO_5
+  \relates <QtGlobal>
+
+  Defined on Maemo 5.
+
+  \sa Q_WS_MAC, Q_WS_WIN, Q_WS_X11, Q_WS_QWS, Q_WS_S60
+ */
+
 #if defined(QT_BUILD_QMAKE)
 // needed to bootstrap qmake
 static const unsigned int qt_one = 1;

@@ -556,7 +556,8 @@
     should look and feel the same as a native Maemo 5 application.
 
     The Qt \l{Maemo 5 Examples} show how to achieve deeper UI integration
-    with the platform.
+    with the platform. The Q_WS_MAEMO_5 macro can be used to conditionally
+    compile Maemo 5 specific features.
 
     \section2 Window Manager
     \list
