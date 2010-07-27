@@ -1212,7 +1212,7 @@ void QMaemo5Style::drawComplexControl(ComplexControl control, const QStyleOption
         if (const QStyleOptionSlider *scrollBar = qstyleoption_cast<const QStyleOptionSlider *>(option)) {
             painter->fillRect(option->rect, option->palette.background());
             QRect scrollBarSlider = proxy()->subControlRect(control, scrollBar, SC_ScrollBarSlider, widget);
-            QColor color = option->palette.color(QPalette::Text);
+            QColor color = standardColor(QLS("SecondaryTextColor"));
 
             if (widget && widget->parentWidget()) {
                 if (QAbstractScrollArea *area = qobject_cast<QAbstractScrollArea*>(widget->parentWidget()->parentWidget())) {
