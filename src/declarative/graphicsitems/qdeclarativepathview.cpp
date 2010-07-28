@@ -284,8 +284,8 @@ void QDeclarativePathViewPrivate::updateItem(QDeclarativeItem *item, qreal perce
             att->setValue(attr.toUtf8(), path->attributeAt(attr, percent));
     }
     QPointF pf = path->pointAt(percent);
-    item->setX(qRound(pf.x() - item->width()*item->scale()/2));
-    item->setY(qRound(pf.y() - item->height()*item->scale()/2));
+    item->setX(qRound(pf.x() - item->width()/2));
+    item->setY(qRound(pf.y() - item->height()/2));
 }
 
 void QDeclarativePathViewPrivate::regenerate()
@@ -328,6 +328,10 @@ void QDeclarativePathViewPrivate::regenerate()
     \snippet doc/src/snippets/declarative/pathview/pathview.qml 0
 
     \image pathview.gif
+
+    (Note the above example uses PathAttribute to scale and modify the
+    opacity of the items as they rotate. This additional code can be seen in the
+    PathAttribute documentation.)
 
     Delegates are instantiated as needed and may be destroyed at any time.
     State should \e never be stored in a delegate.

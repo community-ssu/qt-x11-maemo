@@ -2963,6 +2963,8 @@ if [ "$PLATFORM" != "$XPLATFORM" -a "$CFG_EMBEDDED" != "no" ]; then
     esac
 elif [ "$XPLATFORM_MINGW" = "yes" ]; then
     [ -z "$CFG_ARCH" ] && CFG_ARCH="windows"
+elif echo "$XPLATFORM" | grep symbian > /dev/null; then
+    CFG_ARCH=symbian
 elif [ "$PLATFORM_MAC" = "yes" ] || [ -z "$CFG_ARCH" ]; then
     CFG_ARCH=$CFG_HOST_ARCH
 fi
@@ -3244,25 +3246,21 @@ fi
 
 #prefix
 if [ -z "$QT_INSTALL_PREFIX" ]; then
-    if [ -d "$EPOCROOT" ]; then
+    if [ "$CFG_DEV" = "yes" ]; then
+        QT_INSTALL_PREFIX="$outpath" # In Development, we use sandboxed builds by default
+    elif [ "$PLATFORM_QWS" = "yes" ]; then
+        QT_INSTALL_PREFIX="/usr/local/Trolltech/QtEmbedded-${QT_VERSION}"
+        if [ "$PLATFORM" != "$XPLATFORM" ]; then
+            QT_INSTALL_PREFIX="${QT_INSTALL_PREFIX}-${CFG_ARCH}"
+        fi
+    elif [ -d "$EPOCROOT" ]; then
         case "$XPLATFORM" in *symbian*)
             QT_INSTALL_PREFIX="$EPOCROOT/epoc32/"
             QT_INSTALL_LIBS="$EPOCROOT/epoc32/release/armv5/lib/"
             ;;
         esac
-    fi
-
-    if [ -z "$QT_INSTALL_PREFIX" ]; then # still empty
-        if [ "$CFG_DEV" = "yes" ]; then
-            QT_INSTALL_PREFIX="$outpath" # In Development, we use sandboxed builds by default
-        elif [ "$PLATFORM_QWS" = "yes" ]; then
-            QT_INSTALL_PREFIX="/usr/local/Trolltech/QtEmbedded-${QT_VERSION}"
-            if [ "$PLATFORM" != "$XPLATFORM" ]; then
-                    QT_INSTALL_PREFIX="${QT_INSTALL_PREFIX}-${CFG_ARCH}"
-            fi
-        else
-            QT_INSTALL_PREFIX="/usr/local/Trolltech/Qt-${QT_VERSION}" # the default install prefix is /usr/local/Trolltech/Qt-$QT_VERSION
-        fi
+    else
+        QT_INSTALL_PREFIX="/usr/local/Trolltech/Qt-${QT_VERSION}" # the default install prefix is /usr/local/Trolltech/Qt-$QT_VERSION
     fi
 fi
 QT_INSTALL_PREFIX=`"$relpath/config.tests/unix/makeabs" "$QT_INSTALL_PREFIX"`
@@ -3664,7 +3662,7 @@ Third Party Libraries:
 
     -no-gif ............ Do not compile GIF reading support.
  *  -qt-gif ............ Compile GIF reading support.
-                         See also src/gui/image/qgifhandler.h
+                         See also src/gui/image/qgifhandler_p.h
 
     -no-libtiff ........ Do not compile TIFF support.
     -qt-libtiff ........ Use the libtiff bundled with Qt.
@@ -4509,11 +4507,6 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
     fi
 
     mv -f "$QMAKE_QCONFIG_H" "$QCONFIG_H"
-    for conf in "$outpath/include/QtCore/qconfig.h" "$outpath/include/Qt/qconfig.h"; do
-        if [ '!' -f "$conf" ]; then
-            ln -s "$QCONFIG_H" "$conf"
-        fi
-    done
 
     #mkspecs/default is used as a (gasp!) default mkspec so QMAKESPEC needn't be set once configured
     rm -f mkspecs/default
@@ -6831,6 +6824,8 @@ fi
 # turn off exceptions for the compilers that support it
 if [ "$PLATFORM_QWS" = "yes" ]; then
     COMPILER=`echo $XPLATFORM | cut -f 3- -d-`
+elif [ "$XPLATFORM" != "$PLATFORM" ]; then
+    COMPILER=`echo $XPLATFORM | cut -f 2- -d-`
 else
     COMPILER=`echo $PLATFORM | cut -f 2- -d-`
 fi
@@ -7302,9 +7297,17 @@ rm -f .options
 BUILD_OPTIONS="$BUILD_CONFIG $BUILD_OPTIONS"
 # extract the operating system from the XPLATFORM
 TARGET_OPERATING_SYSTEM=`echo $XPLATFORM | cut -f 2- -d/ | cut -f -1 -d-`
+case "$XPLATFORM" in
+symbian*)
+    QT_BUILD_KEY_SYSTEM_PART="Symbian"
+    ;;
+*)
+    QT_BUILD_KEY_SYSTEM_PART="$CFG_ARCH $TARGET_OPERATING_SYSTEM $COMPILER"
+    ;;
+esac
 
 # when cross-compiling, don't include build-host information (build key is target specific)
-QT_BUILD_KEY="$CFG_USER_BUILD_KEY $CFG_ARCH $TARGET_OPERATING_SYSTEM $COMPILER $BUILD_OPTIONS"
+QT_BUILD_KEY="$CFG_USER_BUILD_KEY $QT_BUILD_KEY_SYSTEM_PART $BUILD_OPTIONS"
 if [ -n "$QT_NAMESPACE" ]; then
     QT_BUILD_KEY="$QT_BUILD_KEY $QT_NAMESPACE"
 fi

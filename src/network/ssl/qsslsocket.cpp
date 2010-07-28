@@ -578,7 +578,7 @@ void QSslSocket::setProtocol(QSsl::SslProtocol protocol)
     certificate is valid.
 
     The default mode is AutoVerifyPeer, which tells QSslSocket to use
-    VerifyPeer for clients, QueryPeer for clients.
+    VerifyPeer for clients and QueryPeer for servers.
 
     \sa setPeerVerifyMode(), peerVerifyDepth(), mode()
 */
@@ -598,7 +598,7 @@ QSslSocket::PeerVerifyMode QSslSocket::peerVerifyMode() const
     certificate is valid.
 
     The default mode is AutoVerifyPeer, which tells QSslSocket to use
-    VerifyPeer for clients, QueryPeer for clients.
+    VerifyPeer for clients and QueryPeer for servers.
 
     Setting this mode after encryption has started has no effect on the
     current connection.

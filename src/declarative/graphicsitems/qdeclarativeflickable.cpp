@@ -1214,6 +1214,7 @@ bool QDeclarativeFlickable::sendMouseEvent(QGraphicsSceneMouseEvent *event)
 
             d->handleMousePressEvent(&mouseEvent);
             d->captureDelayedPress(event);
+            stealThisEvent = d->stealMouse;   // Update stealThisEvent in case changed by function call above
             break;
         case QEvent::GraphicsSceneMouseRelease:
             if (d->delayedPressEvent) {
@@ -1234,7 +1235,6 @@ bool QDeclarativeFlickable::sendMouseEvent(QGraphicsSceneMouseEvent *event)
         default:
             break;
         }
-        stealThisEvent = d->stealMouse;   // Update stealThisEvent and grabber in case changed by function calls above
         grabber = qobject_cast<QDeclarativeItem*>(s->mouseGrabberItem());
         if (grabber && stealThisEvent && !grabber->keepMouseGrab() && grabber != this) {
             d->clearDelayedPress();
@@ -1342,7 +1342,7 @@ bool QDeclarativeFlickable::isFlickingVertically() const
 
     This property holds the time to delay (ms) delivering a press to
     children of the Flickable.  This can be useful where reacting
-    to a press before a flicking action has undesireable effects.
+    to a press before a flicking action has undesirable effects.
 
     If the flickable is dragged/flicked before the delay times out
     the press event will not be delivered.  If the button is released

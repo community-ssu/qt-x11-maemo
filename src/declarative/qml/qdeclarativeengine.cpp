@@ -115,22 +115,55 @@ QT_BEGIN_NAMESPACE
 /*!
   \qmlclass QtObject QObject
   \since 4.7
-  \brief The QtObject element is the most basic element in QML
+  \brief The QtObject element is the most basic element in QML.
 
   The QtObject element is a non-visual element which contains only the
-  objectName property. It is useful for when you need an extremely
-  lightweight element to place your own custom properties in.
+  objectName property. 
+
+  It can be useful to create a QtObject if you need an extremely
+  lightweight element to enclose a set of custom properties:
+
+  \snippet doc/src/snippets/declarative/qtobject.qml 0
 
   It can also be useful for C++ integration, as it is just a plain
   QObject. See the QObject documentation for further details.
 */
 /*!
-  \qmlproperty string QtObject::objectName
-  This property allows you to give a name to this specific object instance.
+  \qmlproperty string QML:QtObject::objectName
+  This property holds the QObject::objectName for this specific object instance.
 
-  See \l{scripting.html#accessing-child-qobjects}{Accessing Child QObjects}
-  in the scripting documentation for details how objectName can be used from
-  scripts.
+  This allows a C++ application to locate an item within a QML component
+  using the QObject::findChild() method. For example, the following C++ 
+  application locates the child \l Rectangle item and dynamically changes its
+  \c color value:
+
+    \qml
+    // MyRect.qml
+
+    import Qt 4.7
+
+    Item {
+        width: 200; height: 200
+
+        Rectangle {
+            anchors.fill: parent
+            color: "red" 
+            objectName: "myRect"
+        }
+    }
+    \endqml
+
+    \code
+    // main.cpp
+
+    QDeclarativeView view;
+    view.setSource(QUrl::fromLocalFile("MyRect.qml"));
+    view.show();
+
+    QDeclarativeItem *item = view.rootObject()->findChild<QDeclarativeItem*>("myRect");
+    if (item) 
+        item->setProperty("color", QColor(Qt::yellow));
+    \endcode
 */
 
 struct StaticQtMetaObject : public QObject
@@ -151,6 +184,7 @@ void QDeclarativeEnginePrivate::defineModule()
 }
 
 /*!
+\keyword QmlGlobalQtObject
 \qmlclass Qt QDeclarativeEnginePrivate
 \brief The QML global Qt object provides useful enums and functions from Qt.
 
@@ -218,7 +252,7 @@ of their use.
 
 
 QDeclarativeEnginePrivate::QDeclarativeEnginePrivate(QDeclarativeEngine *e)
-: captureProperties(false), rootContext(0), currentExpression(0), isDebugging(false),
+: captureProperties(false), rootContext(0), isDebugging(false),
   outputWarningsToStdErr(true), contextClass(0), sharedContext(0), sharedScope(0),
   objectClass(0), valueTypeClass(0), globalClass(0), cleanup(0), erroredBindings(0),
   inProgressCreations(0), scriptEngine(this), workerScriptEngine(0), componentAttached(0),
@@ -236,8 +270,8 @@ QDeclarativeEnginePrivate::QDeclarativeEnginePrivate(QDeclarativeEngine *e)
 }
 
 /*!
-\qmlmethod url Qt::resolvedUrl(url)
-Returns \c url resolved relative to the URL of the caller.
+  \qmlmethod url Qt::resolvedUrl(url)
+  Returns \c url resolved relative to the URL of the caller.
 */
 QUrl QDeclarativeScriptEngine::resolvedUrl(QScriptContext *context, const QUrl& url)
 {
@@ -544,9 +578,9 @@ void QDeclarativeEngine::clearComponentCache()
   component instances should be added to sub-contexts parented to the
   root context.
 */
-QDeclarativeContext *QDeclarativeEngine::rootContext()
+QDeclarativeContext *QDeclarativeEngine::rootContext() const
 {
-    Q_D(QDeclarativeEngine);
+    Q_D(const QDeclarativeEngine);
     return d->rootContext;
 }
 
@@ -1079,16 +1113,23 @@ Here is an example. Notice it checks whether the component \l{Component::status}
 \c Component.Ready before calling \l {Component::createObject()}{createObject()}
 in case the QML file is loaded over a network and thus is not ready immediately.
 
-\snippet doc/src/snippets/declarative/componentCreation.js 0
+\snippet doc/src/snippets/declarative/componentCreation.js vars
 \codeline
-\snippet doc/src/snippets/declarative/componentCreation.js 1
+\snippet doc/src/snippets/declarative/componentCreation.js func
+\snippet doc/src/snippets/declarative/componentCreation.js remote
+\snippet doc/src/snippets/declarative/componentCreation.js func-end
+\codeline
+\snippet doc/src/snippets/declarative/componentCreation.js finishCreation
 
-If you are certain the files will be local, you could simplify to:
+If you are certain the QML file to be loaded is a local file, you could omit the \c finishCreation() 
+function and call \l {Component::createObject()}{createObject()} immediately:
 
-\snippet doc/src/snippets/declarative/componentCreation.js 2
+\snippet doc/src/snippets/declarative/componentCreation.js func
+\snippet doc/src/snippets/declarative/componentCreation.js local
+\snippet doc/src/snippets/declarative/componentCreation.js func-end
 
 To create a QML object from an arbitrary string of QML (instead of a file),
-use \l{Qt::createQmlObject()}{Qt.createQmlObject()}.
+use \l{QML:Qt::createQmlObject()}{Qt.createQmlObject()}.
 */
 
 QScriptValue QDeclarativeEnginePrivate::createComponent(QScriptContext *ctxt, QScriptEngine *engine)
@@ -1135,7 +1176,7 @@ Each object in this array has the members \c lineNumber, \c columnNumber, \c fil
 
 Note that this function returns immediately, and therefore may not work if
 the \a qml string loads new components (that is, external QML files that have not yet been loaded).
-If this is the case, consider using \l{Qt::createComponent()}{Qt.createComponent()} instead.
+If this is the case, consider using \l{QML:Qt::createComponent()}{Qt.createComponent()} instead.
 */
 
 QScriptValue QDeclarativeEnginePrivate::createQmlObject(QScriptContext *ctxt, QScriptEngine *engine)
@@ -1270,11 +1311,12 @@ QScriptValue QDeclarativeEnginePrivate::formatDate(QScriptContext*ctxt, QScriptE
     QDate date = ctxt->argument(0).toDateTime().date();
     Qt::DateFormat enumFormat = Qt::DefaultLocaleShortDate;
     if (argCount == 2) {
-        if (ctxt->argument(1).isString()) {
-            QString format = ctxt->argument(1).toString();
+        QScriptValue formatArg = ctxt->argument(1);
+        if (formatArg.isString()) {
+            QString format = formatArg.toString();
             return engine->newVariant(qVariantFromValue(date.toString(format)));
-        } else if (ctxt->argument(1).isNumber()) {
-            enumFormat = Qt::DateFormat(ctxt->argument(1).toUInt32());
+        } else if (formatArg.isNumber()) {
+            enumFormat = Qt::DateFormat(formatArg.toUInt32());
         } else {
             return ctxt->throwError(QLatin1String("Qt.formatDate(): Invalid date format"));
         }
@@ -1297,11 +1339,12 @@ QScriptValue QDeclarativeEnginePrivate::formatTime(QScriptContext*ctxt, QScriptE
     QTime date = ctxt->argument(0).toDateTime().time();
     Qt::DateFormat enumFormat = Qt::DefaultLocaleShortDate;
     if (argCount == 2) {
-        if (ctxt->argument(1).isString()) {
-            QString format = ctxt->argument(1).toString();
+        QScriptValue formatArg = ctxt->argument(1);
+        if (formatArg.isString()) {
+            QString format = formatArg.toString();
             return engine->newVariant(qVariantFromValue(date.toString(format)));
-        } else if (ctxt->argument(1).isNumber()) {
-            enumFormat = Qt::DateFormat(ctxt->argument(1).toUInt32());
+        } else if (formatArg.isNumber()) {
+            enumFormat = Qt::DateFormat(formatArg.toUInt32());
         } else {
             return ctxt->throwError(QLatin1String("Qt.formatTime(): Invalid time format"));
         }
@@ -1387,11 +1430,12 @@ QScriptValue QDeclarativeEnginePrivate::formatDateTime(QScriptContext*ctxt, QScr
     QDateTime date = ctxt->argument(0).toDateTime();
     Qt::DateFormat enumFormat = Qt::DefaultLocaleShortDate;
     if (argCount == 2) {
-        if (ctxt->argument(1).isString()) {
-            QString format = ctxt->argument(1).toString();
+        QScriptValue formatArg = ctxt->argument(1);
+        if (formatArg.isString()) {
+            QString format = formatArg.toString();
             return engine->newVariant(qVariantFromValue(date.toString(format)));
-        } else if (ctxt->argument(1).isNumber()) {
-            enumFormat = Qt::DateFormat(ctxt->argument(1).toUInt32());
+        } else if (formatArg.isNumber()) {
+            enumFormat = Qt::DateFormat(formatArg.toUInt32());
         } else { 
             return ctxt->throwError(QLatin1String("Qt.formatDateTime(): Invalid datetime format"));
         }
@@ -1739,8 +1783,7 @@ void QDeclarativeEnginePrivate::warning(QDeclarativeEnginePrivate *engine, const
 /*!
 \qmlmethod Qt::quit()
 This function causes the QDeclarativeEngine::quit() signal to be emitted.
-Within the \l {Qt Declarative UI Runtime}{qml} application this causes the 
-launcher application to exit.
+Within the \l {QML Viewer}, this causes the launcher application to exit.
 */
 
 QScriptValue QDeclarativeEnginePrivate::quit(QScriptContext * /*ctxt*/, QScriptEngine *e)

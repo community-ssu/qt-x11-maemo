@@ -53,6 +53,7 @@
 #include <private/qdeclarativetextedit_p_p.h>
 #include <QFontMetrics>
 #include <QDeclarativeView>
+#include <QDir>
 #include <QStyle>
 #include <QInputContext>
 #include <private/qapplication_p.h>
@@ -62,6 +63,23 @@
 // In Symbian OS test data is located in applications private dir
 #define SRCDIR "."
 #endif
+
+QString createExpectedFileIfNotFound(const QString& filebasename, const QImage& actual)
+{
+    // XXX This will be replaced by some clever persistent platform image store.
+    QString persistent_dir = SRCDIR "/data";
+    QString arch = "unknown-architecture"; // QTest needs to help with this.
+
+    QString expectfile = persistent_dir + QDir::separator() + filebasename + "-" + arch + ".png";
+
+    if (!QFile::exists(expectfile)) {
+        actual.save(expectfile);
+        qWarning() << "created" << expectfile;
+    }
+
+    return expectfile;
+}
+
 
 class tst_qdeclarativetextedit : public QObject
 
@@ -97,6 +115,7 @@ private slots:
     void navigation();
     void readOnly();
     void copyAndPaste();
+    void textInput();
     void openInputPanelOnClick();
     void openInputPanelOnFocus();
     void geometrySignals();
@@ -308,17 +327,17 @@ void tst_qdeclarativetextedit::alignments_data()
     QTest::addColumn<int>("vAlign");
     QTest::addColumn<QString>("expectfile");
 
-    QTest::newRow("LT") << int(Qt::AlignLeft) << int(Qt::AlignTop) << SRCDIR "/data/alignments_lt.png";
-    QTest::newRow("RT") << int(Qt::AlignRight) << int(Qt::AlignTop) << SRCDIR "/data/alignments_rt.png";
-    QTest::newRow("CT") << int(Qt::AlignHCenter) << int(Qt::AlignTop) << SRCDIR "/data/alignments_ct.png";
+    QTest::newRow("LT") << int(Qt::AlignLeft) << int(Qt::AlignTop) << "alignments_lt";
+    QTest::newRow("RT") << int(Qt::AlignRight) << int(Qt::AlignTop) << "alignments_rt";
+    QTest::newRow("CT") << int(Qt::AlignHCenter) << int(Qt::AlignTop) << "alignments_ct";
 
-    QTest::newRow("LB") << int(Qt::AlignLeft) << int(Qt::AlignBottom) << SRCDIR "/data/alignments_lb.png";
-    QTest::newRow("RB") << int(Qt::AlignRight) << int(Qt::AlignBottom) << SRCDIR "/data/alignments_rb.png";
-    QTest::newRow("CB") << int(Qt::AlignHCenter) << int(Qt::AlignBottom) << SRCDIR "/data/alignments_cb.png";
+    QTest::newRow("LB") << int(Qt::AlignLeft) << int(Qt::AlignBottom) << "alignments_lb";
+    QTest::newRow("RB") << int(Qt::AlignRight) << int(Qt::AlignBottom) << "alignments_rb";
+    QTest::newRow("CB") << int(Qt::AlignHCenter) << int(Qt::AlignBottom) << "alignments_cb";
 
-    QTest::newRow("LC") << int(Qt::AlignLeft) << int(Qt::AlignVCenter) << SRCDIR "/data/alignments_lc.png";
-    QTest::newRow("RC") << int(Qt::AlignRight) << int(Qt::AlignVCenter) << SRCDIR "/data/alignments_rc.png";
-    QTest::newRow("CC") << int(Qt::AlignHCenter) << int(Qt::AlignVCenter) << SRCDIR "/data/alignments_cc.png";
+    QTest::newRow("LC") << int(Qt::AlignLeft) << int(Qt::AlignVCenter) << "alignments_lc";
+    QTest::newRow("RC") << int(Qt::AlignRight) << int(Qt::AlignVCenter) << "alignments_rc";
+    QTest::newRow("CC") << int(Qt::AlignHCenter) << int(Qt::AlignVCenter) << "alignments_cc";
 }
 
 
@@ -327,13 +346,6 @@ void tst_qdeclarativetextedit::alignments()
     QFETCH(int, hAlign);
     QFETCH(int, vAlign);
     QFETCH(QString, expectfile);
-
-#ifdef Q_WS_X11
-    // Font-specific, but not likely platform-specific, so only test on one platform
-    QFont fn;
-    fn.setRawName("-misc-fixed-medium-r-*-*-8-*-*-*-*-*-*-*");
-    QApplication::setFont(fn);
-#endif
 
     QDeclarativeView *canvas = createView(SRCDIR "/data/alignments.qml");
 
@@ -352,14 +364,11 @@ void tst_qdeclarativetextedit::alignments()
     QPainter p(&actual);
     canvas->render(&p);
 
+    expectfile = createExpectedFileIfNotFound(expectfile, actual);
+
     QImage expect(expectfile);
 
-#ifdef Q_WS_X11
-    // Font-specific, but not likely platform-specific, so only test on one platform
-    if (QApplicationPrivate::graphics_system_name == "raster" || QApplicationPrivate::graphics_system_name == "") {
-        QCOMPARE(actual,expect);
-    }
-#endif
+    QCOMPARE(actual,expect);
 }
 
 
@@ -596,7 +605,7 @@ void tst_qdeclarativetextedit::persistentSelection()
 void tst_qdeclarativetextedit::focusOnPress()
 {
     {
-        QString componentStr = "import Qt 4.7\nTextEdit {  focusOnPress: true; text: \"Hello World\" }";
+        QString componentStr = "import Qt 4.7\nTextEdit {  activeFocusOnPress: true; text: \"Hello World\" }";
         QDeclarativeComponent texteditComponent(&engine);
         texteditComponent.setData(componentStr.toLatin1(), QUrl());
         QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit*>(texteditComponent.create());
@@ -605,7 +614,7 @@ void tst_qdeclarativetextedit::focusOnPress()
     }
 
     {
-        QString componentStr = "import Qt 4.7\nTextEdit {  focusOnPress: false; text: \"Hello World\" }";
+        QString componentStr = "import Qt 4.7\nTextEdit {  activeFocusOnPress: false; text: \"Hello World\" }";
         QDeclarativeComponent texteditComponent(&engine);
         texteditComponent.setData(componentStr.toLatin1(), QUrl());
         QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit*>(texteditComponent.create());
@@ -832,19 +841,31 @@ void tst_qdeclarativetextedit::navigation()
     QDeclarativeItem *input = qobject_cast<QDeclarativeItem *>(qvariant_cast<QObject *>(canvas->rootObject()->property("myInput")));
 
     QVERIFY(input != 0);
-    QTRY_VERIFY(input->hasFocus() == true);
+    QTRY_VERIFY(input->hasActiveFocus() == true);
     simulateKey(canvas, Qt::Key_Left);
-    QVERIFY(input->hasFocus() == false);
+    QVERIFY(input->hasActiveFocus() == false);
     simulateKey(canvas, Qt::Key_Right);
-    QVERIFY(input->hasFocus() == true);
+    QVERIFY(input->hasActiveFocus() == true);
     simulateKey(canvas, Qt::Key_Right);
-    QVERIFY(input->hasFocus() == false);
+    QVERIFY(input->hasActiveFocus() == false);
     simulateKey(canvas, Qt::Key_Left);
-    QVERIFY(input->hasFocus() == true);
+    QVERIFY(input->hasActiveFocus() == true);
 }
 
 void tst_qdeclarativetextedit::copyAndPaste() {
 #ifndef QT_NO_CLIPBOARD
+
+#ifdef Q_WS_MAC
+    {
+        PasteboardRef pasteboard;
+        OSStatus status = PasteboardCreate(0, &pasteboard);
+        if (status == noErr)
+            CFRelease(pasteboard);
+        else
+            QSKIP("This machine doesn't support the clipboard", SkipAll);
+    }
+#endif
+
     QString componentStr = "import Qt 4.7\nTextEdit { text: \"Hello world!\" }";
     QDeclarativeComponent textEditComponent(&engine);
     textEditComponent.setData(componentStr.toLatin1(), QUrl());
@@ -861,6 +882,12 @@ void tst_qdeclarativetextedit::copyAndPaste() {
     textEdit->paste();
     QCOMPARE(textEdit->text(), QString("Hello world!Hello world!"));
     QCOMPARE(textEdit->text().length(), 24);
+
+    // QTBUG-12339
+    // test that document and internal text attribute are in sync
+    QDeclarativeItemPrivate* pri = QDeclarativeItemPrivate::get(textEdit);
+    QDeclarativeTextEditPrivate *editPrivate = static_cast<QDeclarativeTextEditPrivate*>(pri);
+    QCOMPARE(textEdit->text(), editPrivate->text);
 
     // select word
     textEdit->setCursorPosition(0);
@@ -888,7 +915,7 @@ void tst_qdeclarativetextedit::readOnly()
     QDeclarativeTextEdit *edit = qobject_cast<QDeclarativeTextEdit *>(qvariant_cast<QObject *>(canvas->rootObject()->property("myInput")));
 
     QVERIFY(edit != 0);
-    QTRY_VERIFY(edit->hasFocus() == true);
+    QTRY_VERIFY(edit->hasActiveFocus() == true);
     QVERIFY(edit->isReadOnly() == true);
     QString initial = edit->text();
     for(int k=Qt::Key_0; k<=Qt::Key_Z; k++)
@@ -941,6 +968,33 @@ public:
     bool closeInputPanelReceived;
 };
 
+void tst_qdeclarativetextedit::textInput()
+{
+    QGraphicsScene scene;
+    QGraphicsView view(&scene);
+    QDeclarativeTextEdit edit;
+    QDeclarativeItemPrivate* pri = QDeclarativeItemPrivate::get(&edit);
+    QDeclarativeTextEditPrivate *editPrivate = static_cast<QDeclarativeTextEditPrivate*>(pri);
+    edit.setPos(0, 0);
+    scene.addItem(&edit);
+    view.show();
+    QApplication::setActiveWindow(&view);
+    QTest::qWaitForWindowShown(&view);
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(&view));
+    edit.setFocus(true);
+    QVERIFY(edit.hasActiveFocus() == true);
+
+    // test that input method event is committed
+    QInputMethodEvent event;
+    event.setCommitString( "Hello world!", 0, 0);
+    QApplication::sendEvent(&view, &event);
+    QCOMPARE(edit.text(), QString("Hello world!"));
+
+    // QTBUG-12339
+    // test that document and internal text attribute are in sync
+    QCOMPARE(editPrivate->text, QString("Hello world!"));
+}
+
 void tst_qdeclarativetextedit::openInputPanelOnClick()
 {
     QGraphicsScene scene;
@@ -948,7 +1002,7 @@ void tst_qdeclarativetextedit::openInputPanelOnClick()
     MyInputContext ic;
     view.setInputContext(&ic);
     QDeclarativeTextEdit edit;
-    QSignalSpy focusOnPressSpy(&edit, SIGNAL(focusOnPressChanged(bool)));
+    QSignalSpy focusOnPressSpy(&edit, SIGNAL(activeFocusOnPressChanged(bool)));
     edit.setText("Hello world");
     edit.setPos(0, 0);
     scene.addItem(&edit);
@@ -996,7 +1050,7 @@ void tst_qdeclarativetextedit::openInputPanelOnFocus()
     MyInputContext ic;
     view.setInputContext(&ic);
     QDeclarativeTextEdit edit;
-    QSignalSpy focusOnPressSpy(&edit, SIGNAL(focusOnPressChanged(bool)));
+    QSignalSpy focusOnPressSpy(&edit, SIGNAL(activeFocusOnPressChanged(bool)));
     edit.setText("Hello world");
     edit.setPos(0, 0);
     scene.addItem(&edit);
@@ -1018,7 +1072,7 @@ void tst_qdeclarativetextedit::openInputPanelOnFocus()
     // focus on press, input panel on focus
     QTest::mousePress(view.viewport(), Qt::LeftButton, 0, view.mapFromScene(edit.scenePos()));
     QApplication::processEvents();
-    QVERIFY(edit.hasFocus());
+    QVERIFY(edit.hasActiveFocus());
     QCOMPARE(ic.openInputPanelReceived, true);
     ic.openInputPanelReceived = false;
 
@@ -1028,7 +1082,7 @@ void tst_qdeclarativetextedit::openInputPanelOnFocus()
     ic.openInputPanelReceived = false;
 
     // if already focused, input panel can be opened on press
-    QVERIFY(edit.hasFocus());
+    QVERIFY(edit.hasActiveFocus());
     QTest::mousePress(view.viewport(), Qt::LeftButton, 0, view.mapFromScene(edit.scenePos()));
     QApplication::processEvents();
     QCOMPARE(ic.openInputPanelReceived, true);
@@ -1056,7 +1110,7 @@ void tst_qdeclarativetextedit::openInputPanelOnFocus()
     QVERIFY(!view.testAttribute(Qt::WA_InputMethodEnabled));
 
     // no automatic input panel events should
-    // be sent if focusOnPress is false
+    // be sent if activeFocusOnPress is false
     edit.setFocusOnPress(false);
     QCOMPARE(focusOnPressSpy.count(),1);
     edit.setFocusOnPress(false);
@@ -1083,7 +1137,7 @@ void tst_qdeclarativetextedit::openInputPanelOnFocus()
     QCOMPARE(ic.closeInputPanelReceived, true);
     ic.closeInputPanelReceived = false;
 
-    // set focusOnPress back to true
+    // set activeFocusOnPress back to true
     edit.setFocusOnPress(true);
     QCOMPARE(focusOnPressSpy.count(),2);
     edit.setFocusOnPress(true);
