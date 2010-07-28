@@ -2205,6 +2205,9 @@ fi
 if [ "$CFG_MAEMO5" != "no" ] && [ "$CFG_QT3SUPPORT" = "yes" ]; then
     echo "Warning: '-maemo5' will disable the qt3support library."
     CFG_QT3SUPPORT="no"
+fi
+
+if [ "$CFG_MAEMO5" != "no" ] ; then
     # Disable ALSA since the PulseAudio ALSA support does not work on the N900
     # build src/plugins/audio/n900audio instead by default for Maemo 5
     CFG_ALSA="no"
