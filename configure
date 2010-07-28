@@ -2208,6 +2208,7 @@ if [ "$CFG_MAEMO5" != "no" ] && [ "$CFG_QT3SUPPORT" = "yes" ]; then
     # Disable ALSA since the PulseAudio ALSA support does not work on the N900
     # build src/plugins/audio/n900audio instead by default for Maemo 5
     CFG_ALSA="no"
+    CFG_ICD="yes"
 fi
 
 # update QT_CONFIG to show our current predefined configuration
