@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the tools applications of the Qt Toolkit.
+** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -38,31 +38,22 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-#ifndef REPORTGENERATOR_H
-#define REPORTGENERATOR_H
 
-#include "database.h"
-#include <QtCore/qglobal.h>
+//![0]
+import Qt 4.7
 
-QT_BEGIN_NAMESPACE
+Rectangle {
+    id: rect
+    width: 100; height: 100
+    color: "red"
 
-class ReportGenerator
-{
-public:	
-	ReportGenerator();
-	QByteArray printColors(const QString &tableName, const QString &seriesName);
-	QList<QByteArray> writeChart(const QString &tableName, bool combineVersions);
-    void writeReport(const QString &tableName, const QString &filename, bool combineVersions = false);
-	void writeReports();
-    QString fileName();
-private:
-	QList<QByteArray> m_colorScheme;
-    QString m_fileName;
-};
+    Behavior on width {
+        NumberAnimation { duration: 1000 }
+    }
 
-void printTestCaseResults(const QString &testCaseName);
-
-QT_END_NAMESPACE
-
-#endif
-
+    MouseArea {
+        anchors.fill: parent
+        onClicked: rect.width = 50
+    }
+}
+//![0]

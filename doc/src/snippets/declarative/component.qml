@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the tools applications of the Qt Toolkit.
+** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -38,45 +38,23 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-#include <QtCore>
-#include <QtSql>
-#include <database.h>
-#include <reportgenerator.h>
- 
-int main(int argc, char **argv)
-{
-    QCoreApplication app(argc, argv);
+//![0]
+import Qt 4.7
 
-    QSqlDatabase db = createDataBase(":memory:");
+Item {
+    width: 100; height: 100
 
-    if (argc < 2) {
+    Component {
+        id: redSquare
 
-        // Try stdin
-        QFile in;
-        in.open(stdin, QIODevice::ReadOnly);
-        QByteArray xml = in.readAll();
-
-        if (xml.isEmpty()) {
-            qDebug() << "Usage: chart xml-file [xml-file2 xml-file3 ...]";
-            qDebug() << "See also QTestLib's \"-chart\" option";
-            return 0;
-        } else {
-            loadXml(xml, QString());
+        Rectangle {
+            color: "red"
+            width: 10
+            height: 10
         }
     }
 
-    QStringList files;
-    for (int i = 1; i < argc; i++) {
-        QString file = QString::fromLocal8Bit(argv[i]);
-        files += file;
-    }
-
-    if (files.isEmpty() == false)
-        loadXml(files);
-
-    ReportGenerator reportGenerator;
-    reportGenerator.writeReports();
-
-    db.close();
+    Loader { sourceComponent: redSquare }
+    Loader { sourceComponent: redSquare; x: 20 }
 }
-
+//![0]
