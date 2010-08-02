@@ -418,8 +418,8 @@ static void parseCommandLineOptions(const QStringList &arguments)
         }
     }
 #ifdef Q_WS_MAEMO_5
-    if(fullScreen)
-       frameless=false;
+    if (opts.fullScreen)
+       opts.frameless = false;
 #endif
 
     if (!opts.scriptopts.isEmpty()) {
