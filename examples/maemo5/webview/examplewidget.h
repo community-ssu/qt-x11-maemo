@@ -80,8 +80,8 @@ public:
 //! [0]
         suppressor = new QWebViewSelectionSuppressor(view);
 //! [0]
-        QString url = QApplication::arguments().value(1);
-        if (url.isEmpty()) {
+        QUrl url = QUrl::fromUserInput(QApplication::arguments().value(1));
+        if (!url.isValid()) {
             view->setHtml(QLatin1String(exampleText));
         } else {
             view->settings()->setAttribute(QWebSettings::PluginsEnabled, true);
