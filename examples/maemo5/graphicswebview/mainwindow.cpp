@@ -220,6 +220,8 @@ MainWindow::MainWindow()
     gv->viewportItem()->setWidget(view);
 //![9]
 
+    view->setPalette(QApplication::palette("QWebView"));
+
     connect(view, SIGNAL(loadFinished(bool)), SLOT(adjustLocation()));
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));

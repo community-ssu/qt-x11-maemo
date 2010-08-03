@@ -232,7 +232,8 @@ void QMaemo5StylePrivate::applyCustomPaletteHash()
     qApp->setPalette(textpalette, "QSpinBox");
     qApp->setPalette(textpalette, "QLineEdit");
     qApp->setPalette(textpalette, "QTextEdit");
-    qApp->setPalette(textpalette, "QPlainTextEdit" );
+    qApp->setPalette(textpalette, "QPlainTextEdit");
+    qApp->setPalette(textpalette, "QWebView");
 
     QPalette calendarpalette = QApplication::palette();
     QColor high = calendarpalette.color(QPalette::Highlight);
