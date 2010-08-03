@@ -833,8 +833,8 @@ QT_CFLAGS_GSTREAMER=
 QT_LIBS_GSTREAMER=
 
 # flags for libconnsettings0 (used for Maemo ICD bearer management plugin)
-QT_CFLAGS_CONNSETTINGS=
-QT_LIBS_CONNSETTINGS=
+QT_CFLAGS_ICD=
+QT_LIBS_ICD=
 
 #-------------------------------------------------------------------------------
 # check SQL drivers, mouse drivers and decorations available in this package
@@ -5326,20 +5326,20 @@ if [ "$PLATFORM_X11" = "yes" -o "$PLATFORM_QWS" = "yes" ]; then
     # auto-detect icd support
     if [ "$CFG_GLIB" = "yes" -a "$CFG_ICD" != "no" ]; then
         if [ -n "$PKG_CONFIG" ]; then
-            QT_CFLAGS_CONNSETTINGS=`$PKG_CONFIG --cflags connsettings 2>/dev/null`
-            QT_LIBS_CONNSETTINGS=`$PKG_CONFIG --libs connsettings 2>/dev/null`
+            QT_CFLAGS_ICD=`$PKG_CONFIG --cflags icd2 gconf-2.0 2>/dev/null`
+            QT_LIBS_ICD=`$PKG_CONFIG --libs icd2 gconf-2.0 2>/dev/null`
         fi
-        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/icd "ICD" $L_FLAGS $I_FLAGS $l_FLAGS $QT_CFLAGS_CONNSETTINGS $QT_LIBS_CONNSETTINGS; then
+        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/icd "ICD" $L_FLAGS $I_FLAGS $l_FLAGS $QT_CFLAGS_ICD $QT_LIBS_ICD ; then
             [ "$CFG_ICD" = "auto" ] && CFG_ICD=yes
-            QMakeVar set QT_CFLAGS_CONNSETTINGS "$QT_CFLAGS_CONNSETTINGS"
-            QMakeVar set QT_LIBS_CONNSETTINGS "$QT_LIBS_CONNSETTINGS"
+            QMakeVar set QT_CFLAGS_ICD "$QT_CFLAGS_ICD"
+            QMakeVar set QT_LIBS_ICD "$QT_LIBS_ICD"
         else
             if [ "$CFG_ICD" = "auto" ]; then
                 CFG_ICD=no
             elif [ "$CFG_CONFIGURE_EXIT_ON_ERROR" = "yes" ]; then
                 # CFG_ICD is "yes"
 
-                echo "The ICD Bearer Management plugin cannot be enabled because connsettings was not found."
+                echo "The ICD Bearer Management plugin cannot be enabled because ICD was not found."
                 echo " Turn on verbose messaging (-v) to $0 to see the final report."
                 echo " If you believe this message is in error you may use the continue"
                 echo " switch (-continue) to $0 to continue."
