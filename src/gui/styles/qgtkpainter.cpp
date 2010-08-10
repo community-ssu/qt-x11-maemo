@@ -274,6 +274,7 @@ void QGtkPainter::paintBoxGap(GtkWidget *gtkWidget, const gchar* part,
 
         // tiled center part
         QPixmap tilePart(cache.width(), 1);
+        tilePart.fill(Qt::transparent);
         QPainter scanLinePainter(&tilePart);
         scanLinePainter.drawPixmap(QRect(0, 0, tilePart.width(), tilePart.height()), cache, QRect(0, border, size.width(), 1));
         scanLinePainter.end();
@@ -342,6 +343,7 @@ void QGtkPainter::paintBox(GtkWidget *gtkWidget, const gchar* part,
 
         // tiled center part
         QPixmap tilePart(cache.width(), 1);
+        tilePart.fill(Qt::transparent);
         QPainter scanLinePainter(&tilePart);
         scanLinePainter.drawPixmap(QRect(0, 0, tilePart.width(), tilePart.height()), cache, QRect(0, border, size.width(), 1));
         scanLinePainter.end();
@@ -626,6 +628,7 @@ void QGtkPainter::paintShadow(GtkWidget *gtkWidget, const gchar* part,
 
         // tiled center part
         QPixmap tilePart(cache.width(), 1);
+        tilePart.fill(Qt::transparent);
         QPainter scanLinePainter(&tilePart);
         scanLinePainter.drawPixmap(QRect(0, 0, tilePart.width(), tilePart.height()), cache, QRect(0, border, size.width(), 1));
         scanLinePainter.end();
