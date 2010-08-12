@@ -64,7 +64,7 @@ class Q_DECLARATIVE_EXPORT QDeclarativeExpression : public QObject
     Q_OBJECT
 public:
     QDeclarativeExpression();
-    QDeclarativeExpression(QDeclarativeContext *, const QString &, QObject *);
+    QDeclarativeExpression(QDeclarativeContext *, QObject *, const QString &, QObject * = 0);
     virtual ~QDeclarativeExpression();
 
     QDeclarativeEngine *engine() const;
@@ -86,24 +86,23 @@ public:
     void clearError();
     QDeclarativeError error() const;
 
-    QVariant value(bool *isUndefined = 0);
+    QVariant evaluate(bool *valueIsUndefined = 0);
 
 Q_SIGNALS:
     void valueChanged();
 
 protected:
-    QDeclarativeExpression(QDeclarativeContextData *, const QString &, QObject *, 
+    QDeclarativeExpression(QDeclarativeContextData *, QObject *, const QString &,
                            QDeclarativeExpressionPrivate &dd);
     QDeclarativeExpression(QDeclarativeContextData *, void *, QDeclarativeRefCount *rc, 
                            QObject *me, const QString &, int, QDeclarativeExpressionPrivate &dd);
 
-private Q_SLOTS:
-    void __q_notify();
-
 private:
-    QDeclarativeExpression(QDeclarativeContextData *, const QString &, QObject *);
+    QDeclarativeExpression(QDeclarativeContextData *, QObject *, const QString &);
 
+    Q_DISABLE_COPY(QDeclarativeExpression)
     Q_DECLARE_PRIVATE(QDeclarativeExpression)
+    Q_PRIVATE_SLOT(d_func(), void _q_notify())
     friend class QDeclarativeDebugger;
     friend class QDeclarativeContext;
     friend class QDeclarativeVME;

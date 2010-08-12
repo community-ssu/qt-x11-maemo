@@ -6,35 +6,21 @@
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** $QT_BEGIN_LICENSE:FDL$
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in a
+** written agreement between you and Nokia.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of this
+** file.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -78,16 +64,52 @@ Rectangle {
 }
 \endcode
 
-Being JavaScript expressions, bindings are evaluated in a scope chain.  The \l {QML Scope} 
-documentation covers the specifics of scoping in QML.
+While syntactically bindings can be of arbitrary complexity, if a binding starts to become
+overly complex - such as involving multiple lines, or imperative loops - it may be better
+to refactor the component entirely, or at least factor the binding out into a separate
+function.
 
-\list
-\o When does a binding not get updated?
-\o Scope
-\o Assigning a constant/other binding clears existing binding
-\o Loops
-\o Using model data
-\endlist
+\section1 Changing Bindings
+
+The \l PropertyChanges element can be used within a state change to modify the bindings on 
+properties.  
+
+This example modifies the \l Rectangle's width property binding to be \c {otherItem.height} 
+when in the "square" state.  When it returns to its default state, width's original property
+binding will have been restored.
+
+\code
+Rectangle {
+    id: rectangle
+    width: otherItem.width
+    height: otherItem.height
+
+    states: State {
+        name: "square"
+        PropertyChanges {
+            target: rectangle
+            width: otherItem.height
+        }
+    }
+}
+\endcode
+
+Imperatively assigning a value directly to a property will also implicitly remove a binding
+on a property.  A property can only have one value at a time, and if code explicitly sets
+this value the binding must be removed.  The \l Rectangle in the example below will have
+a width of 13, regardless of the otherItem's width.
+
+\code
+Rectangle {
+    width: otherItem.width
+
+    Component.onCompleted: {
+        width = 13;
+    }
+}
+\endcode
+
+There is no way to create a property binding directly from imperative JavaScript code.
 
 \section1 Binding Element
 

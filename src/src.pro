@@ -4,15 +4,15 @@ TEMPLATE = subdirs
 unset(SRC_SUBDIRS)
 win32:SRC_SUBDIRS += src_winmain
 symbian:SRC_SUBDIRS += src_s60main
-SRC_SUBDIRS += src_corelib src_xml src_network src_sql src_testlib
-
-win32:SRC_SUBDIRS += src_activeqt
-maemo5:SRC_SUBDIRS += src_maemo5
+SRC_SUBDIRS += src_corelib src_xml src_sql src_testlib
 !symbian:contains(QT_CONFIG, dbus):SRC_SUBDIRS += src_dbus
+SRC_SUBDIRS += src_network
 !contains(QT_CONFIG, no-gui): SRC_SUBDIRS += src_gui
 !wince*:!symbian:!vxworks:contains(QT_CONFIG, qt3support): SRC_SUBDIRS += src_qt3support
 
 !wince*:!symbian-abld:!symbian-sbsv2:include(tools/tools.pro)
+win32:SRC_SUBDIRS += src_activeqt
+maemo5:SRC_SUBDIRS += src_maemo5
 
 contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles1)|contains(QT_CONFIG, opengles2): SRC_SUBDIRS += src_opengl
 contains(QT_CONFIG, openvg): SRC_SUBDIRS += src_openvg
@@ -20,15 +20,16 @@ contains(QT_CONFIG, xmlpatterns): SRC_SUBDIRS += src_xmlpatterns
 contains(QT_CONFIG, phonon): SRC_SUBDIRS += src_phonon
 contains(QT_CONFIG, multimedia): SRC_SUBDIRS += src_multimedia
 contains(QT_CONFIG, svg): SRC_SUBDIRS += src_svg
+contains(QT_CONFIG, script): SRC_SUBDIRS += src_script
+contains(QT_CONFIG, declarative): SRC_SUBDIRS += src_declarative
 contains(QT_CONFIG, webkit)  {
     exists($$QT_SOURCE_TREE/src/3rdparty/webkit/JavaScriptCore/JavaScriptCore.pro): SRC_SUBDIRS += src_javascriptcore
     SRC_SUBDIRS += src_webkit
 }
-contains(QT_CONFIG, script): SRC_SUBDIRS += src_script
 !contains(QT_CONFIG, no-gui):contains(QT_CONFIG, scripttools): SRC_SUBDIRS += src_scripttools
-contains(QT_CONFIG, declarative): SRC_SUBDIRS += src_declarative
 SRC_SUBDIRS += src_plugins
 contains(QT_CONFIG, declarative): SRC_SUBDIRS += src_imports
+contains(QT_CONFIG, declarative):contains(QT_CONFIG, webkit): SRC_SUBDIRS += src_webkit_declarative
 
 # s60installs need to be at the end, because projects.pro does an ordered build,
 # and s60installs depends on all the others.
@@ -84,18 +85,21 @@ src_webkit.subdir = $$QT_SOURCE_TREE/src/3rdparty/webkit/WebCore
 src_webkit.target = sub-webkit
 src_declarative.subdir = $$QT_SOURCE_TREE/src/declarative
 src_declarative.target = sub-declarative
+src_webkit_declarative.subdir = $$QT_SOURCE_TREE/src/3rdparty/webkit/WebKit/qt/declarative
+src_webkit_declarative.target = sub-webkitdeclarative
 src_maemo5.subdir = $$QT_SOURCE_TREE/src/maemo5
 src_maemo5.target = sub-maemo5
 
 #CONFIG += ordered
-!wince*:!ordered {
+!wince*:!ordered:!symbian-abld:!symbian-sbsv2 {
    src_corelib.depends = src_tools_moc src_tools_rcc
    src_gui.depends = src_corelib src_tools_uic
+   maemo5: src_gui.depends += src_dbus
    embedded: src_gui.depends += src_network
    src_xml.depends = src_corelib
    src_xmlpatterns.depends = src_corelib src_network
    src_dbus.depends = src_corelib src_xml
-   src_svg.depends = src_xml src_gui
+   src_svg.depends = src_corelib src_gui
    src_script.depends = src_corelib
    src_scripttools.depends = src_script src_gui src_network
    src_network.depends = src_corelib
@@ -112,15 +116,13 @@ src_maemo5.target = sub-maemo5
    src_multimedia.depends = src_gui
    contains(QT_CONFIG, opengl):src_multimedia.depends += src_opengl
    src_tools_activeqt.depends = src_tools_idc src_gui
-   src_declarative.depends = src_xml src_gui src_script src_network src_svg
+   src_declarative.depends = src_gui src_script src_network
    src_plugins.depends = src_gui src_sql src_svg src_multimedia
    src_s60installs.depends = $$TOOLS_SUBDIRS $$SRC_SUBDIRS
    src_imports.depends = src_gui src_declarative
    contains(QT_CONFIG, webkit)  {
-      src_webkit.depends = src_gui src_sql src_network src_xml 
-      contains(QT_CONFIG, multimedia):src_webkit.depends += src_multimedia
+      src_webkit.depends = src_gui src_sql src_network
       contains(QT_CONFIG, xmlpatterns): src_webkit.depends += src_xmlpatterns
-      contains(QT_CONFIG, declarative):src_declarative.depends += src_webkit
       src_imports.depends += src_webkit
       exists($$QT_SOURCE_TREE/src/3rdparty/webkit/JavaScriptCore/JavaScriptCore.pro): src_webkit.depends += src_javascriptcore
    }
@@ -129,7 +131,19 @@ src_maemo5.target = sub-maemo5
       src_plugins.depends += src_dbus
       src_phonon.depends +=  src_dbus
    }
-   contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles1)|contains(QT_CONFIG, opengles2): src_plugins.depends += src_opengl
+   contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles1)|contains(QT_CONFIG, opengles2) {
+      src_plugins.depends += src_opengl
+      src_declarative.depends += src_opengl
+      src_webkit.depends += src_opengl
+   }
+   contains(QT_CONFIG, xmlpatterns) {
+      src_declarative.depends += src_xmlpatterns
+      src_webkit.depends += src_xmlpatterns
+   }
+   contains(QT_CONFIG, svg) {
+      src_declarative.depends += src_svg
+   }
+   contains(QT_CONFIG, webkit) : contains(QT_CONFIG, declarative): src_webkit_declarative.depends = src_declarative src_webkit
 }
 
 
@@ -154,24 +168,24 @@ for(subname, SRC_SUBDIRS) {
    SUB_TEMPLATE = $$list($$fromfile($$subpro, TEMPLATE))
    !isEqual(subname, src_tools_bootstrap):if(isEqual($$SUB_TEMPLATE, lib) | isEqual($$SUB_TEMPLATE, subdirs) | isEqual(subname, src_tools_idc) | isEqual(subname, src_tools_uic3)):!separate_debug_info {
        #debug
-       eval(debug-$${subtarget}.depends = $${subdir}\$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_DEBUG_TARGETS)
-       eval(debug-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) debug))
+       debug-$${subtarget}.depends = $${subdir}$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_DEBUG_TARGETS
+       debug-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) debug)
        EXTRA_DEBUG_TARGETS += debug-$${subtarget}
        QMAKE_EXTRA_TARGETS += debug-$${subtarget}
        #release
-       eval(release-$${subtarget}.depends = $${subdir}\$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_RELEASE_TARGETS)
-       eval(release-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) release))
+       release-$${subtarget}.depends = $${subdir}$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_RELEASE_TARGETS
+       release-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) release)
        EXTRA_RELEASE_TARGETS += release-$${subtarget}
        QMAKE_EXTRA_TARGETS += release-$${subtarget}
     } else { #do not have a real debug target/release
        #debug
-       eval(debug-$${subtarget}.depends = $${subdir}\$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_DEBUG_TARGETS)
-       eval(debug-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) first))
+       debug-$${subtarget}.depends = $${subdir}$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_DEBUG_TARGETS
+       debug-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) first)
        EXTRA_DEBUG_TARGETS += debug-$${subtarget}
        QMAKE_EXTRA_TARGETS += debug-$${subtarget}
        #release
-       eval(release-$${subtarget}.depends = $${subdir}\$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_RELEASE_TARGETS)
-       eval(release-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) first))
+       release-$${subtarget}.depends = $${subdir}$${QMAKE_DIR_SEP}$(MAKEFILE) $$EXTRA_RELEASE_TARGETS
+       release-$${subtarget}.commands = (cd $$subdir && $(MAKE) -f $(MAKEFILE) first)
        EXTRA_RELEASE_TARGETS += release-$${subtarget}
        QMAKE_EXTRA_TARGETS += release-$${subtarget}
    }
@@ -179,5 +193,16 @@ for(subname, SRC_SUBDIRS) {
 debug.depends = $$EXTRA_DEBUG_TARGETS
 release.depends = $$EXTRA_RELEASE_TARGETS
 QMAKE_EXTRA_TARGETS += debug release
+
+# This gives us a top-level runonphone target, which installs Qt and optionally QtWebKit.
+contains(CONFIG, run_on_phone) {
+    src_runonphone_target.target = runonphone
+    src_runonphone_target.commands = $(MAKE) -C $$QT_BUILD_TREE/src/s60installs runonphone
+    src_runonphone_target.depends = first
+    contains(QT_CONFIG, webkit) {
+        src_runonphone_target.commands += && $(MAKE) -C $$QT_BUILD_TREE/src/3rdparty/webkit/WebCore runonphone
+    }
+    QMAKE_EXTRA_TARGETS += src_runonphone_target
+}
 
 SUBDIRS += $$SRC_SUBDIRS

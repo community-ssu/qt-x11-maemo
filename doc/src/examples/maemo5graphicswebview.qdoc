@@ -44,28 +44,30 @@
     \title Maemo 5 QGraphicsWebView Example
 
     The Maemo 5 QGraphicsWebView example shows how to use QAbstractKineticScroller
-    within a QGraphicsView based application
+    within a QGraphicsView based application.
 
     \tableofcontents
 
-    \image maemo5-graphicswebview-example.png Screenshot of the Browser example
+    \image maemo5-graphicswebview.png Screenshot of the Browser example
 
-    \part ViewportItem
+    \section1 ViewportItem
 
-    First, a container item, the ViewportItem, which contains the
-    to-be-scrolled content item needs to be implemented: It derives from
+    Firstly, the \c ViewportItem container item, which contains the
+    to-be-scrolled content item, needs to be implemented: It derives from
     QAbstractKineticScroller and QGraphicsWidget.  Because it is only a
     container, some \c Flags need to be set to convert it to something
     resembling a scroll area first:
 
     \snippet maemo5/graphicswebview/mainwindow.cpp 0
 
-    QGraphicsItem::ItemClipsToShape to get only the mouse events within the
-    ViewportItem.
-    QGraphicsItem::ItemClipsChildrenToShape to disable childrens painting
-    outside the ViewportItem's rect.
-    QGraphicsItem::ItemHasNoContents and Qt::WA_OpaquePaintEvent to speed up
+    \list
+    \o QGraphicsItem::ItemClipsToShape to get only the mouse events within the
+    \c ViewportItem.
+    \o QGraphicsItem::ItemClipsChildrenToShape to disable childrens painting
+    outside the \c ViewportItem's rect.
+    \o QGraphicsItem::ItemHasNoContents and Qt::WA_OpaquePaintEvent to speed up
     painting.
+    \endlist
 
     Additionally \c setFilterChildEvents is used to install an event filter
     on all children of the viewport, so that all mouse events can be
@@ -75,9 +77,9 @@
 
     The scrollable graphics widget is bound to the kinetic scroller by
     calling \c setWidget().  This new graphics widget will be reparented to
-    the ViewportItem in order to get correct viewport like clipping.  If the
-    widget is a \c WebView, additionally a connection to a slot resizing the
-    widget to the full page size as soon as loading is finished is made.
+    the \c ViewportItem in order to get correct viewport-like clipping.  If the
+    widget is a QGraphicsWebView, additionally a connection is made to a slot that
+    resizes the widget to the full page size as soon as loading is finished.
 
     \snippet maemo5/graphicswebview/mainwindow.cpp 2
 
@@ -86,7 +88,9 @@
     viewport's size (otherwise the scene's background would show through).
 
     In order to get the kinetic scrolling to work, all pure virtual methods
-    need to be implemented: \snippet maemo5/graphicswebview/mainwindow.cpp 3
+    need to be implemented:
+
+    \snippet maemo5/graphicswebview/mainwindow.cpp 3
 
     \c viewportSize() returns the size of the viewport. Please note that
     QAbstractKineticScroller works with integer coordinates only.
@@ -103,42 +107,41 @@
     \br
 
     To actually enable the kinetic scroller, it needs to receive mouse
-    events.  These are coming from the \c sceneEventFilter() function:
+    events.  These come from the \c sceneEventFilter() function:
 
     \snippet maemo5/graphicswebview/mainwindow.cpp 4
 
-    \chapter Important Hint
+    \section2 Important Hint
 
     \snippet maemo5/graphicswebview/mainwindow.cpp 6
 
-    To prevent the \c WebView to make ugly text selections while scrolling,
+    To prevent the QGraphicsWebView from making ugly text selections while scrolling,
     all events of type of \c GraphicsSceneMouseMove need to be filtered out
-    (The downside is that this example does not allow text selection at
-    all).
+    (The downside is that this example does not allow text selection at all).
 
-    \part GraphicsView
+    \section1 GraphicsView
 
-    To make the webview look native, some things have to be configured in
+    To make the QGraphicsWebView look native, some things have to be configured in
     QGraphicsView:
 
     \snippet maemo5/graphicswebview/mainwindow.cpp 7
 
     Next up is creating a ViewportItem and adding it to the scene.
 
-    The Maemo 5 window manager will automatically maximize windows on \c
-    show(), so the ViewportItem needs to resize together with the
-    QGraphicsView in \c resizeEvent():
+    The Maemo 5 window manager will automatically maximize windows when
+    shown, so the ViewportItem needs to resize together with the
+    QGraphicsView in its \c resizeEvent():
 
     \snippet maemo5/graphicswebview/mainwindow.cpp 8
 
-    \part Using the GraphicsView
+    \section1 Using the GraphicsView
 
     In order to call this example actaully a browser, the standard back and
     reload buttons, as well as an URL entry widget needs to be added:
 
     \snippet maemo5/graphicswebview/mainwindow.cpp 9
 
-    \part MainWindow
+    \section1 MainWindow
 
     \snippet maemo5/graphicswebview/mainwindow.h 0
 

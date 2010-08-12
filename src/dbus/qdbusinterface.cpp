@@ -260,7 +260,7 @@ void *QDBusInterface::qt_metacast(const char *_clname)
 int QDBusInterface::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 {
     _id = QDBusAbstractInterface::qt_metacall(_c, _id, _a);
-    if (_id < 0 || !d_func()->isValid)
+    if (_id < 0 || !d_func()->isValid || !d_func()->metaObject)
         return _id;
     return d_func()->metacall(_c, _id, _a);
 }
@@ -277,7 +277,7 @@ int QDBusInterfacePrivate::metacall(QMetaObject::Call c, int id, void **argv)
             // signal relay from D-Bus world to Qt world
             QMetaObject::activate(q, metaObject, id, argv);
 
-        } else if (mm.methodType() == QMetaMethod::Slot) {
+        } else if (mm.methodType() == QMetaMethod::Slot || mm.methodType() == QMetaMethod::Method) {
             // method call relay from Qt world to D-Bus world
             // get D-Bus equivalent signature
             QString methodName = QLatin1String(metaObject->dbusNameForMethod(id));

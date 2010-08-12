@@ -7,6 +7,9 @@ include(qt-defines.qdocconf)
 project                 = Qt Designer
 description             = Qt Designer Manual
 url                     = http://qt.nokia.com/doc/4.7
+online                  = false
+offline                 = false
+creator                 = true
 
 indexes                 = $QT_BUILD_TREE/doc-build/html-qt/qt.index
 
@@ -16,7 +19,34 @@ qhp.Designer.file                = designer.qhp
 qhp.Designer.namespace           = com.trolltech.designer.470
 qhp.Designer.virtualFolder       = qdoc
 qhp.Designer.indexTitle          = Qt Designer Manual
-qhp.Designer.extraFiles          = classic.css images/qt-logo.png images/trolltech-logo.png
+qhp.Designer.extraFiles          = images/bg_l.png \
+                             	    images/bg_l_blank.png \
+                             	    images/bg_r.png \
+									images/box_bg.png \
+									images/breadcrumb.png \
+									images/bullet_gt.png \
+                             	    images/bullet_dn.png \
+									images/bullet_sq.png \
+                             	    images/bullet_up.png \
+                             	    images/feedbackground.png \
+                             	    images/horBar.png \
+									images/page.png \
+									images/page_bg.png \
+									images/sprites-combined.png \
+									images/arrow-down.png \
+									images/spinner.gif \
+                             	    images/stylesheet-coffee-plastique.png \
+                             	    images/taskmenuextension-example.png \
+                             	   images/coloreditorfactoryimage.png \
+                             	   images/dynamiclayouts-example.png \
+									scripts/functions.js \
+									scripts/jquery.js \
+									style/OfflineStyle.css \
+									style/style_ie6.css \
+									style/style_ie7.css \
+									style/style_ie8.css \
+                             	    style/style.css
+
 qhp.Designer.filterAttributes    = qt 4.7.0 tools designer
 qhp.Designer.customFilters.Designer.name = Qt Designer Manual
 qhp.Designer.customFilters.Designer.filterAttributes = qt tools designer

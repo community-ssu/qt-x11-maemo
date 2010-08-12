@@ -70,11 +70,11 @@ class Q_DECLARATIVE_EXPORT QDeclarativeAnchors : public QObject
     Q_PROPERTY(qreal margins READ margins WRITE setMargins NOTIFY marginsChanged)
     Q_PROPERTY(qreal leftMargin READ leftMargin WRITE setLeftMargin NOTIFY leftMarginChanged)
     Q_PROPERTY(qreal rightMargin READ rightMargin WRITE setRightMargin NOTIFY rightMarginChanged)
-    Q_PROPERTY(qreal horizontalCenterOffset READ horizontalCenterOffset WRITE setHorizontalCenterOffset NOTIFY horizontalCenterOffsetChanged())
+    Q_PROPERTY(qreal horizontalCenterOffset READ horizontalCenterOffset WRITE setHorizontalCenterOffset NOTIFY horizontalCenterOffsetChanged)
     Q_PROPERTY(qreal topMargin READ topMargin WRITE setTopMargin NOTIFY topMarginChanged)
     Q_PROPERTY(qreal bottomMargin READ bottomMargin WRITE setBottomMargin NOTIFY bottomMarginChanged)
-    Q_PROPERTY(qreal verticalCenterOffset READ verticalCenterOffset WRITE setVerticalCenterOffset NOTIFY verticalCenterOffsetChanged())
-    Q_PROPERTY(qreal baselineOffset READ baselineOffset WRITE setBaselineOffset NOTIFY baselineOffsetChanged())
+    Q_PROPERTY(qreal verticalCenterOffset READ verticalCenterOffset WRITE setVerticalCenterOffset NOTIFY verticalCenterOffsetChanged)
+    Q_PROPERTY(qreal baselineOffset READ baselineOffset WRITE setBaselineOffset NOTIFY baselineOffsetChanged)
     Q_PROPERTY(QGraphicsObject *fill READ fill WRITE setFill RESET resetFill NOTIFY fillChanged)
     Q_PROPERTY(QGraphicsObject *centerIn READ centerIn WRITE setCenterIn RESET resetCenterIn NOTIFY centerInChanged)
 
@@ -83,18 +83,18 @@ public:
     QDeclarativeAnchors(QGraphicsObject *item, QObject *parent=0);
     virtual ~QDeclarativeAnchors();
 
-    enum UsedAnchor { 
-        HasLeftAnchor = 0x01,
-        HasRightAnchor = 0x02,
-        HasTopAnchor = 0x04,
-        HasBottomAnchor = 0x08,
-        HasHCenterAnchor = 0x10,
-        HasVCenterAnchor = 0x20,
-        HasBaselineAnchor = 0x40,
-        Horizontal_Mask = HasLeftAnchor | HasRightAnchor | HasHCenterAnchor,
-        Vertical_Mask = HasTopAnchor | HasBottomAnchor | HasVCenterAnchor | HasBaselineAnchor
+    enum Anchor {
+        LeftAnchor = 0x01,
+        RightAnchor = 0x02,
+        TopAnchor = 0x04,
+        BottomAnchor = 0x08,
+        HCenterAnchor = 0x10,
+        VCenterAnchor = 0x20,
+        BaselineAnchor = 0x40,
+        Horizontal_Mask = LeftAnchor | RightAnchor | HCenterAnchor,
+        Vertical_Mask = TopAnchor | BottomAnchor | VCenterAnchor | BaselineAnchor
     };
-    Q_DECLARE_FLAGS(UsedAnchors, UsedAnchor)
+    Q_DECLARE_FLAGS(Anchors, Anchor)
 
     QDeclarativeAnchorLine left() const;
     void setLeft(const QDeclarativeAnchorLine &edge);
@@ -156,7 +156,7 @@ public:
     void setCenterIn(QGraphicsObject *);
     void resetCenterIn();
 
-    UsedAnchors usedAnchors() const;
+    Anchors usedAnchors() const;
 
     void classBegin();
     void componentComplete();
@@ -188,7 +188,7 @@ private:
     Q_PRIVATE_SLOT(d_func(), void _q_widgetGeometryChanged())
     Q_PRIVATE_SLOT(d_func(), void _q_widgetDestroyed(QObject *obj))
 };
-Q_DECLARE_OPERATORS_FOR_FLAGS(QDeclarativeAnchors::UsedAnchors)
+Q_DECLARE_OPERATORS_FOR_FLAGS(QDeclarativeAnchors::Anchors)
 
 QT_END_NAMESPACE
 

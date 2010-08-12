@@ -46,14 +46,23 @@
 #include <QtDeclarative/qdeclarativeview.h>
 #include <QtDeclarative/qdeclarativecontext.h>
 
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
+
 class tst_QDeclarativeMouseArea: public QObject
 {
     Q_OBJECT
 private slots:
     void dragProperties();
     void resetDrag();
+    void dragging();
     void updateMouseAreaPosOnClick();
+    void updateMouseAreaPosOnResize();
     void noOnClickedWithPressAndHold();
+    void onMousePressRejected();
+
 private:
     QDeclarativeView *createView();
 };
@@ -128,6 +137,17 @@ void tst_QDeclarativeMouseArea::dragProperties()
     QCOMPARE(yminSpy.count(),1);
     QCOMPARE(ymaxSpy.count(),1);
 
+    // filterChildren
+    QSignalSpy filterChildrenSpy(drag, SIGNAL(filterChildrenChanged()));
+
+    drag->setFilterChildren(true);
+
+    QVERIFY(drag->filterChildren());
+    QCOMPARE(filterChildrenSpy.count(), 1);
+
+    drag->setFilterChildren(true);
+    QCOMPARE(filterChildrenSpy.count(), 1);
+
     delete canvas;
 }
 
@@ -161,6 +181,61 @@ void tst_QDeclarativeMouseArea::resetDrag()
     delete canvas;
 }
 
+
+void tst_QDeclarativeMouseArea::dragging()
+{
+    QDeclarativeView *canvas = createView();
+
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/dragging.qml"));
+    canvas->show();
+    canvas->setFocus();
+    QVERIFY(canvas->rootObject() != 0);
+
+    QDeclarativeMouseArea *mouseRegion = canvas->rootObject()->findChild<QDeclarativeMouseArea*>("mouseregion");
+    QDeclarativeDrag *drag = mouseRegion->drag();
+    QVERIFY(mouseRegion != 0);
+    QVERIFY(drag != 0);
+
+    // target
+    QDeclarativeItem *blackRect = canvas->rootObject()->findChild<QDeclarativeItem*>("blackrect");
+    QVERIFY(blackRect != 0);
+    QVERIFY(blackRect == drag->target());
+
+    QVERIFY(!drag->active());
+
+    QGraphicsScene *scene = canvas->scene();
+    QGraphicsSceneMouseEvent pressEvent(QEvent::GraphicsSceneMousePress);
+    pressEvent.setScenePos(QPointF(100, 100));
+    pressEvent.setButton(Qt::LeftButton);
+    pressEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &pressEvent);
+
+    QVERIFY(!drag->active());
+    QCOMPARE(blackRect->x(), 50.0);
+    QCOMPARE(blackRect->y(), 50.0);
+
+    QGraphicsSceneMouseEvent moveEvent(QEvent::GraphicsSceneMouseMove);
+    moveEvent.setScenePos(QPointF(110, 110));
+    moveEvent.setButton(Qt::LeftButton);
+    moveEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &moveEvent);
+
+    QVERIFY(drag->active());
+    QCOMPARE(blackRect->x(), 60.0);
+    QCOMPARE(blackRect->y(), 60.0);
+
+    QGraphicsSceneMouseEvent releaseEvent(QEvent::GraphicsSceneMouseRelease);
+    releaseEvent.setScenePos(QPointF(110, 110));
+    releaseEvent.setButton(Qt::LeftButton);
+    releaseEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &releaseEvent);
+
+    QVERIFY(!drag->active());
+    QCOMPARE(blackRect->x(), 60.0);
+    QCOMPARE(blackRect->y(), 60.0);
+
+    delete canvas;
+}
 
 QDeclarativeView *tst_QDeclarativeMouseArea::createView()
 {
@@ -203,6 +278,46 @@ void tst_QDeclarativeMouseArea::updateMouseAreaPosOnClick()
     delete canvas;
 }
 
+void tst_QDeclarativeMouseArea::updateMouseAreaPosOnResize()
+{
+    QDeclarativeView *canvas = createView();
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/updateMousePosOnResize.qml"));
+    canvas->show();
+    canvas->setFocus();
+    QVERIFY(canvas->rootObject() != 0);
+
+    QDeclarativeMouseArea *mouseRegion = canvas->rootObject()->findChild<QDeclarativeMouseArea*>("mouseregion");
+    QVERIFY(mouseRegion != 0);
+
+    QDeclarativeRectangle *rect = canvas->rootObject()->findChild<QDeclarativeRectangle*>("brother");
+    QVERIFY(rect != 0);
+
+    QCOMPARE(mouseRegion->mouseX(), 0.0);
+    QCOMPARE(mouseRegion->mouseY(), 0.0);
+
+    QGraphicsScene *scene = canvas->scene();
+    QGraphicsSceneMouseEvent event(QEvent::GraphicsSceneMousePress);
+    event.setScenePos(rect->pos());
+    event.setButton(Qt::LeftButton);
+    event.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &event);
+
+    QVERIFY(!mouseRegion->property("emitPositionChanged").toBool());
+    QVERIFY(mouseRegion->property("mouseMatchesPos").toBool());
+
+    QCOMPARE(mouseRegion->property("x1").toInt(), 0);
+    QCOMPARE(mouseRegion->property("y1").toInt(), 0);
+
+    // XXX: is it on purpose that mouseX is real and mouse.x is int?
+    QCOMPARE(mouseRegion->property("x2").toInt(), (int) rect->x());
+    QCOMPARE(mouseRegion->property("y2").toInt(), (int) rect->y());
+
+    QCOMPARE(mouseRegion->mouseX(), rect->x());
+    QCOMPARE(mouseRegion->mouseY(), rect->y());
+
+    delete canvas;
+}
+
 void tst_QDeclarativeMouseArea::noOnClickedWithPressAndHold()
 {
     QDeclarativeView *canvas = createView();
@@ -223,7 +338,7 @@ void tst_QDeclarativeMouseArea::noOnClickedWithPressAndHold()
 
     QTest::qWait(1000);
 
-    QGraphicsSceneMouseEvent releaseEvent(QEvent::GraphicsSceneMousePress);
+    QGraphicsSceneMouseEvent releaseEvent(QEvent::GraphicsSceneMouseRelease);
     releaseEvent.setScenePos(QPointF(100, 100));
     releaseEvent.setButton(Qt::LeftButton);
     releaseEvent.setButtons(Qt::LeftButton);
@@ -231,6 +346,48 @@ void tst_QDeclarativeMouseArea::noOnClickedWithPressAndHold()
 
     QVERIFY(!canvas->rootObject()->property("clicked").toBool());
     QVERIFY(canvas->rootObject()->property("held").toBool());
+}
+
+void tst_QDeclarativeMouseArea::onMousePressRejected()
+{
+    QDeclarativeView *canvas = createView();
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/rejectEvent.qml"));
+    canvas->show();
+    canvas->setFocus();
+    QVERIFY(canvas->rootObject() != 0);
+
+    QVERIFY(!canvas->rootObject()->property("mr1_pressed").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr1_released").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr1_canceled").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr2_pressed").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr2_released").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr2_canceled").toBool());
+
+    QGraphicsScene *scene = canvas->scene();
+    QGraphicsSceneMouseEvent pressEvent(QEvent::GraphicsSceneMousePress);
+    pressEvent.setScenePos(QPointF(100, 100));
+    pressEvent.setButton(Qt::LeftButton);
+    pressEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &pressEvent);
+
+    QVERIFY(canvas->rootObject()->property("mr1_pressed").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr1_released").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr1_canceled").toBool());
+    QVERIFY(canvas->rootObject()->property("mr2_pressed").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr2_released").toBool());
+    QVERIFY(canvas->rootObject()->property("mr2_canceled").toBool());
+
+    QTest::qWait(200);
+
+    QGraphicsSceneMouseEvent releaseEvent(QEvent::GraphicsSceneMouseRelease);
+    releaseEvent.setScenePos(QPointF(100, 100));
+    releaseEvent.setButton(Qt::LeftButton);
+    releaseEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &releaseEvent);
+
+    QVERIFY(canvas->rootObject()->property("mr1_released").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr1_canceled").toBool());
+    QVERIFY(!canvas->rootObject()->property("mr2_released").toBool());
 }
 
 QTEST_MAIN(tst_QDeclarativeMouseArea)

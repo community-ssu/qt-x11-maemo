@@ -75,8 +75,8 @@ public:
     QUrl source() const;
     void setSource(const QUrl&);
 
-    QDeclarativeEngine* engine();
-    QDeclarativeContext* rootContext();
+    QDeclarativeEngine* engine() const;
+    QDeclarativeContext* rootContext() const;
 
     QGraphicsObject *rootObject() const;
 
@@ -90,6 +90,7 @@ public:
     QList<QDeclarativeError> errors() const;
 
     QSize sizeHint() const;
+    QSize initialSize() const;
 
 Q_SIGNALS:
     void sceneResized(QSize size); // ???
@@ -97,16 +98,17 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void continueExecute();
-    void sizeChanged();
 
 protected:
     virtual void resizeEvent(QResizeEvent *);
     virtual void paintEvent(QPaintEvent *event);
     virtual void timerEvent(QTimerEvent*);
     virtual void setRootObject(QObject *obj);
+    virtual bool eventFilter(QObject *watched, QEvent *e);
 
-    friend class QDeclarativeViewPrivate;
-    QDeclarativeViewPrivate *d;
+private:
+    Q_DISABLE_COPY(QDeclarativeView)
+    Q_DECLARE_PRIVATE(QDeclarativeView)
 };
 
 QT_END_NAMESPACE

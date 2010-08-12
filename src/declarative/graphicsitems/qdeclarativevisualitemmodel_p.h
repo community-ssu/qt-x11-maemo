@@ -54,25 +54,20 @@ Q_DECLARE_METATYPE(QModelIndex)
 QT_BEGIN_NAMESPACE
 
 QT_MODULE(Declarative)
-/*****************************************************************************
- *****************************************************************************
- XXX Experimental
- *****************************************************************************
-*****************************************************************************/
 
 class QDeclarativeItem;
 class QDeclarativeComponent;
 class QDeclarativePackage;
 class QDeclarativeVisualDataModelPrivate;
 
-class Q_DECLARATIVE_EXPORT QDeclarativeVisualModel : public QObject
+class Q_AUTOTEST_EXPORT QDeclarativeVisualModel : public QObject
 {
     Q_OBJECT
 
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    QDeclarativeVisualModel() {}
+    QDeclarativeVisualModel(QObject *parent=0) : QObject(parent) {}
     virtual ~QDeclarativeVisualModel() {}
 
     enum ReleaseFlag { Referenced = 0x01, Destroyed = 0x02 };
@@ -82,6 +77,7 @@ public:
     virtual bool isValid() const = 0;
     virtual QDeclarativeItem *item(int index, bool complete=true) = 0;
     virtual ReleaseFlags release(QDeclarativeItem *item) = 0;
+    virtual bool completePending() const = 0;
     virtual void completeItem() = 0;
     virtual QVariant evaluate(int index, const QString &expression, QObject *objectContext) = 0;
     virtual QString stringValue(int, const QString &) { return QString(); }
@@ -107,7 +103,7 @@ private:
 
 class QDeclarativeVisualItemModelAttached;
 class QDeclarativeVisualItemModelPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeVisualItemModel : public QDeclarativeVisualModel
+class Q_AUTOTEST_EXPORT QDeclarativeVisualItemModel : public QDeclarativeVisualModel
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeVisualItemModel)
@@ -116,13 +112,14 @@ class Q_DECLARATIVE_EXPORT QDeclarativeVisualItemModel : public QDeclarativeVisu
     Q_CLASSINFO("DefaultProperty", "children")
 
 public:
-    QDeclarativeVisualItemModel();
+    QDeclarativeVisualItemModel(QObject *parent=0);
     virtual ~QDeclarativeVisualItemModel() {}
 
     virtual int count() const;
     virtual bool isValid() const;
     virtual QDeclarativeItem *item(int index, bool complete=true);
     virtual ReleaseFlags release(QDeclarativeItem *item);
+    virtual bool completePending() const;
     virtual void completeItem();
     virtual QString stringValue(int index, const QString &role);
     virtual QVariant evaluate(int index, const QString &expression, QObject *objectContext);
@@ -141,7 +138,7 @@ private:
 };
 
 
-class Q_DECLARATIVE_EXPORT QDeclarativeVisualDataModel : public QDeclarativeVisualModel
+class Q_AUTOTEST_EXPORT QDeclarativeVisualDataModel : public QDeclarativeVisualModel
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeVisualDataModel)
@@ -150,11 +147,11 @@ class Q_DECLARATIVE_EXPORT QDeclarativeVisualDataModel : public QDeclarativeVisu
     Q_PROPERTY(QDeclarativeComponent *delegate READ delegate WRITE setDelegate)
     Q_PROPERTY(QString part READ part WRITE setPart)
     Q_PROPERTY(QObject *parts READ parts CONSTANT)
-    Q_PROPERTY(QModelIndex rootIndex READ rootIndex WRITE setRootIndex NOTIFY rootIndexChanged)
+    Q_PROPERTY(QVariant rootIndex READ rootIndex WRITE setRootIndex NOTIFY rootIndexChanged)
     Q_CLASSINFO("DefaultProperty", "delegate")
 public:
     QDeclarativeVisualDataModel();
-    QDeclarativeVisualDataModel(QDeclarativeContext *);
+    QDeclarativeVisualDataModel(QDeclarativeContext *, QObject *parent=0);
     virtual ~QDeclarativeVisualDataModel();
 
     QVariant model() const;
@@ -163,8 +160,11 @@ public:
     QDeclarativeComponent *delegate() const;
     void setDelegate(QDeclarativeComponent *);
 
-    QModelIndex rootIndex() const;
-    void setRootIndex(const QModelIndex &root);
+    QVariant rootIndex() const;
+    void setRootIndex(const QVariant &root);
+
+    Q_INVOKABLE QVariant modelIndex(int idx) const;
+    Q_INVOKABLE QVariant parentModelIndex() const;
 
     QString part() const;
     void setPart(const QString &);
@@ -174,6 +174,7 @@ public:
     QDeclarativeItem *item(int index, bool complete=true);
     QDeclarativeItem *item(int index, const QByteArray &, bool complete=true);
     ReleaseFlags release(QDeclarativeItem *item);
+    bool completePending() const;
     void completeItem();
     virtual QString stringValue(int index, const QString &role);
     QVariant evaluate(int index, const QString &expression, QObject *objectContext);

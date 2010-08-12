@@ -1,4 +1,4 @@
-import Qt 4.6
+import Qt 4.7
 
 Rectangle {
     property int current: grid.currentIndex
@@ -43,7 +43,7 @@ Rectangle {
         focus: true
         width: 240
         height: 320
-        currentIndex: 5
+        currentIndex: 35
         cellWidth: 80
         cellHeight: 60
         delegate: myDelegate

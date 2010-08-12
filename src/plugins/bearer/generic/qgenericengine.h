@@ -65,11 +65,10 @@ public:
     QString getInterfaceFromId(const QString &id);
     bool hasIdentifier(const QString &id);
 
-    QString bearerName(const QString &id);
-
     void connectToId(const QString &id);
     void disconnectFromId(const QString &id);
 
+    Q_INVOKABLE void initialize();
     Q_INVOKABLE void requestUpdate();
 
     QNetworkSession::State sessionStateForId(const QString &id);

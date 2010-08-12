@@ -107,6 +107,11 @@ private Q_SLOTS:
     void getMultiple();
     void getMultipleWithPipeliningAndMultiplePriorities();
     void getMultipleWithPriorities();
+
+    void getEmptyWithPipelining();
+
+    void getAndThenDeleteObject();
+    void getAndThenDeleteObject_data();
 };
 
 tst_QHttpNetworkConnection::tst_QHttpNetworkConnection()
@@ -982,6 +987,94 @@ void tst_QHttpNetworkConnection::getMultipleWithPriorities()
 
     qDeleteAll(requests);
     qDeleteAll(replies);
+}
+
+
+class GetEmptyWithPipeliningReceiver : public QObject
+{
+    Q_OBJECT
+public:
+    int receivedCount;
+    int requestCount;
+    GetEmptyWithPipeliningReceiver(int rq) : receivedCount(0),requestCount(rq) { }
+public Q_SLOTS:
+    void finishedSlot() {
+        QHttpNetworkReply *reply = (QHttpNetworkReply*) sender();
+        receivedCount++;
+
+        if (receivedCount == requestCount)
+            QTestEventLoop::instance().exitLoop();
+    }
+};
+
+void tst_QHttpNetworkConnection::getEmptyWithPipelining()
+{
+    quint16 requestCount = 50;
+    // use 2 connections.
+    QHttpNetworkConnection connection(2, QtNetworkSettings::serverName());
+    GetEmptyWithPipeliningReceiver receiver(requestCount);
+
+    QUrl url("http://" + QtNetworkSettings::serverName() + "/cgi-bin/echo.cgi"); // a get on this = getting an empty file
+    QList<QHttpNetworkRequest*> requests;
+    QList<QHttpNetworkReply*> replies;
+
+    for (int i = 0; i < requestCount; i++) {
+        QHttpNetworkRequest *request = 0;
+        request = new QHttpNetworkRequest(url, QHttpNetworkRequest::Get);
+        request->setPipeliningAllowed(true);
+
+        requests.append(request);
+        QHttpNetworkReply *reply = connection.sendRequest(*request);
+        connect(reply, SIGNAL(finished()), &receiver, SLOT(finishedSlot()));
+        replies.append(reply);
+    }
+
+    QTestEventLoop::instance().enterLoop(20);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+
+    qDeleteAll(requests);
+    qDeleteAll(replies);
+}
+
+void tst_QHttpNetworkConnection::getAndThenDeleteObject_data()
+{
+    QTest::addColumn<bool>("replyFirst");
+
+    QTest::newRow("delete-reply-first") << true;
+    QTest::newRow("delete-connection-first") << false;
+}
+
+void tst_QHttpNetworkConnection::getAndThenDeleteObject()
+{
+    // yes, this will leak if the testcase fails. I don't care. It must not fail then :P
+    QHttpNetworkConnection *connection = new QHttpNetworkConnection(QtNetworkSettings::serverName());
+    QHttpNetworkRequest request("http://" + QtNetworkSettings::serverName() + "/qtest/bigfile");
+    QHttpNetworkReply *reply = connection->sendRequest(request);
+    reply->setDownstreamLimited(true);
+
+    QTime stopWatch;
+    stopWatch.start();
+    forever {
+        QCoreApplication::instance()->processEvents();
+        if (reply->bytesAvailable())
+            break;
+        if (stopWatch.elapsed() >= 30000)
+            break;
+    }
+
+    QVERIFY(reply->bytesAvailable());
+    QCOMPARE(reply->statusCode() ,200);
+    QVERIFY(!reply->isFinished()); // must not be finished
+
+    QFETCH(bool, replyFirst);
+
+    if (replyFirst) {
+        delete reply;
+        delete connection;
+    } else {
+        delete connection;
+        delete reply;
+    }
 }
 
 

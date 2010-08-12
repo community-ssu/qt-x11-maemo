@@ -44,7 +44,8 @@
 
 #ifndef QT_NO_MOVIE
 
-#include <qdeclarativeengine.h>
+#include <qdeclarativeinfo.h>
+#include <private/qdeclarativeengine_p.h>
 
 #include <QMovie>
 #include <QNetworkRequest>
@@ -62,22 +63,32 @@ QT_BEGIN_NAMESPACE
     \inherits Image
     \since 4.7
 
-    This item provides for playing animations stored as images containing a series of frames,
-    such as GIF files. The full list of supported formats can be determined with
-    QMovie::supportedFormats().
+    The AnimatedImage element provides for playing animations stored as images containing a series of frames,
+    such as GIF files. 
+    
+    The full list of supported formats can be determined with QMovie::supportedFormats().
 
     \table
     \row
     \o \image animatedimageitem.gif
     \o
     \qml
-Item {
-    width: anim.width; height: anim.height+8
-    AnimatedImage { id: anim; source: "pics/games-anim.gif" }
-    Rectangle { color: "red"; width: 4; height: 8; y: anim.height
-        x: (anim.width-width)*anim.currentFrame/(anim.frameCount-1)
+    import Qt 4.7
+
+    Rectangle {
+        width: animation.width; height: animation.height + 8
+
+        AnimatedImage { id: animation; source: "animation.gif" }
+
+        Rectangle { 
+            property int frames: animation.frameCount
+
+            width: 4; height: 8
+            x: (animation.width - width) * animation.currentFrame / frames
+            y: animation.height
+            color: "red"
+        }
     }
-}
     \endqml
     \endtable
 */
@@ -95,7 +106,7 @@ QDeclarativeAnimatedImage::~QDeclarativeAnimatedImage()
 
 /*!
   \qmlproperty bool AnimatedImage::paused
-  This property holds whether the animated image is paused or not
+  This property holds whether the animated image is paused.
 
   Defaults to false, and can be set to true when you want to pause.
 */
@@ -119,7 +130,7 @@ void QDeclarativeAnimatedImage::setPaused(bool pause)
 }
 /*!
   \qmlproperty bool AnimatedImage::playing
-  This property holds whether the animated image is playing or not
+  This property holds whether the animated image is playing.
 
   Defaults to true, so as to start playing immediately.
 */
@@ -179,14 +190,6 @@ int QDeclarativeAnimatedImage::frameCount() const
     return d->_movie->frameCount();
 }
 
-static QString toLocalFileOrQrc(const QUrl& url)
-{
-    QString r = url.toLocalFile();
-    if (r.isEmpty() && url.scheme() == QLatin1String("qrc"))
-        r = QLatin1Char(':') + url.path();
-    return r;
-}
-
 void QDeclarativeAnimatedImage::setSource(const QUrl &url)
 {
     Q_D(QDeclarativeAnimatedImage);
@@ -208,12 +211,12 @@ void QDeclarativeAnimatedImage::setSource(const QUrl &url)
         d->status = Null;
     } else {
 #ifndef QT_NO_LOCALFILE_OPTIMIZED_QML
-        QString lf = toLocalFileOrQrc(url);
+        QString lf = QDeclarativeEnginePrivate::urlToLocalFileOrQrc(url);
         if (!lf.isEmpty()) {
             //### should be unified with movieRequestFinished
             d->_movie = new QMovie(lf);
             if (!d->_movie->isValid()){
-                qWarning() << "Error Reading Animated Image File" << d->url;
+                qmlInfo(this) << "Error Reading Animated Image File " << d->url.toString();
                 delete d->_movie;
                 d->_movie = 0;
                 return;
@@ -270,7 +273,9 @@ void QDeclarativeAnimatedImage::movieRequestFinished()
 
     d->_movie = new QMovie(d->reply);
     if (!d->_movie->isValid()){
-        qWarning() << "Error Reading Animated Image File " << d->url;
+#ifndef QT_NO_DEBUG_STREAM
+        qmlInfo(this) << "Error Reading Animated Image File " << d->url;
+#endif
         delete d->_movie;
         d->_movie = 0;
         return;

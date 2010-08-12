@@ -2,6 +2,7 @@ TEMPLATE = app
 TARGET =
 DEPENDPATH += .
 INCLUDEPATH += .
+VERSION = $$QT_VERSION
 
 # Input
 HEADERS += \
@@ -57,9 +58,10 @@ wince*{
 
 symbian {
     load(data_caging_paths)
+    include($$QT_SOURCE_TREE/demos/symbianpkgrules.pri)
+    RSS_RULES = # Clear RSS_RULES, otherwise fluidlauncher will get put into QtDemos folder
 
     TARGET.UID3 = 0xA000A641
-    ICON = $$QT_SOURCE_TREE/src/s60installs/qt.svg
 
     defineReplace(regResourceDir) {
         symbian-abld|symbian-sbsv2 {
@@ -113,6 +115,10 @@ symbian {
 
     contains(QT_CONFIG, phonon) {
         reg_resource.sources += $$regResourceDir(demos/qmediaplayer/qmediaplayer_reg.rsc)
+    }
+
+    contains(QT_CONFIG, multimedia) {
+        reg_resource.sources += $$regResourceDir(demos/spectrum/app/spectrum_reg.rsc)
     }
 
 
@@ -195,12 +201,30 @@ symbian {
             $$appResourceDir(demos/qmediaplayer/qmediaplayer.mif)
     }
 
+    contains(QT_CONFIG, multimedia) {
+        executables.sources += $$QT_BUILD_TREE/demos/spectrum/app/spectrum.exe
+        executables.sources += $$QT_BUILD_TREE/demos/spectrum/3rdparty/fftreal/fftreal.dll
+        resource.sources += $$appResourceDir(demos/spectrum/app/spectrum.rsc)
+        mifs.sources += \
+            $$appResourceDir(demos/spectrum/app/spectrum.mif)
+    }
+
     contains(QT_CONFIG, script) {
         executables.sources += $$QT_BUILD_TREE/examples/script/context2d/context2d.exe
         reg_resource.sources += $$regResourceDir(examples/script/context2d/context2d_reg.rsc)
         resource.sources += $$appResourceDir(examples/script/context2d/context2d.rsc)
         mifs.sources += \
             $$appResourceDir(examples/script/context2d/context2d.mif)
+    }
+
+    qmldemos = qmlcalculator qmlclocks qmldialcontrol qmleasing qmlflickr qmlphotoviewer qmltwitter
+    contains(QT_CONFIG, declarative) {
+        for(qmldemo, qmldemos) {
+            executables.sources += $$QT_BUILD_TREE/demos/embedded/$${qmldemo}/$${qmldemo}.exe
+            reg_resource.sources += $$regResourceDir(demos/embedded/$${qmldemo}/$${qmldemo}_reg.rsc)
+            resource.sources += $$appResourceDir(demos/embedded/$${qmldemo}/$${qmldemo}.rsc)
+            mifs.sources += $$appResourceDir(demos/embedded/$${qmldemo}/$${qmldemo}.mif)
+        }
     }
 
     files.sources = $$PWD/screenshots $$PWD/slides
@@ -230,6 +254,8 @@ symbian {
 
     DEPLOYMENT += config files executables viewerimages saxbookmarks reg_resource resource \
         mifs desktopservices_music desktopservices_images fluidbackup
+
+    contains(QT_CONFIG, declarative):for(qmldemo, qmldemos):include($$QT_BUILD_TREE/demos/embedded/$${qmldemo}/deployment.pri)
 
     DEPLOYMENT.installer_header = 0xA000D7CD
 

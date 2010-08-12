@@ -51,6 +51,7 @@
 #include "EditorClientQt.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "TiledBackingStore.h"
 #include "Page.h"
 #include "Pasteboard.h"
 #include "FrameLoader.h"
@@ -118,15 +119,6 @@
 #endif
 
 using namespace WebCore;
-
-void QWEBKIT_EXPORT qt_wrt_setViewMode(QWebPage* page, const QString& mode)
-{
-    QWebPagePrivate::priv(page)->viewMode = mode;
-    WebCore::Frame* frame = QWebFramePrivate::core(page->mainFrame());
-    WebCore::FrameView* view = frame->view();
-    frame->document()->updateStyleSelector();
-    view->forceLayout();
-}
 
 void QWEBKIT_EXPORT qt_drt_overwritePluginDirectories()
 {
@@ -240,6 +232,8 @@ public:
     virtual QObject* pluginParent() const;
 
     virtual QStyle* style() const;
+
+    virtual bool viewResizesToContentsEnabled() const { return false; }
 
     QWidget* view;
 };
@@ -461,6 +455,9 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
     WebCore::InitializeLoggingChannelsIfNecessary();
     JSC::initializeThreading();
     WebCore::SecurityOrigin::setLocalLoadPolicy(WebCore::SecurityOrigin::AllowLocalLoadsForLocalAndSubstituteData);
+#if QT_VERSION < QT_VERSION_CHECK(4, 7, 0)
+    WebCore::Font::setCodePath(WebCore::Font::Complex);
+#endif
 
     chromeClient = new ChromeClientQt(q);
     contextMenuClient = new ContextMenuClientQt();
@@ -774,7 +771,7 @@ void QWebPagePrivate::timerEvent(QTimerEvent *ev)
     if (timerId == tripleClickTimer.timerId())
         tripleClickTimer.stop();
     else
-        q->QObject::timerEvent(ev);
+        q->timerEvent(ev);
 }
 
 void QWebPagePrivate::mouseMoveEvent(QGraphicsSceneMouseEvent* ev)
@@ -1183,7 +1180,7 @@ void QWebPagePrivate::dragEnterEvent(QGraphicsSceneDragDropEvent* ev)
     Qt::DropAction action = dragOpToDropAction(page->dragController()->dragEntered(&dragData));
     ev->setDropAction(action);
     if (action != Qt::IgnoreAction)
-        ev->accept();
+        ev->acceptProposedAction();
 #endif
 }
 
@@ -1196,7 +1193,7 @@ void QWebPagePrivate::dragEnterEvent(QDragEnterEvent* ev)
     ev->setDropAction(action);
     // We must accept this event in order to receive the drag move events that are sent
     // while the drag and drop action is in progress.
-    ev->accept();
+    ev->acceptProposedAction();
 #endif
 }
 
@@ -1226,7 +1223,7 @@ void QWebPagePrivate::dragMoveEvent(QGraphicsSceneDragDropEvent* ev)
     Qt::DropAction action = dragOpToDropAction(page->dragController()->dragUpdated(&dragData));
     ev->setDropAction(action);
     if (action != Qt::IgnoreAction)
-        ev->accept();
+        ev->acceptProposedAction();
 #endif
 }
 
@@ -1240,7 +1237,7 @@ void QWebPagePrivate::dragMoveEvent(QDragMoveEvent* ev)
     ev->setDropAction(action);
     // We must accept this event in order to receive the drag move events that are sent
     // while the drag and drop action is in progress.
-    ev->accept();
+    ev->acceptProposedAction();
 #endif
 }
 
@@ -1250,7 +1247,7 @@ void QWebPagePrivate::dropEvent(QGraphicsSceneDragDropEvent* ev)
     DragData dragData(ev->mimeData(), ev->pos().toPoint(),
             QCursor::pos(), dropActionToDragOp(ev->possibleActions()));
     if (page->dragController()->performDrag(&dragData))
-        ev->accept();
+        ev->acceptProposedAction();
 #endif
 }
 
@@ -1262,7 +1259,7 @@ void QWebPagePrivate::dropEvent(QDropEvent* ev)
     DragData dragData(ev->mimeData(), ev->pos(), QCursor::pos(),
                       dropActionToDragOp(Qt::DropAction(ev->dropAction())));
     if (page->dragController()->performDrag(&dragData))
-        ev->accept();
+        ev->acceptProposedAction();
 #endif
 }
 
@@ -1303,6 +1300,9 @@ void QWebPagePrivate::inputMethodEvent(QInputMethodEvent *ev)
 {
     WebCore::Frame *frame = page->focusController()->focusedOrMainFrame();
     WebCore::Editor *editor = frame->editor();
+#if QT_VERSION >= 0x040600
+    QInputMethodEvent::Attribute selection(QInputMethodEvent::Selection, 0, 0, QVariant());
+#endif
 
     if (!editor->canEdit()) {
         ev->ignore();
@@ -1319,6 +1319,7 @@ void QWebPagePrivate::inputMethodEvent(QInputMethodEvent *ev)
         renderTextControl = toRenderTextControl(renderer);
 
     Vector<CompositionUnderline> underlines;
+    bool hasSelection = false;
 
     for (int i = 0; i < ev->attributes().size(); ++i) {
         const QInputMethodEvent::Attribute& a = ev->attributes().at(i);
@@ -1342,10 +1343,8 @@ void QWebPagePrivate::inputMethodEvent(QInputMethodEvent *ev)
         }
 #if QT_VERSION >= 0x040600
         case QInputMethodEvent::Selection: {
-            if (renderTextControl) {
-                renderTextControl->setSelectionStart(qMin(a.start, (a.start + a.length)));
-                renderTextControl->setSelectionEnd(qMax(a.start, (a.start + a.length)));
-            }
+            selection = a;
+            hasSelection = true;
             break;
         }
 #endif
@@ -1354,12 +1353,127 @@ void QWebPagePrivate::inputMethodEvent(QInputMethodEvent *ev)
 
     if (!ev->commitString().isEmpty())
         editor->confirmComposition(ev->commitString());
-    else if (!ev->preeditString().isEmpty()) {
+    else {
+        // 1. empty preedit with a selection attribute, and start/end of 0 cancels composition
+        // 2. empty preedit with a selection attribute, and start/end of non-0 updates selection of current preedit text
+        // 3. populated preedit with a selection attribute, and start/end of 0 or non-0 updates selection of supplied preedit text
+        // 4. otherwise event is updating supplied pre-edit text
         QString preedit = ev->preeditString();
-        editor->setComposition(preedit, underlines, preedit.length(), 0);
+#if QT_VERSION >= 0x040600
+        if (hasSelection) {
+            QString text = (renderTextControl) ? QString(renderTextControl->text()) : QString();
+            if (preedit.isEmpty() && selection.start + selection.length > 0)
+                preedit = text;
+            editor->setComposition(preedit, underlines,
+                                   (selection.length < 0) ? selection.start + selection.length : selection.start,
+                                   (selection.length < 0) ? selection.start : selection.start + selection.length);
+        } else
+#endif
+            editor->setComposition(preedit, underlines, preedit.length(), 0);
     }
+
     ev->accept();
 }
+
+#ifndef QT_NO_PROPERTIES
+typedef struct {
+    const char* name;
+    double deferredRepaintDelay;
+    double initialDeferredRepaintDelayDuringLoading;
+    double maxDeferredRepaintDelayDuringLoading;
+    double deferredRepaintDelayIncrementDuringLoading;
+} QRepaintThrottlingPreset;
+
+void QWebPagePrivate::dynamicPropertyChangeEvent(QDynamicPropertyChangeEvent* event)
+{
+    if (event->propertyName() == "_q_viewMode") {
+        QString mode = q->property("_q_viewMode").toString();
+        if (mode != viewMode) {
+            viewMode = mode;
+            WebCore::Frame* frame = QWebFramePrivate::core(q->mainFrame());
+            WebCore::FrameView* view = frame->view();
+            frame->document()->updateStyleSelector();
+            view->forceLayout();
+        }
+    } else if (event->propertyName() == "_q_HTMLTokenizerChunkSize") {
+        int chunkSize = q->property("_q_HTMLTokenizerChunkSize").toInt();
+        q->handle()->page->setCustomHTMLTokenizerChunkSize(chunkSize);
+    } else if (event->propertyName() == "_q_HTMLTokenizerTimeDelay") {
+        double timeDelay = q->property("_q_HTMLTokenizerTimeDelay").toDouble();
+        q->handle()->page->setCustomHTMLTokenizerTimeDelay(timeDelay);
+    } else if (event->propertyName() == "_q_RepaintThrottlingDeferredRepaintDelay") {
+        double p = q->property("_q_RepaintThrottlingDeferredRepaintDelay").toDouble();
+        FrameView::setRepaintThrottlingDeferredRepaintDelay(p);
+    } else if (event->propertyName() == "_q_RepaintThrottlingnInitialDeferredRepaintDelayDuringLoading") {
+        double p = q->property("_q_RepaintThrottlingnInitialDeferredRepaintDelayDuringLoading").toDouble();
+        FrameView::setRepaintThrottlingnInitialDeferredRepaintDelayDuringLoading(p);
+    } else if (event->propertyName() == "_q_RepaintThrottlingMaxDeferredRepaintDelayDuringLoading") {
+        double p = q->property("_q_RepaintThrottlingMaxDeferredRepaintDelayDuringLoading").toDouble();
+        FrameView::setRepaintThrottlingMaxDeferredRepaintDelayDuringLoading(p);
+    } else if (event->propertyName() == "_q_RepaintThrottlingDeferredRepaintDelayIncrementDuringLoading") {
+        double p = q->property("_q_RepaintThrottlingDeferredRepaintDelayIncrementDuringLoading").toDouble();
+        FrameView::setRepaintThrottlingDeferredRepaintDelayIncrementDuringLoading(p);
+    } else if (event->propertyName() == "_q_RepaintThrottlingPreset") {
+        static const QRepaintThrottlingPreset presets[] = {
+            {   "NoThrottling",     0,      0,      0,      0 },
+            {   "Legacy",       0.025,      0,    2.5,    0.5 },
+            {   "Minimal",       0.01,      0,      1,    0.2 },
+            {   "Medium",       0.025,      1,      5,    0.5 },
+            {   "Heavy",          0.1,      2,     10,      1 }
+        };
+
+        QString p = q->property("_q_RepaintThrottlingPreset").toString();
+        for(int i = 0; i < sizeof(presets) / sizeof(presets[0]); i++) {
+            if(p == presets[i].name) {
+                FrameView::setRepaintThrottlingDeferredRepaintDelay(
+                        presets[i].deferredRepaintDelay);
+                FrameView::setRepaintThrottlingnInitialDeferredRepaintDelayDuringLoading(
+                        presets[i].initialDeferredRepaintDelayDuringLoading);
+                FrameView::setRepaintThrottlingMaxDeferredRepaintDelayDuringLoading(
+                        presets[i].maxDeferredRepaintDelayDuringLoading);
+                FrameView::setRepaintThrottlingDeferredRepaintDelayIncrementDuringLoading(
+                        presets[i].deferredRepaintDelayIncrementDuringLoading);
+                break;
+            }
+        }
+    }
+#if ENABLE(TILED_BACKING_STORE)
+    else if (event->propertyName() == "_q_TiledBackingStoreTileSize") {
+        WebCore::Frame* frame = QWebFramePrivate::core(q->mainFrame());
+        if (!frame->tiledBackingStore())
+            return;
+        QSize tileSize = q->property("_q_TiledBackingStoreTileSize").toSize();
+        frame->tiledBackingStore()->setTileSize(tileSize);
+    } else if (event->propertyName() == "_q_TiledBackingStoreTileCreationDelay") {
+        WebCore::Frame* frame = QWebFramePrivate::core(q->mainFrame());
+        if (!frame->tiledBackingStore())
+            return;
+        int tileCreationDelay = q->property("_q_TiledBackingStoreTileCreationDelay").toInt();
+        frame->tiledBackingStore()->setTileCreationDelay(static_cast<double>(tileCreationDelay) / 1000.);
+    } else if (event->propertyName() == "_q_TiledBackingStoreKeepAreaMultiplier") {
+        WebCore::Frame* frame = QWebFramePrivate::core(q->mainFrame());
+        if (!frame->tiledBackingStore())
+            return;
+        FloatSize keepMultiplier;
+        FloatSize coverMultiplier;
+        frame->tiledBackingStore()->getKeepAndCoverAreaMultipliers(keepMultiplier, coverMultiplier);
+        QSizeF qSize = q->property("_q_TiledBackingStoreKeepAreaMultiplier").toSizeF();
+        keepMultiplier = FloatSize(qSize.width(), qSize.height());
+        frame->tiledBackingStore()->setKeepAndCoverAreaMultipliers(keepMultiplier, coverMultiplier);
+    } else if (event->propertyName() == "_q_TiledBackingStoreCoverAreaMultiplier") {
+        WebCore::Frame* frame = QWebFramePrivate::core(q->mainFrame());
+        if (!frame->tiledBackingStore())
+            return;
+        FloatSize keepMultiplier;
+        FloatSize coverMultiplier;
+        frame->tiledBackingStore()->getKeepAndCoverAreaMultipliers(keepMultiplier, coverMultiplier);
+        QSizeF qSize = q->property("_q_TiledBackingStoreCoverAreaMultiplier").toSizeF();
+        coverMultiplier = FloatSize(qSize.width(), qSize.height());
+        frame->tiledBackingStore()->setKeepAndCoverAreaMultipliers(keepMultiplier, coverMultiplier);
+    }
+#endif
+}
+#endif
 
 void QWebPagePrivate::shortcutOverrideEvent(QKeyEvent* event)
 {
@@ -1492,7 +1606,7 @@ QVariant QWebPage::inputMethodQuery(Qt::InputMethodQuery property) const
                 // We can't access absoluteCaretBounds() while the view needs to layout.
                 return QVariant();
             }
-            return QVariant(frame->selection()->absoluteCaretBounds());
+            return QVariant(view->contentsToWindow(frame->selection()->absoluteCaretBounds()));
         }
         case Qt::ImFont: {
             if (renderTextControl) {
@@ -1507,7 +1621,7 @@ QVariant QWebPage::inputMethodQuery(Qt::InputMethodQuery property) const
                     RefPtr<Range> range = editor->compositionRange();
                     return QVariant(renderTextControl->selectionEnd() - TextIterator::rangeLength(range.get()));
                 }
-                return QVariant(renderTextControl->selectionEnd());
+                return QVariant(frame->selection()->extent().offsetInContainerNode());
             }
             return QVariant();
         }
@@ -1539,7 +1653,7 @@ QVariant QWebPage::inputMethodQuery(Qt::InputMethodQuery property) const
                     RefPtr<Range> range = editor->compositionRange();
                     return QVariant(renderTextControl->selectionStart() - TextIterator::rangeLength(range.get()));
                 }
-                return QVariant(renderTextControl->selectionStart());
+                return QVariant(frame->selection()->base().offsetInContainerNode());
             }
             return QVariant();
         }
@@ -1616,7 +1730,7 @@ InspectorController* QWebPagePrivate::inspectorController()
 /*!
    \enum QWebPage::FindFlag
 
-   This enum describes the options available to QWebPage's findText() function. The options
+   This enum describes the options available to the findText() function. The options
    can be OR-ed together from the following list:
 
    \value FindBackward Searches backwards instead of forwards.
@@ -1637,6 +1751,8 @@ InspectorController* QWebPagePrivate::inspectorController()
     \value DelegateExternalLinks When activating links that point to documents not stored on the
     local filesystem or an equivalent - such as the Qt resource system - then linkClicked() is emitted.
     \value DelegateAllLinks Whenever a link is activated the linkClicked() signal is emitted.
+
+    \sa QWebPage::linkDelegationPolicy
 */
 
 /*!
@@ -1651,6 +1767,8 @@ InspectorController* QWebPagePrivate::inspectorController()
     \value NavigationTypeReload The user activated the reload action.
     \value NavigationTypeFormResubmitted An HTML form was submitted a second time.
     \value NavigationTypeOther A navigation to another document using a method not listed above.
+
+    \sa acceptNavigationRequest()
 */
 
 /*!
@@ -1660,7 +1778,7 @@ InspectorController* QWebPagePrivate::inspectorController()
 
     Actions only have an effect when they are applicable. The availability of
     actions can be be determined by checking \l{QAction::}{isEnabled()} on the
-    action returned by \l{QWebPage::}{action()}.
+    action returned by action().
 
     One method of enabling the text editing, cursor movement, and text selection actions
     is by setting \l contentEditable to true.
@@ -1677,6 +1795,7 @@ InspectorController* QWebPagePrivate::inspectorController()
     \value Back Navigate back in the history of navigated links.
     \value Forward Navigate forward in the history of navigated links.
     \value Stop Stop loading the current page.
+    \value StopScheduledPageRefresh Stop all pending page refresh/redirect requests.
     \value Reload Reload the current page.
     \value ReloadAndBypassCache Reload the current page, but do not use any local cache. (Added in Qt 4.6)
     \value Cut Cut the content currently selected into the clipboard.
@@ -1742,6 +1861,8 @@ InspectorController* QWebPagePrivate::inspectorController()
 /*!
     \enum QWebPage::WebWindowType
 
+    This enum describes the types of window that can be created by the createWindow() function.
+
     \value WebBrowserWindow The window is a regular web browser window.
     \value WebModalDialog The window acts as modal dialog.
 */
@@ -1758,11 +1879,13 @@ InspectorController* QWebPagePrivate::inspectorController()
     to provide functionality like QWebView in a widget-less environment.
 
     QWebPage's API is very similar to QWebView, as you are still provided with
-    common functions like action() (known as \l{QWebView::}{pageAction()} in
-    QWebView), triggerAction(), findText() and settings(). More QWebView-like
-    functions can be found in the main frame of QWebPage, obtained via
-    QWebPage::mainFrame(). For example, the load(), setUrl() and setHtml()
-    unctions for QWebPage can be accessed using QWebFrame.
+    common functions like action() (known as
+    \l{QWebView::pageAction()}{pageAction}() in QWebView), triggerAction(),
+    findText() and settings(). More QWebView-like functions can be found in the
+    main frame of QWebPage, obtained via the mainFrame() function. For example,
+    the \l{QWebFrame::load()}{load}(), \l{QWebFrame::setUrl()}{setUrl}() and
+    \l{QWebFrame::setHtml()}{setHtml}() functions for QWebPage can be accessed
+    using QWebFrame.
 
     The loadStarted() signal is emitted when the page begins to load.The
     loadProgress() signal, on the other hand, is emitted whenever an element
@@ -1866,7 +1989,8 @@ QWebFrame *QWebPage::currentFrame() const
 /*!
     \since 4.6
 
-    Returns the frame at the given point \a pos.
+    Returns the frame at the given point \a pos, or 0 if there is no frame at
+    that position.
 
     \sa mainFrame(), currentFrame()
 */
@@ -1985,7 +2109,7 @@ bool QWebPage::javaScriptConfirm(QWebFrame *frame, const QString& msg)
     result should be written to \a result and true should be returned. If the prompt was not cancelled by the
     user, the implementation should return true and the result string must not be null.
 
-    The default implementation uses QInputDialog::getText.
+    The default implementation uses QInputDialog::getText().
 */
 bool QWebPage::javaScriptPrompt(QWebFrame *frame, const QString& msg, const QString& defaultValue, QString* result)
 {
@@ -2048,9 +2172,9 @@ QWebPage *QWebPage::createWindow(WebWindowType type)
 }
 
 /*!
-    This function is called whenever WebKit encounters a HTML object element with type "application/x-qt-plugin".
-    The \a classid, \a url, \a paramNames and \a paramValues correspond to the HTML object element attributes and
-    child elements to configure the embeddable object.
+    This function is called whenever WebKit encounters a HTML object element with type "application/x-qt-plugin". It is
+    called regardless of the value of QWebSettings::PluginsEnabled. The \a classid, \a url, \a paramNames and \a paramValues
+    correspond to the HTML object element attributes and child elements to configure the embeddable object.
 */
 QObject *QWebPage::createPlugin(const QString &classid, const QUrl &url, const QStringList &paramNames, const QStringList &paramValues)
 {
@@ -2074,6 +2198,15 @@ static void openNewWindow(const QUrl& url, WebCore::Frame* frame)
         if (Page* newPage = oldPage->chrome()->createWindow(frame,
                 frameLoadRequest(url, frame), features))
             newPage->chrome()->show();
+    }
+}
+
+static void collectChildFrames(QWebFrame* frame, QList<QWebFrame*>& list)
+{
+    list << frame->childFrames();
+    QListIterator<QWebFrame*> it(frame->childFrames());
+    while (it.hasNext()) {
+        collectChildFrames(it.next(), list);
     }
 }
 
@@ -2173,6 +2306,16 @@ void QWebPage::triggerAction(WebAction action, bool)
 #endif
             break;
         }
+        case StopScheduledPageRefresh: {
+            QWebFrame* topFrame = mainFrame();
+            topFrame->d->frame->redirectScheduler()->cancel();
+            QList<QWebFrame*> childFrames;
+            collectChildFrames(topFrame, childFrames);
+            QListIterator<QWebFrame*> it(childFrames);
+            while (it.hasNext())
+                it.next()->d->frame->redirectScheduler()->cancel();
+            break;
+        }
         default:
             command = QWebPagePrivate::editorCommandForWebActions(action);
             break;
@@ -2199,6 +2342,8 @@ QSize QWebPage::viewportSize() const
 
     By default, for a newly-created Web page, this property contains a size with
     zero width and height.
+
+    \sa QWebFrame::render(), preferredContentsSize
 */
 void QWebPage::setViewportSize(const QSize &size) const
 {
@@ -2208,7 +2353,6 @@ void QWebPage::setViewportSize(const QSize &size) const
     if (frame->d->frame && frame->d->frame->view()) {
         WebCore::FrameView* view = frame->d->frame->view();
         view->setFrameRect(QRect(QPoint(0, 0), size));
-        view->forceLayout();
         view->adjustViewSize();
     }
 }
@@ -2228,11 +2372,12 @@ QSize QWebPage::preferredContentsSize() const
 /*!
     \property QWebPage::preferredContentsSize
     \since 4.6
-    \brief the size of the fixed layout
+    \brief the preferred size of the contents
 
-    The size affects the layout of the page in the viewport.  If set to a fixed size of
-    1024x768 for example then webkit will layout the page as if the viewport were that size
-    rather than something different.
+    If this property is set to a valid size, it is used to lay out the page.
+    If it is not set (the default), the viewport size is used instead.
+
+    \sa viewportSize
 */
 void QWebPage::setPreferredContentsSize(const QSize &size) const
 {
@@ -2580,9 +2725,11 @@ QAction *QWebPage::action(WebAction action) const
 
 /*!
     \property QWebPage::modified
-    \brief whether the page contains unsubmitted form data
+    \brief whether the page contains unsubmitted form data, or the contents have been changed.
 
     By default, this property is false.
+
+    \sa contentsChanged(), contentEditable, undoStack()
 */
 bool QWebPage::isModified() const
 {
@@ -2598,6 +2745,8 @@ bool QWebPage::isModified() const
 #ifndef QT_NO_UNDOSTACK
 /*!
     Returns a pointer to the undo stack used for editable content.
+
+    \sa modified
 */
 QUndoStack *QWebPage::undoStack() const
 {
@@ -2709,6 +2858,11 @@ bool QWebPage::event(QEvent *ev)
         d->touchEvent(static_cast<QTouchEvent*>(ev));
         break;
 #endif
+#ifndef QT_NO_PROPERTIES
+    case QEvent::DynamicPropertyChange:
+        d->dynamicPropertyChangeEvent(static_cast<QDynamicPropertyChangeEvent*>(ev));
+        break;
+#endif
     default:
         return QObject::event(ev);
     }
@@ -2717,7 +2871,7 @@ bool QWebPage::event(QEvent *ev)
 }
 
 /*!
-    Similar to QWidget::focusNextPrevChild it focuses the next focusable web element
+    Similar to QWidget::focusNextPrevChild() it focuses the next focusable web element
     if \a next is true; otherwise the previous element is focused.
 
     Returns true if it can find a new focusable element, or false if it can't.
@@ -2744,6 +2898,8 @@ bool QWebPage::focusNextPrevChild(bool next)
     If this property is enabled the contents of the page can be edited by the user through a visible
     cursor. If disabled (the default) only HTML elements in the web page with their
     \c{contenteditable} attribute set are editable.
+
+    \sa modified, contentsChanged(), WebAction
 */
 void QWebPage::setContentEditable(bool editable)
 {
@@ -2913,17 +3069,21 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     as a result of the user clicking on a "file upload" button in a HTML form where multiple
     file selection is allowed.
 
-    \omitvalue ErrorPageExtension (introduced in Qt 4.6)
+    \value ErrorPageExtension Whether the web page can provide an error page when loading fails.
+    (introduced in Qt 4.6)
+
+    \sa ChooseMultipleFilesExtensionOption, ChooseMultipleFilesExtensionReturn, ErrorPageExtensionOption, ErrorPageExtensionReturn
 */
 
 /*!
     \enum QWebPage::ErrorDomain
     \since 4.6
-    \internal
 
-    \value QtNetwork
-    \value Http
-    \value WebKit
+    This enum describes the domain of an ErrorPageExtensionOption object (i.e. the layer in which the error occurred).
+
+    \value QtNetwork The error occurred in the QtNetwork layer; the error code is of type QNetworkReply::NetworkError.
+    \value Http The error occurred in the HTTP layer; the error code is a HTTP status code (see QNetworkRequest::HttpStatusCodeAttribute).
+    \value WebKit The error is an internal WebKit error.
 */
 
 /*!
@@ -2933,7 +3093,18 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
 
     \inmodule QtWebKit
 
-    \sa QWebPage::extension()
+    \sa QWebPage::extension() QWebPage::ExtensionReturn
+*/
+
+
+/*!
+    \class QWebPage::ExtensionReturn
+    \since 4.4
+    \brief The ExtensionReturn class provides an output result from a QWebPage's extension.
+
+    \inmodule QtWebKit
+
+    \sa QWebPage::extension() QWebPage::ExtensionOption
 */
 
 /*!
@@ -2944,12 +3115,38 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
 
     \inmodule QtWebKit
 
-    The ErrorPageExtensionOption class holds the \a url for which an error occoured as well as
+    The ErrorPageExtensionOption class holds the \a url for which an error occurred as well as
     the associated \a frame.
 
     The error itself is reported by an error \a domain, the \a error code as well as \a errorString.
 
-    \sa QWebPage::ErrorPageExtensionReturn
+    \sa QWebPage::extension() QWebPage::ErrorPageExtensionReturn
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionOption::url
+    \brief the url for which an error occurred
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionOption::frame
+    \brief the frame associated with the error
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionOption::domain
+    \brief the domain that reported the error
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionOption::error
+    \brief the error code. Interpretation of the value depends on the \a domain
+    \sa QWebPage::ErrorDomain
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionOption::errorString
+    \brief a string that describes the error
 */
 
 /*!
@@ -2970,13 +3167,36 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     External objects such as stylesheets or images referenced in the HTML are located relative to
     \a baseUrl.
 
-    \sa QWebPage::ErrorPageExtensionOption, QString::toUtf8()
+    \sa QWebPage::extension() QWebPage::ErrorPageExtensionOption, QString::toUtf8()
 */
 
 /*!
     \fn QWebPage::ErrorPageExtensionReturn::ErrorPageExtensionReturn()
 
     Constructs a new error page object.
+*/
+
+
+/*!
+    \variable QWebPage::ErrorPageExtensionReturn::contentType
+    \brief the error page's content type
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionReturn::encoding
+    \brief the error page encoding
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionReturn::baseUrl
+    \brief the base url
+
+    External objects such as stylesheets or images referenced in the HTML are located relative to this url.
+*/
+
+/*!
+    \variable QWebPage::ErrorPageExtensionReturn::content
+    \brief the HTML content of the error page
 */
 
 /*!
@@ -2990,7 +3210,22 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     The ChooseMultipleFilesExtensionOption class holds the frame originating the request
     and the suggested filenames which might be provided.
 
-    \sa QWebPage::chooseFile(), QWebPage::ChooseMultipleFilesExtensionReturn
+    \sa QWebPage::extension() QWebPage::chooseFile(), QWebPage::ChooseMultipleFilesExtensionReturn
+*/
+
+/*!
+    \variable QWebPage::ChooseMultipleFilesExtensionOption::parentFrame
+    \brief The frame in which the request originated
+*/
+
+/*!
+    \variable QWebPage::ChooseMultipleFilesExtensionOption::suggestedFileNames
+    \brief The suggested filenames
+*/
+
+/*!
+    \variable QWebPage::ChooseMultipleFilesExtensionReturn::fileNames
+    \brief The selected filenames
 */
 
 /*!
@@ -3004,14 +3239,17 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     The ChooseMultipleFilesExtensionReturn class holds the filenames selected by the user
     when the extension is invoked.
 
-    \sa QWebPage::ChooseMultipleFilesExtensionOption
+    \sa QWebPage::extension() QWebPage::ChooseMultipleFilesExtensionOption
 */
 
 /*!
     This virtual function can be reimplemented in a QWebPage subclass to provide support for extensions. The \a option
     argument is provided as input to the extension; the output results can be stored in \a output.
 
-    The behavior of this function is determined by \a extension.
+    The behavior of this function is determined by \a extension. The \a option
+    and \a output values are typically casted to the corresponding types (for
+    example, ChooseMultipleFilesExtensionOption and
+    ChooseMultipleFilesExtensionReturn for ChooseMultipleFilesExtension).
 
     You can call supportsExtension() to check if an extension is supported by the page.
 
@@ -3077,6 +3315,14 @@ bool QWebPage::findText(const QString &subString, FindFlags options)
         } else
             return d->page->markAllMatchesForText(subString, caseSensitivity, true, 0);
     } else {
+        if (subString.isEmpty()) {
+            d->page->mainFrame()->selection()->clear();
+            Frame* frame = d->page->mainFrame()->tree()->firstChild();
+            while (frame) {
+                frame->selection()->clear();
+                frame = frame->tree()->traverseNextWithWrap(false);
+            }
+        }
         ::FindDirection direction = ::FindDirectionForward;
         if (options & FindBackward)
             direction = ::FindDirectionBackward;
@@ -3103,6 +3349,8 @@ QWebSettings *QWebPage::settings() const
 
     A suggested filename may be provided in \a suggestedFile. The frame originating the
     request is provided as \a parentFrame.
+
+    \sa ChooseMultipleFilesExtension
 */
 QString QWebPage::chooseFile(QWebFrame *parentFrame, const QString& suggestedFile)
 {
@@ -3192,233 +3440,260 @@ QWebPluginFactory *QWebPage::pluginFactory() const
     \o %AppVersion% expands to QCoreApplication::applicationName()/QCoreApplication::applicationVersion() if they're set; otherwise defaulting to Qt and the current Qt version.
     \endlist
 */
-QString QWebPage::userAgentForUrl(const QUrl& url) const
+QString QWebPage::userAgentForUrl(const QUrl&) const
 {
-    Q_UNUSED(url)
-    QString ua = QLatin1String("Mozilla/5.0 ("
+    // splitting the string in three and user QStringBuilder is better than using QString::arg()
+    static QString firstPart;
+    static QString secondPart;
+    static QString thirdPart;
+
+    if (firstPart.isNull() || secondPart.isNull() || thirdPart.isNull()) {
+        QString firstPartTemp;
+        firstPartTemp.reserve(150);
+        firstPartTemp += QString::fromLatin1("Mozilla/5.0 ("
 
     // Platform
 #ifdef Q_WS_MAC
-    "Macintosh"
+        "Macintosh"
 #elif defined Q_WS_QWS
-    "QtEmbedded"
+        "QtEmbedded"
 #elif defined Q_WS_WIN
-    "Windows"
+        "Windows"
 #elif defined Q_WS_X11
-    "X11"
+        "X11"
 #elif defined Q_OS_SYMBIAN
-    "SymbianOS"
+        "Symbian"
 #else
-    "Unknown"
+        "Unknown"
 #endif
-    // Placeholder for Platform Version
-    "%1; "
+    );
 
-    // Placeholder for security strength (N or U)
-    "%2; "
+#if defined Q_OS_SYMBIAN
+        QSysInfo::SymbianVersion symbianVersion = QSysInfo::symbianVersion();
+        switch (symbianVersion) {
+        case QSysInfo::SV_9_2:
+            firstPartTemp += QString::fromLatin1("OS/9.2");
+            break;
+        case QSysInfo::SV_9_3:
+            firstPartTemp += QString::fromLatin1("OS/9.3");
+            break;                
+        case QSysInfo::SV_9_4:
+            firstPartTemp += QString::fromLatin1("OS/9.4");
+            break;
+        case QSysInfo::SV_SF_2:
+            firstPartTemp += QString::fromLatin1("/2");
+            break;
+        case QSysInfo::SV_SF_3:
+            firstPartTemp += QString::fromLatin1("/3");
+            break;
+        case QSysInfo::SV_SF_4:
+            firstPartTemp += QString::fromLatin1("/4");
+        default:
+            break;
+        }
+#endif
 
-    // Subplatform"
+        firstPartTemp += QString::fromLatin1("; ");
+
+        // SSL support
+#if !defined(QT_NO_OPENSSL)
+        // we could check QSslSocket::supportsSsl() here, but this makes
+        // OpenSSL, certificates etc being loaded in all cases were QWebPage
+        // is used. This loading is not needed for non-https.
+        firstPartTemp += QString::fromLatin1("U; ");
+        // this may lead to a false positive: We indicate SSL since it is
+        // compiled in even though supportsSsl() might return false
+#else
+        firstPartTemp += QString::fromLatin1("N; ");
+#endif
+
+        // Operating system
 #ifdef Q_OS_AIX
-    "AIX"
+        firstPartTemp += QString::fromLatin1("AIX");
 #elif defined Q_OS_WIN32
-    "%3"
+
+        switch (QSysInfo::WindowsVersion) {
+        case QSysInfo::WV_32s:
+            firstPartTemp += QString::fromLatin1("Windows 3.1");
+            break;
+        case QSysInfo::WV_95:
+            firstPartTemp += QString::fromLatin1("Windows 95");
+            break;
+        case QSysInfo::WV_98:
+            firstPartTemp += QString::fromLatin1("Windows 98");
+            break;
+        case QSysInfo::WV_Me:
+            firstPartTemp += QString::fromLatin1("Windows 98; Win 9x 4.90");
+            break;
+        case QSysInfo::WV_NT:
+            firstPartTemp += QString::fromLatin1("WinNT4.0");
+            break;
+        case QSysInfo::WV_2000:
+            firstPartTemp += QString::fromLatin1("Windows NT 5.0");
+            break;
+        case QSysInfo::WV_XP:
+            firstPartTemp += QString::fromLatin1("Windows NT 5.1");
+            break;
+        case QSysInfo::WV_2003:
+            firstPartTemp += QString::fromLatin1("Windows NT 5.2");
+            break;
+        case QSysInfo::WV_VISTA:
+            firstPartTemp += QString::fromLatin1("Windows NT 6.0");
+            break;
+         case QSysInfo::WV_WINDOWS7:
+            firstPartTemp += QString::fromLatin1("Windows NT 6.1");
+            break;
+         case QSysInfo::WV_CE:
+            firstPartTemp += QString::fromLatin1("Windows CE");
+            break;
+         case QSysInfo::WV_CENET:
+            firstPartTemp += QString::fromLatin1("Windows CE .NET");
+            break;
+         case QSysInfo::WV_CE_5:
+            firstPartTemp += QString::fromLatin1("Windows CE 5.x");
+            break;
+         case QSysInfo::WV_CE_6:
+            firstPartTemp += QString::fromLatin1("Windows CE 6.x");
+            break;
+        }
+
 #elif defined Q_OS_DARWIN
 #ifdef __i386__ || __x86_64__
-    "Intel Mac OS X"
+        firstPartTemp += QString::fromLatin1("Intel Mac OS X");
 #else
-    "PPC Mac OS X"
+        firstPartTemp += QString::fromLatin1("PPC Mac OS X");
 #endif
 
 #elif defined Q_OS_BSDI
-    "BSD"
+        firstPartTemp += QString::fromLatin1("BSD");
 #elif defined Q_OS_BSD4
-    "BSD Four"
+        firstPartTemp += QString::fromLatin1("BSD Four");
 #elif defined Q_OS_CYGWIN
-    "Cygwin"
+        firstPartTemp += QString::fromLatin1("Cygwin");
 #elif defined Q_OS_DGUX
-    "DG/UX"
+        firstPartTemp += QString::fromLatin1("DG/UX");
 #elif defined Q_OS_DYNIX
-    "DYNIX/ptx"
+        firstPartTemp += QString::fromLatin1("DYNIX/ptx");
 #elif defined Q_OS_FREEBSD
-    "FreeBSD"
+        firstPartTemp += QString::fromLatin1("FreeBSD");
 #elif defined Q_OS_HPUX
-    "HP-UX"
+        firstPartTemp += QString::fromLatin1("HP-UX");
 #elif defined Q_OS_HURD
-    "GNU Hurd"
+        firstPartTemp += QString::fromLatin1("GNU Hurd");
 #elif defined Q_OS_IRIX
-    "SGI Irix"
+        firstPartTemp += QString::fromLatin1("SGI Irix");
 #elif defined Q_OS_LINUX
-    "Linux"
-#elif defined Q_OS_LYNX
-    "LynxOS"
-#elif defined Q_OS_NETBSD
-    "NetBSD"
-#elif defined Q_OS_OS2
-    "OS/2"
-#elif defined Q_OS_OPENBSD
-    "OpenBSD"
-#elif defined Q_OS_OS2EMX
-    "OS/2"
-#elif defined Q_OS_OSF
-    "HP Tru64 UNIX"
-#elif defined Q_OS_QNX6
-    "QNX RTP Six"
-#elif defined Q_OS_QNX
-    "QNX"
-#elif defined Q_OS_RELIANT
-    "Reliant UNIX"
-#elif defined Q_OS_SCO
-    "SCO OpenServer"
-#elif defined Q_OS_SOLARIS
-    "Sun Solaris"
-#elif defined Q_OS_ULTRIX
-    "DEC Ultrix"
-#elif defined Q_WS_S60
-    "Series60"
-#elif defined Q_OS_UNIX
-    "UNIX BSD/SYSV system"
-#elif defined Q_OS_UNIXWARE
-    "UnixWare Seven, Open UNIX Eight"
+
+#if defined(__x86_64__)
+        firstPartTemp += QString::fromLatin1("Linux x86_64");
+#elif defined(__i386__)
+        firstPartTemp += QString::fromLatin1("Linux i686");
 #else
-    "Unknown"
+        firstPartTemp += QString::fromLatin1("Linux");
 #endif
-    // Placeholder for SubPlatform Version
-    "%4; ");
 
-    // Platform Version
-    QString osVer;
-#ifdef Q_OS_SYMBIAN
-    QSysInfo::SymbianVersion symbianVersion = QSysInfo::symbianVersion();
-    switch (symbianVersion) {
-    case QSysInfo::SV_9_2:
-        osVer = "/9.2";
-        break;
-    case QSysInfo::SV_9_3:
-        osVer = "/9.3";
-        break;
-    case QSysInfo::SV_9_4:
-        osVer = "/9.4";
-        break;
-    default: 
-        osVer = "Unknown";
+#elif defined Q_OS_LYNX
+        firstPartTemp += QString::fromLatin1("LynxOS");
+#elif defined Q_OS_NETBSD
+        firstPartTemp += QString::fromLatin1("NetBSD");
+#elif defined Q_OS_OS2
+        firstPartTemp += QString::fromLatin1("OS/2");
+#elif defined Q_OS_OPENBSD
+        firstPartTemp += QString::fromLatin1("OpenBSD");
+#elif defined Q_OS_OS2EMX
+        firstPartTemp += QString::fromLatin1("OS/2");
+#elif defined Q_OS_OSF
+        firstPartTemp += QString::fromLatin1("HP Tru64 UNIX");
+#elif defined Q_OS_QNX6
+        firstPartTemp += QString::fromLatin1("QNX RTP Six");
+#elif defined Q_OS_QNX
+        firstPartTemp += QString::fromLatin1("QNX");
+#elif defined Q_OS_RELIANT
+        firstPartTemp += QString::fromLatin1("Reliant UNIX");
+#elif defined Q_OS_SCO
+        firstPartTemp += QString::fromLatin1("SCO OpenServer");
+#elif defined Q_OS_SOLARIS
+        firstPartTemp += QString::fromLatin1("Sun Solaris");
+#elif defined Q_OS_ULTRIX
+        firstPartTemp += QString::fromLatin1("DEC Ultrix");
+#elif defined Q_OS_SYMBIAN
+        firstPartTemp += QLatin1Char(' ');
+        QSysInfo::S60Version s60Version = QSysInfo::s60Version();
+        switch (s60Version) {
+        case QSysInfo::SV_S60_3_1:
+            firstPartTemp += QString::fromLatin1("Series60/3.1");
+            break;
+        case QSysInfo::SV_S60_3_2:
+            firstPartTemp += QString::fromLatin1("Series60/3.2");
+            break;
+        case QSysInfo::SV_S60_5_0:
+            firstPartTemp += QString::fromLatin1("Series60/5.0");
+            break;
+        default:
+            break;
+        }
+#elif defined Q_OS_UNIX
+        firstPartTemp += QString::fromLatin1("UNIX BSD/SYSV system");
+#elif defined Q_OS_UNIXWARE
+        firstPartTemp += QString::fromLatin1("UnixWare Seven, Open UNIX Eight");
+#else
+        firstPartTemp += QString::fromLatin1("Unknown");
+#endif
+
+        // language is the split
+        firstPartTemp += QString::fromLatin1("; ");
+        firstPartTemp.squeeze();
+        firstPart = firstPartTemp;
+
+        QString secondPartTemp;
+        secondPartTemp.reserve(150);
+        secondPartTemp += QString::fromLatin1(") ");
+
+        // webkit/qt version
+        secondPartTemp += QString::fromLatin1("AppleWebKit/");
+        secondPartTemp += qWebKitVersion();
+        secondPartTemp += QString::fromLatin1(" (KHTML, like Gecko) ");
+
+
+        // Application name split the third part
+        secondPartTemp.squeeze();
+        secondPart = secondPartTemp;
+
+        QString thirdPartTemp;
+        thirdPartTemp.reserve(150);
+#if defined(Q_OS_SYMBIAN) || defined(Q_WS_MAEMO_5)
+        thirdPartTemp += QLatin1String(" Mobile Safari/");
+#else
+        thirdPartTemp += QLatin1String(" Safari/");
+#endif
+        thirdPartTemp += qWebKitVersion();
+        thirdPartTemp.squeeze();
+        thirdPart = thirdPartTemp;
+        Q_ASSERT(!firstPart.isNull());
+        Q_ASSERT(!secondPart.isNull());
+        Q_ASSERT(!thirdPart.isNull());
     }
-#endif
-    ua = ua.arg(osVer);
-
-    QChar securityStrength(QLatin1Char('N'));
-#if !defined(QT_NO_OPENSSL)
-    // we could check QSslSocket::supportsSsl() here, but this makes
-    // OpenSSL, certificates etc being loaded in all cases were QWebPage
-    // is used. This loading is not needed for non-https.
-    securityStrength = QLatin1Char('U');
-    // this may lead to a false positive: We indicate SSL since it is
-    // compiled in even though supportsSsl() might return false
-#endif
-    ua = ua.arg(securityStrength);
-
-#if defined Q_OS_WIN32
-    QString ver;
-    switch (QSysInfo::WindowsVersion) {
-        case QSysInfo::WV_32s:
-            ver = "Windows 3.1";
-            break;
-        case QSysInfo::WV_95:
-            ver = "Windows 95";
-            break;
-        case QSysInfo::WV_98:
-            ver = "Windows 98";
-            break;
-        case QSysInfo::WV_Me:
-            ver = "Windows 98; Win 9x 4.90";
-            break;
-        case QSysInfo::WV_NT:
-            ver = "WinNT4.0";
-            break;
-        case QSysInfo::WV_2000:
-            ver = "Windows NT 5.0";
-            break;
-        case QSysInfo::WV_XP:
-            ver = "Windows NT 5.1";
-            break;
-        case QSysInfo::WV_2003:
-            ver = "Windows NT 5.2";
-            break;
-        case QSysInfo::WV_VISTA:
-            ver = "Windows NT 6.0";
-            break;
-#if QT_VERSION > 0x040500
-        case QSysInfo::WV_WINDOWS7:
-            ver = "Windows NT 6.1";
-            break;
-#endif
-        case QSysInfo::WV_CE:
-            ver = "Windows CE";
-            break;
-        case QSysInfo::WV_CENET:
-            ver = "Windows CE .NET";
-            break;
-        case QSysInfo::WV_CE_5:
-            ver = "Windows CE 5.x";
-            break;
-        case QSysInfo::WV_CE_6:
-            ver = "Windows CE 6.x";
-            break;
-    }
-    ua = QString(ua).arg(ver);
-#endif
-
-    // SubPlatform Version
-    QString subPlatformVer;
-#ifdef Q_OS_SYMBIAN
-    QSysInfo::S60Version s60Version = QSysInfo::s60Version();
-    switch (s60Version) {
-    case QSysInfo::SV_S60_3_1:
-        subPlatformVer = "/3.1";
-        break;
-    case QSysInfo::SV_S60_3_2:
-        subPlatformVer = "/3.2";
-        break;
-    case QSysInfo::SV_S60_5_0:
-        subPlatformVer = "/5.0";
-        break;
-    default: 
-        subPlatformVer = " Unknown";
-    }
-#endif
-    ua = ua.arg(subPlatformVer);
 
     // Language
-    QLocale locale;
+    QString languageName;
     if (d->client && d->client->ownerWidget())
-        locale = d->client->ownerWidget()->locale();
-    QString name = locale.name();
-    name[2] = QLatin1Char('-');
-    ua.append(name);
-    ua.append(QLatin1String(") "));
-
-    // webkit/qt version
-    ua.append(QString(QLatin1String("AppleWebKit/%1 (KHTML, like Gecko) "))
-                      .arg(QString(qWebKitVersion())));
+        languageName = d->client->ownerWidget()->locale().name();
+    else
+        languageName = QLocale().name();
+    languageName.replace(QLatin1Char('_'), QLatin1Char('-'));
 
     // Application name/version
     QString appName = QCoreApplication::applicationName();
     if (!appName.isEmpty()) {
-        ua.append(appName);
         QString appVer = QCoreApplication::applicationVersion();
         if (!appVer.isEmpty())
-            ua.append(QLatin1Char('/') + appVer);
+            appName.append(QLatin1Char('/') + appVer);
     } else {
         // Qt version
-        ua.append(QLatin1String("Qt/"));
-        ua.append(QLatin1String(qVersion()));
+        appName = QString::fromLatin1("Qt/") + QString::fromLatin1(qVersion());
     }
 
-#if defined(Q_WS_S60) || defined(Q_WS_MAEMO_5)
-    ua.append(QString(QLatin1String(" Mobile Safari/%1")).arg(qWebKitVersion()));
-#else
-    ua.append(QString(QLatin1String(" Safari/%1")).arg(qWebKitVersion()));
-#endif
-    return ua;
+    return firstPart + languageName + secondPart + appName + thirdPart;
 }
 
 
@@ -3444,7 +3719,7 @@ quint64 QWebPage::totalBytes() const
 /*!
     Returns the number of bytes that were received from the network to render the current page.
 
-    \sa totalBytes()
+    \sa totalBytes(), loadProgress()
 */
 quint64 QWebPage::bytesReceived() const
 {
@@ -3476,7 +3751,7 @@ quint64 QWebPage::bytesReceived() const
     This signal is emitted when a load of the page is finished.
     \a ok will indicate whether the load was successful or any error occurred.
 
-    \sa loadStarted()
+    \sa loadStarted(), ErrorPageExtension
 */
 
 /*!
@@ -3503,12 +3778,15 @@ quint64 QWebPage::bytesReceived() const
     \fn void QWebPage::frameCreated(QWebFrame *frame)
 
     This signal is emitted whenever the page creates a new \a frame.
+
+    \sa currentFrame()
 */
 
 /*!
     \fn void QWebPage::selectionChanged()
 
-    This signal is emitted whenever the selection changes.
+    This signal is emitted whenever the selection changes, either interactively
+    or programmatically (e.g. by calling triggerAction() with a selection action).
 
     \sa selectedText()
 */
@@ -3520,7 +3798,7 @@ quint64 QWebPage::bytesReceived() const
     This signal is emitted whenever the text in form elements changes
     as well as other editable content.
 
-    \sa contentEditable, QWebFrame::toHtml(), QWebFrame::toPlainText()
+    \sa contentEditable, modified, QWebFrame::toHtml(), QWebFrame::toPlainText()
 */
 
 /*!
@@ -3596,9 +3874,9 @@ quint64 QWebPage::bytesReceived() const
     \fn void QWebPage::microFocusChanged()
 
     This signal is emitted when for example the position of the cursor in an editable form
-    element changes. It is used inform input methods about the new on-screen position where
-    the user is able to enter text. This signal is usually connected to QWidget's updateMicroFocus()
-    slot.
+    element changes. It is used to inform input methods about the new on-screen position where
+    the user is able to enter text. This signal is usually connected to the
+    QWidget::updateMicroFocus() slot.
 */
 
 /*!
@@ -3639,6 +3917,8 @@ quint64 QWebPage::bytesReceived() const
 
     This signal is emitted whenever the web site shown in \a frame is asking to store data
     to the database \a databaseName and the quota allocated to that web site is exceeded.
+
+    \sa QWebDatabase
 */
 
 /*!

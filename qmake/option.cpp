@@ -84,7 +84,7 @@ Option::QMAKE_MODE Option::qmake_mode = Option::QMAKE_GENERATE_NOTHING;
 
 //all modes
 QString Option::qmake_abslocation;
-int Option::warn_level = WarnLogic;
+int Option::warn_level = WarnLogic | WarnDeprecated;
 int Option::debug_level = 0;
 QFile Option::output;
 QString Option::output_dir;
@@ -170,10 +170,12 @@ bool usage(const char *a0)
             "                 file in your current working directory\n"
             "\n"
             "Warnings Options:\n"
-            "  -Wnone         Turn off all warnings\n"
+            "  -Wnone         Turn off all warnings; specific ones may be re-enabled by\n"
+            "                 later -W options\n"
             "  -Wall          Turn on all warnings\n"
             "  -Wparser       Turn on parser warnings\n"
-            "  -Wlogic        Turn on logic warnings\n"
+            "  -Wlogic        Turn on logic warnings (on by default)\n"
+            "  -Wdeprecated   Turn on deprecation warnings (on by default)\n"
             "\n"
             "Options:\n"
             "   * You can place any variable assignment in options and it will be     *\n"
@@ -278,6 +280,8 @@ Option::parseCommandLine(int argc, char **argv, int skip)
                 Option::warn_level |= WarnParser;
             } else if(opt == "Wlogic") {
                 Option::warn_level |= WarnLogic;
+            } else if(opt == "Wdeprecated") {
+                Option::warn_level |= WarnDeprecated;
             } else if(opt == "Wnone") {
                 Option::warn_level = WarnNone;
             } else if(opt == "r" || opt == "recursive") {
@@ -300,6 +304,7 @@ Option::parseCommandLine(int argc, char **argv, int skip)
                     } else if(opt == "nodependheuristics") {
                         Option::mkfile::do_dep_heuristics = false;
                     } else if(opt == "E") {
+                        fprintf(stderr, "-E is deprecated. Use -d instead.\n");
                         Option::mkfile::do_preprocess = true;
                     } else if(opt == "cache") {
                         Option::mkfile::cachefile = argv[++x];
@@ -554,7 +559,6 @@ void Option::applyHostMode()
        Option::dir_sep = "/";
        Option::obj_ext = ".o";
    }
-   Option::qmake_abslocation = Option::fixPathToTargetOS(Option::qmake_abslocation);
 }
 
 bool Option::postProcessProject(QMakeProject *project)

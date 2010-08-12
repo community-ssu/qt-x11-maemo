@@ -51,6 +51,7 @@
 #include <QListWidget>
 #include <QWidgetAction>
 #include <QDesktopWidget>
+#include <qdialog.h>
 
 #include <qmenu.h>
 #include <qstyle.h>
@@ -106,6 +107,7 @@ private slots:
     void pushButtonPopulateOnAboutToShow();
     void QTBUG7907_submenus_autoselect();
     void QTBUG7411_submenus_activate();
+    void QTBUG_10735_crashWithDialog();
 protected slots:
     void onActivated(QAction*);
     void onHighlighted(QAction*);
@@ -725,6 +727,9 @@ void tst_QMenu::activeSubMenuPosition()
 #ifdef Q_OS_WINCE_WM
     QSKIP("Not true for Windows Mobile Soft Keys", SkipSingle);
 #endif
+#ifdef Q_WS_MAEMO_5
+    QSKIP("Can't check right position, because of small screen size", SkipSingle);
+#endif
 
 #ifdef Q_OS_SYMBIAN
     // On Symbian, QS60Style::pixelMetric(QStyle::PM_SubMenuOverlap) is different with other styles.
@@ -979,6 +984,56 @@ void tst_QMenu::QTBUG7411_submenus_activate()
     QTRY_VERIFY(sub1.isVisible());
 }
 
+class MyMenu : public QMenu
+{
+    Q_OBJECT
+public:
+    MyMenu() : m_currentIndex(0)
+    {
+        for (int i = 0; i < 2; ++i)
+            dialogActions[i] = addAction( QString("dialog %1").arg(i), dialogs + i, SLOT(exec()));
+    }
+
+
+    void activateAction(int index)
+    {
+        m_currentIndex = index;
+        popup(QPoint());
+        QTest::qWaitForWindowShown(this);
+        setActiveAction(dialogActions[index]);
+        QTimer::singleShot(500, this, SLOT(checkVisibility()));
+        QTest::keyClick(this, Qt::Key_Enter); //activation
+    }
+
+public slots:
+    void activateLastAction()
+    {
+        activateAction(1); 
+    }
+
+    void checkVisibility()
+    {
+        QTRY_VERIFY(dialogs[m_currentIndex].isVisible());
+        if (m_currentIndex == 1) {
+            QApplication::closeAllWindows(); //this is the end of the test
+        }
+    }
+
+
+private:
+    QAction *dialogActions[2];
+    QDialog dialogs[2];
+    int m_currentIndex;
+};
+
+void tst_QMenu::QTBUG_10735_crashWithDialog()
+{
+    MyMenu menu;
+
+    QTimer::singleShot(1000, &menu, SLOT(activateLastAction()));
+    menu.activateAction(0);
+ 
+}
 
 
 QTEST_MAIN(tst_QMenu)

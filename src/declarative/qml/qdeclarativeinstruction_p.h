@@ -58,7 +58,7 @@
 QT_BEGIN_NAMESPACE
 
 class QDeclarativeCompiledData;
-class Q_DECLARATIVE_EXPORT QDeclarativeInstruction
+class Q_AUTOTEST_EXPORT QDeclarativeInstruction
 {
 public:
     enum Type { 
@@ -116,12 +116,12 @@ public:
         StoreVariant,             /* storeString */
         StoreVariantInteger,      /* storeInteger */
         StoreVariantDouble,       /* storeDouble */
+        StoreVariantBool,         /* storeBool */
         StoreObject,              /* storeObject */
         StoreVariantObject,       /* storeObject */
         StoreInterface,           /* storeObject */
 
         StoreSignal,              /* storeSignal */
-        StoreScript,              /* storeScript */
         StoreImportedScript,      /* storeScript */
         StoreScriptString,        /* storeScriptString */
 
@@ -158,7 +158,7 @@ public:
         // 
         // Deferred creation
         //
-        Defer,                    /* defer */
+        Defer                    /* defer */
     };
     QDeclarativeInstruction()
         : line(0) {}

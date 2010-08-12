@@ -56,6 +56,7 @@
 #include <qscrollbar.h>
 #include <qtreeview.h>
 #include <qheaderview.h>
+#include <qmath.h>
 #ifndef QT_NO_IM
 #include "qinputcontext.h"
 #endif
@@ -156,7 +157,10 @@ QStyleOptionMenuItem QComboMenuDelegate::getStyleOption(const QStyleOptionViewIt
         menuOption.icon = qvariant_cast<QPixmap>(variant);
         break;
     }
-
+    if (qVariantCanConvert<QBrush>(index.data(Qt::BackgroundRole))) {
+        menuOption.palette.setBrush(QPalette::All, QPalette::Background,
+                                    qvariant_cast<QBrush>(index.data(Qt::BackgroundRole)));
+    }
     menuOption.text = index.model()->data(index, Qt::DisplayRole).toString()
                            .replace(QLatin1Char('&'), QLatin1String("&&"));
     menuOption.tabWidth = 0;
@@ -333,7 +337,7 @@ QSize QComboBoxPrivate::recomputeSizeHint(QSize &sh) const
 
 
         // height
-        sh.setHeight(qMax(fm.height(), 14) + 2);
+        sh.setHeight(qMax(qCeil(QFontMetricsF(fm).height()), 14) + 2);
         if (hasIcon) {
             sh.setHeight(qMax(sh.height(), iconSize.height() + 2));
         }
@@ -714,6 +718,11 @@ void QComboBoxPrivateContainer::hideEvent(QHideEvent *)
 {
     emit resetButton();
     combo->update();
+    // QGraphicsScenePrivate::removePopup closes the combo box popup, it hides it non-explicitly.
+    // Hiding/showing the QComboBox after this will unexpectedly show the popup as well.
+    // Re-hiding the popup container makes sure it is explicitly hidden.
+    if (QGraphicsProxyWidget *proxy = graphicsProxyWidget())
+        proxy->hide();
 }
 
 void QComboBoxPrivateContainer::mousePressEvent(QMouseEvent *e)
@@ -915,7 +924,7 @@ QComboBox::QComboBox(bool rw, QWidget *parent, const char *name)
     interaction. The highlighted() signal is emitted when the user
     highlights an item in the combobox popup list. All three signals
     exist in two versions, one with a QString argument and one with an
-    \c int argument. If the user selectes or highlights a pixmap, only
+    \c int argument. If the user selects or highlights a pixmap, only
     the \c int signals are emitted. Whenever the text of an editable
     combobox is changed the editTextChanged() signal is emitted.
 
@@ -2515,7 +2524,7 @@ void QComboBox::showPopup()
     bool editable = isEditable();
 
     container->setAttribute(Qt::WA_X11NetWmWindowTypeCombo, editable);
-    container->setWindowFlags((windowFlags() & ~Qt::WindowType_Mask) | (editable ? Qt::Popup : Qt::Dialog));
+    container->setWindowFlags((container->windowFlags() & ~Qt::WindowType_Mask) | (editable ? Qt::Popup : Qt::Dialog));
 
     view()->setSizePolicy(editable ? QSizePolicy::Ignored : QSizePolicy::Expanding,
                           editable ? QSizePolicy::Ignored : QSizePolicy::Expanding);

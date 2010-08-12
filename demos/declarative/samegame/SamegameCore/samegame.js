@@ -5,10 +5,9 @@ var maxRow = 15;
 var maxIndex = maxColumn*maxRow;
 var board = new Array(maxIndex);
 var blockSrc = "SamegameCore/BoomBlock.qml";
-var scoresURL = "http://qtfx-nokia.trolltech.com.au/samegame/scores.php";
 var scoresURL = "";
 var gameDuration;
-var component = createComponent(blockSrc);
+var component = Qt.createComponent(blockSrc);
 
 //Index function used instead of a 2D array
 function index(column,row) {
@@ -111,7 +110,7 @@ function shuffleDown()
             }else{
                 if(fallDist > 0){
                     var obj = board[index(column,row)];
-                    obj.targetY += fallDist * gameCanvas.blockSize;
+                    obj.y = (row+fallDist) * gameCanvas.blockSize;
                     board[index(column,row+fallDist)] = obj;
                     board[index(column,row)] = null;
                 }
@@ -129,7 +128,7 @@ function shuffleDown()
                     obj = board[index(column,row)];
                     if(obj == null)
                         continue;
-                    obj.targetX -= fallDist * gameCanvas.blockSize;
+                    obj.x = (column-fallDist) * gameCanvas.blockSize;
                     board[index(column-fallDist,row)] = obj;
                     board[index(column,row)] = null;
                 }
@@ -176,25 +175,23 @@ function createBlock(column,row){
     // only work if the block QML is a local file. Otherwise the component will
     // not be ready immediately. There is a statusChanged signal on the
     // component you could use if you want to wait to load remote files.
-    if(component.isReady){
-        var dynamicObject = component.createObject();
+    if(component.status == Component.Ready){
+        var dynamicObject = component.createObject(gameCanvas);
         if(dynamicObject == null){
-            print("error creating block");
-            print(component.errorsString());
+            console.log("error creating block");
+            console.log(component.errorString());
             return false;
         }
         dynamicObject.type = Math.floor(Math.random() * 3);
-        dynamicObject.parent = gameCanvas;
         dynamicObject.x = column*gameCanvas.blockSize;
-        dynamicObject.targetX = column*gameCanvas.blockSize;
-        dynamicObject.targetY = row*gameCanvas.blockSize;
+        dynamicObject.y = row*gameCanvas.blockSize;
         dynamicObject.width = gameCanvas.blockSize;
         dynamicObject.height = gameCanvas.blockSize;
         dynamicObject.spawned = true;
         board[index(column,row)] = dynamicObject;
     }else{
-        print("error loading block component");
-        print(component.errorsString());
+        console.log("error loading block component");
+        console.log(component.errorString());
         return false;
     }
     return true;

@@ -14,10 +14,14 @@ target.path = $$[QT_INSTALL_BINS]
 INSTALLS += target
 
 wince* {
-QT += scripttools \
-    xml \
-    phonon
+    QT += xml
 
+    contains(QT_CONFIG, scripttools) {
+        QT += scripttools
+    }
+    contains(QT_CONFIG, phonon) {
+        QT += phonon
+    }
     contains(QT_CONFIG, xmlpatterns) {
         QT += xmlpatterns
     }
@@ -25,15 +29,25 @@ QT += scripttools \
         QT += webkit 
     }
 }
+maemo5 {
+    QT += maemo5
+}
 symbian {
-#    TARGET.UID3 =
+    TARGET.UID3 = 0x20021317
     include($$QT_SOURCE_TREE/examples/symbianpkgrules.pri)
-    INCLUDEPATH += $$QT_SOURCE_TREE/examples/network/qftp/
-    TARGET.EPOCHEAPSIZE = 0x20000 0x2000000
-    LIBS += -lesock -lcommdb -lconnmon -linsock
+    TARGET.EPOCHEAPSIZE = 0x20000 0x4000000
     TARGET.CAPABILITY = NetworkServices ReadUserData
+    !contains(S60_VERSION, 3.1):!contains(S60_VERSION, 3.2) {
+        LIBS += -lsensrvclient -lsensrvutil
+    }
+    contains(QT_CONFIG, s60): {
+        LIBS += -lavkon -lcone
+    }
 }
 mac {
     QMAKE_INFO_PLIST=Info_mac.plist
-    TARGET=Qml
+    TARGET=QMLViewer
+    ICON=qml.icns
+} else {
+    TARGET=qmlviewer
 }

@@ -219,6 +219,10 @@ MainWindow::MainWindow()
     gv->viewportItem()->setWidget(view);
 //![9]
 
+    view->setPalette(QApplication::palette("QWebView"));
+    view->page()->setPalette(QApplication::palette("QWebView"));
+    view->settings()->setAttribute(QWebSettings::PluginsEnabled, true);
+
     connect(view, SIGNAL(loadFinished(bool)), SLOT(adjustLocation()));
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
@@ -238,7 +242,10 @@ MainWindow::MainWindow()
 
     setCentralWidget(gv);
 
-    locationEdit->setText(QLatin1String("www.google.com"));
+    QString url = QApplication::arguments().value(1);
+    if (url.isEmpty())
+        url = QLatin1String("www.google.com");
+    locationEdit->setText(url);
     changeLocation();
 }
 
@@ -257,10 +264,7 @@ void MainWindow::adjustLocation()
 
 void MainWindow::changeLocation()
 {
-    QString str = locationEdit->text();
-    if (!str.startsWith(QLatin1String("http://")))
-        str.prepend(QLatin1String("http://"));
-    view->load(QUrl(str));
+    view->load(QUrl::fromUserInput(locationEdit->text()));
     view->setFocus();
 }
 

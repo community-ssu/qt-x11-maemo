@@ -2116,7 +2116,12 @@ void tst_QTextEdit::setDocumentPreservesPalette()
 
     QPalette defaultPal = ed->palette();
     QPalette whitePal = ed->palette();
+#ifdef Q_WS_MAEMO_5
+    whitePal.setColor(QPalette::Active, QPalette::Text, "green");
+#else
     whitePal.setColor(QPalette::Active, QPalette::Text, "white");
+#endif
+
 
     QVERIFY(whitePal != ed->palette());
     ed->setPalette(whitePal);

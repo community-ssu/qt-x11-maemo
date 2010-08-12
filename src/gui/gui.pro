@@ -1,12 +1,15 @@
 TARGET     = QtGui
 QPRO_PWD   = $$PWD
 QT = core
+maemo5:QT += dbus
 DEFINES   += QT_BUILD_GUI_LIB QT_NO_USING_NAMESPACE
 win32-msvc*|win32-icc:QMAKE_LFLAGS += /BASE:0x65000000
+irix-cc*:QMAKE_CXXFLAGS += -no_prelink -ptused
 
 !win32:!embedded:!mac:!symbian:CONFIG      += x11
 
 unix:QMAKE_PKGCONFIG_REQUIRES = QtCore
+maemo5:QMAKE_PKGCONFIG_REQUIRES += QtDBus
 
 include(../qbase.pri)
 
@@ -40,9 +43,8 @@ include(statemachine/statemachine.pri)
 include(math3d/math3d.pri)
 include(effects/effects.pri)
 
-contains(QT_CONFIG, egl): include(egl/egl.pri)
+include(egl/egl.pri)
 win32:!wince*: DEFINES += QT_NO_EGL
-
 embedded: QT += network
 
 QMAKE_LIBS += $$QMAKE_LIBS_GUI
@@ -72,7 +74,7 @@ symbian {
     pu_header = "; Partial upgrade package for testing QtGui changes without reinstalling everything" \
                 "$${LITERAL_HASH}{\"Qt gui\"}, (0x2001E61C), $${QT_MAJOR_VERSION},$${QT_MINOR_VERSION},$${QT_PATCH_VERSION}, TYPE=PU"
     partial_upgrade.pkg_prerules = pu_header vendorinfo
-    partial_upgrade.sources = $$QMAKE_LIBDIR_QT/QtGui.dll
+    partial_upgrade.sources = $$QMAKE_LIBDIR_QT/QtGui$${QT_LIBINFIX}.dll
     partial_upgrade.path = c:/sys/bin
     DEPLOYMENT = partial_upgrade $$DEPLOYMENT
 }

@@ -46,6 +46,11 @@
 #include <QDir>
 #include <QFile>
 
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
+
 class tst_parserstress : public QObject
 {
     Q_OBJECT
@@ -65,7 +70,7 @@ QStringList tst_parserstress::findJSFiles(const QDir &d)
 {
     QStringList rv;
 
-    QStringList files = d.entryList(QStringList() << QLatin1String("*.js"), 
+    QStringList files = d.entryList(QStringList() << QLatin1String("*.js"),
                                     QDir::Files);
     foreach (const QString &file, files) {
         if (file == "browser.js")
@@ -73,7 +78,7 @@ QStringList tst_parserstress::findJSFiles(const QDir &d)
         rv << d.absoluteFilePath(file);
     }
 
-    QStringList dirs = d.entryList(QDir::Dirs | QDir::NoDotAndDotDot | 
+    QStringList dirs = d.entryList(QDir::Dirs | QDir::NoDotAndDotDot |
                                    QDir::NoSymLinks);
     foreach (const QString &dir, dirs) {
         QDir sub = d;
@@ -86,12 +91,15 @@ QStringList tst_parserstress::findJSFiles(const QDir &d)
 
 void tst_parserstress::ecmascript_data()
 {
+#ifdef Q_OS_SYMBIAN    
+    QDir dir("tests");
+#else
     QDir dir(SRCDIR);
     dir.cdUp();
     dir.cdUp();
     dir.cd("qscriptjstestsuite");
     dir.cd("tests");
-
+#endif
     QStringList files = findJSFiles(dir);
 
     QTest::addColumn<QString>("file");
@@ -129,18 +137,26 @@ void tst_parserstress::ecmascript()
     QByteArray qmlData = qml.toUtf8();
 
     QDeclarativeComponent component(&engine);
+    
     component.setData(qmlData, QUrl::fromLocalFile(SRCDIR + QString("/dummy.qml")));
-    QSet<QString> failingTests;
-    failingTests << "uc-003.js" << "uc-005.js" << "regress-352044-02-n.js"
-                 << "regress-334158.js" << "regress-58274.js" << "dowhile-006.js" << "dowhile-005.js";
+
     QFileInfo info(file);
-    foreach (const QString &failing, failingTests) {
-        if (info.fileName().endsWith(failing)) {
-            QEXPECT_FAIL("", "QTBUG-8108", Continue);
-            break;
-        }
+
+    if (info.fileName() == QLatin1String("regress-352044-02-n.js")) {
+        QVERIFY(component.isError());
+
+        QCOMPARE(component.errors().length(), 2);
+
+        QCOMPARE(component.errors().at(0).description(), QString("Expected token `;'"));
+        QCOMPARE(component.errors().at(0).line(), 66);
+
+        QCOMPARE(component.errors().at(1).description(), QString("Expected token `;'"));
+        QCOMPARE(component.errors().at(1).line(), 142);
+
+    } else {
+
+        QVERIFY(!component.isError());
     }
-    QVERIFY(!component.isError());
 }
 
 

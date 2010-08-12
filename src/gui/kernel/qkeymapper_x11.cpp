@@ -80,22 +80,15 @@ QT_BEGIN_NAMESPACE
       (((KeySym)(keysym) >= 0x11000000) && ((KeySym)(keysym) <= 0x1100FFFF))
 #endif
 
-void q_getLocaleAndDirection(QLocale *locale,
-                                  Qt::LayoutDirection *direction,
-                                  const QByteArray &layoutName,
-                                  const QByteArray &variantName)
+QLocale q_getKeyboardLocale(const QByteArray &layoutName, const QByteArray &variantName)
 {
     int i = 0;
     while (xkbLayoutData[i].layout != 0) {
-        if (layoutName == xkbLayoutData[i].layout && variantName == xkbLayoutData[i].variant) {
-            *locale = QLocale(xkbLayoutData[i].language, xkbLayoutData[i].country);
-            *direction = xkbLayoutData[i].direction;
-            return;
-        }
+        if (layoutName == xkbLayoutData[i].layout && variantName == xkbLayoutData[i].variant)
+            return QLocale(xkbLayoutData[i].language, xkbLayoutData[i].country);
         ++i;
     }
-    *locale = QLocale::c();
-    *direction = Qt::LeftToRight;
+    return QLocale::c();
 }
 #endif // QT_NO_XKB
 
@@ -523,10 +516,8 @@ void QKeyMapperPrivate::clearMappings()
         // if (keyboardLayoutName.isEmpty())
         //     qWarning("Qt: unable to determine keyboard layout, please talk to qt-bugs@trolltech.com"); ?
 
-        q_getLocaleAndDirection(&keyboardInputLocale,
-                              &keyboardInputDirection,
-                              layoutName,
-                              variantName);
+        keyboardInputLocale = q_getKeyboardLocale(layoutName, variantName);
+        keyboardInputDirection = keyboardInputLocale.textDirection();
 
 #if 0
         qDebug() << "keyboard input locale ="
@@ -1231,7 +1222,7 @@ static int translateKeySym(uint key)
     return code;
 }
 
-#if !defined(QT_NO_XIM)
+#if !defined(QT_NO_XIM) || defined(Q_WS_MAEMO_5)
 static const unsigned short katakanaKeysymsToUnicode[] = {
     0x0000, 0x3002, 0x300C, 0x300D, 0x3001, 0x30FB, 0x30F2, 0x30A1,
     0x30A3, 0x30A5, 0x30A7, 0x30A9, 0x30E3, 0x30E5, 0x30E7, 0x30C3,
@@ -1427,7 +1418,7 @@ static QString translateKeySym(KeySym keysym, uint xmodifiers,
         case 14: // Korean, no mapping
             mib = -1; // manual conversion
             mapper = 0;
-#if !defined(QT_NO_XIM)
+#if !defined(QT_NO_XIM) || defined(Q_WS_MAEMO_5)
             converted = keysymToUnicode(byte3, keysym & 0xff);
 #endif
         case 0x20:

@@ -59,12 +59,17 @@ Q_DECLARE_METATYPE(QScriptValue);
 QT_BEGIN_NAMESPACE
 
 struct ObjectData : public QScriptDeclarativeClass::Object {
-    ObjectData(QObject *o, int t) : object(o), type(t) {}
+    ObjectData(QObject *o, int t) : object(o), type(t) {
+        if (o) {
+            QDeclarativeData *ddata = QDeclarativeData::get(object, true);
+            if (ddata) ddata->objectDataRefCount++;
+        }
+    }
 
     virtual ~ObjectData() {
         if (object && !object->parent()) {
             QDeclarativeData *ddata = QDeclarativeData::get(object, false);
-            if (ddata && !ddata->indestructible)
+            if (ddata && !ddata->indestructible && 0 == --ddata->objectDataRefCount)
                 object->deleteLater();
         }
     }
@@ -99,7 +104,8 @@ QScriptValue QDeclarativeObjectScriptClass::newQObject(QObject *object, int type
     QScriptEngine *scriptEngine = QDeclarativeEnginePrivate::getScriptEngine(engine);
 
     if (!object)
-        return newObject(scriptEngine, this, new ObjectData(object, type));
+        return scriptEngine->nullValue();
+//        return newObject(scriptEngine, this, new ObjectData(object, type));
 
     if (QObjectPrivate::get(object)->wasDeleted)
        return scriptEngine->undefinedValue();
@@ -260,7 +266,7 @@ QDeclarativeObjectScriptClass::property(QObject *obj, const Identifier &name)
             void *args[] = { &rv, 0 };
             QMetaObject::metacall(obj, QMetaObject::ReadProperty, lastData->coreIndex, args);
             return Value(scriptEngine, rv);
-        } else if (lastData->propType == QMetaType::Int) {
+        } else if (lastData->propType == QMetaType::Int || lastData->flags & QDeclarativePropertyCache::Data::IsEnumType) {
             int rv = 0;
             void *args[] = { &rv, 0 };
             QMetaObject::metacall(obj, QMetaObject::ReadProperty, lastData->coreIndex, args);
@@ -348,7 +354,13 @@ void QDeclarativeObjectScriptClass::setProperty(QObject *obj,
     if (delBinding)
         delBinding->destroy();
 
-    if (value.isUndefined() && lastData->flags & QDeclarativePropertyCache::Data::IsResettable) {
+    if (value.isNull() && lastData->flags & QDeclarativePropertyCache::Data::IsQObjectDerived) {
+        QObject *o = 0;
+        int status = -1;
+        int flags = 0;
+        void *argv[] = { &o, 0, &status, &flags };
+        QMetaObject::metacall(obj, QMetaObject::WriteProperty, lastData->coreIndex, argv);
+    } else if (value.isUndefined() && lastData->flags & QDeclarativePropertyCache::Data::IsResettable) {
         void *a[] = { 0 };
         QMetaObject::metacall(obj, QMetaObject::ResetProperty, lastData->coreIndex, a);
     } else if (value.isUndefined() && lastData->propType == qMetaTypeId<QVariant>()) {
@@ -356,6 +368,9 @@ void QDeclarativeObjectScriptClass::setProperty(QObject *obj,
     } else if (value.isUndefined()) {
         QString error = QLatin1String("Cannot assign [undefined] to ") +
                         QLatin1String(QMetaType::typeName(lastData->propType));
+        context->throwError(error);
+    } else if (!value.isRegExp() && value.isFunction()) {
+        QString error = QLatin1String("Cannot assign a function to a property.");
         context->throwError(error);
     } else {
         QVariant v;
@@ -430,7 +445,7 @@ QScriptValue QDeclarativeObjectScriptClass::destroy(QScriptContext *context, QSc
 
     QDeclarativeData *ddata = QDeclarativeData::get(data->object, false);
     if (!ddata || ddata->indestructible)
-        return engine->currentContext()->throwError(QLatin1String("Invalid attempt  to destroy() an indestructible object"));
+        return engine->currentContext()->throwError(QLatin1String("Invalid attempt to destroy() an indestructible object"));
 
     QObject *obj = data->object;
     int delay = 0;
@@ -458,12 +473,21 @@ QStringList QDeclarativeObjectScriptClass::propertyNames(Object *object)
         cache = ddata->propertyCache;
     if (!cache) {
         cache = enginePrivate->cache(obj);
-        if (cache && ddata) { cache->addref(); ddata->propertyCache = cache; }
+        if (cache) {
+            if (ddata) { cache->addref(); ddata->propertyCache = cache; }
+        } else {
+            // Not cachable - fall back to QMetaObject (eg. dynamic meta object)
+            // XXX QDeclarativeOpenMetaObject has a cache, so this is suboptimal.
+            // XXX This is a workaround for QTBUG-9420.
+            const QMetaObject *mo = obj->metaObject();
+            QStringList r;
+            int pc = mo->propertyCount();
+            int po = mo->propertyOffset();
+            for (int i=po; i<pc; ++i)
+                r += QString::fromUtf8(mo->property(i).name());
+            return r;
+        }
     }
-
-    if (!cache)
-        return QStringList();
-
     return cache->propertyNames();
 }
 
@@ -599,7 +623,7 @@ private:
 
     inline void cleanup();
 
-    void *data[4];
+    char data[4 * sizeof(void *)];
     int type;
 };
 }
@@ -752,7 +776,8 @@ QScriptDeclarativeClass::Value MetaCallArgument::toValue(QDeclarativeEngine *e)
         return QScriptDeclarativeClass::Value(engine, *((QString *)&data));
     } else if (type == QMetaType::QObjectStar) {
         QObject *object = *((QObject **)&data);
-        QDeclarativeData::get(object, true)->setImplicitDestructible();
+        if (object)
+            QDeclarativeData::get(object, true)->setImplicitDestructible();
         QDeclarativeEnginePrivate *priv = QDeclarativeEnginePrivate::get(e);
         return QScriptDeclarativeClass::Value(engine, priv->objectClass->newQObject(object));
     } else if (type == qMetaTypeId<QList<QObject *> >()) {
@@ -772,6 +797,26 @@ QScriptDeclarativeClass::Value MetaCallArgument::toValue(QDeclarativeEngine *e)
     }
 }
 
+int QDeclarativeObjectMethodScriptClass::enumType(const QMetaObject *meta, const QString &strname)
+{
+    QByteArray str = strname.toUtf8();
+    QByteArray scope;
+    QByteArray name;
+    int scopeIdx = str.lastIndexOf("::");
+    if (scopeIdx != -1) {
+        scope = str.left(scopeIdx);
+        name = str.mid(scopeIdx + 2);
+    } else { 
+        name = str;
+    }
+    for (int i = meta->enumeratorCount() - 1; i >= 0; --i) {
+        QMetaEnum m = meta->enumerator(i);
+        if ((m.name() == name) && (scope.isEmpty() || (m.scope() == scope)))
+            return QVariant::Int;
+    }
+    return QVariant::Invalid;
+}
+
 QDeclarativeObjectMethodScriptClass::Value QDeclarativeObjectMethodScriptClass::call(Object *o, QScriptContext *ctxt)
 {
     MethodData *method = static_cast<MethodData *>(o);
@@ -785,7 +830,9 @@ QDeclarativeObjectMethodScriptClass::Value QDeclarativeObjectMethodScriptClass::
         // ### Cache
         for (int ii = 0; ii < argTypeNames.count(); ++ii) {
             argTypes[ii] = QMetaType::type(argTypeNames.at(ii));
-            if (argTypes[ii] == QVariant::Invalid)
+            if (argTypes[ii] == QVariant::Invalid) 
+                argTypes[ii] = enumType(method->object->metaObject(), argTypeNames.at(ii));
+            if (argTypes[ii] == QVariant::Invalid) 
                 return Value(ctxt, ctxt->throwError(QString::fromLatin1("Unknown method parameter type: %1").arg(QLatin1String(argTypeNames.at(ii)))));
         }
 

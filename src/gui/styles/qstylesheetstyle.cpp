@@ -1539,7 +1539,9 @@ QVector<QCss::StyleRule> QStyleSheetStyle::styleRules(const QWidget *w) const
     QHash<const void *, StyleSheet>::const_iterator defaultCacheIt = styleSheetCache->constFind(baseStyle());
     if (defaultCacheIt == styleSheetCache->constEnd()) {
         defaultSs = getDefaultStyleSheet();
-        styleSheetCache->insert(baseStyle(), defaultSs);
+        QStyle *bs = baseStyle();
+        styleSheetCache->insert(bs, defaultSs);
+        QObject::connect(bs, SIGNAL(destroyed(QObject*)), this, SLOT(styleDestroyed(QObject*)), Qt::UniqueConnection);
     } else {
         defaultSs = defaultCacheIt.value();
     }
@@ -2666,6 +2668,11 @@ void QStyleSheetStyle::widgetDestroyed(QObject *o)
     autoFillDisabledWidgets->remove((const QWidget *)o);
 }
 
+void QStyleSheetStyle::styleDestroyed(QObject *o)
+{
+    styleSheetCache->remove(o);
+}
+
 /*!
  *  Make sure that the cache will be clean by connecting destroyed if needed.
  *  return false if the widget is not stylable;
@@ -3183,7 +3190,7 @@ void QStyleSheetStyle::drawComplexControl(ComplexControl cc, const QStyleOptionC
                     subRule2.drawRule(p, r);
                 }
 
-                handleSubRule.drawRule(p, grooveSubRule.boxRect(hr, Margin));
+                handleSubRule.drawRule(p, handleSubRule.boxRect(hr, Margin));
             }
 
             if (slider->subControls & SC_SliderTickmarks) {
@@ -4275,6 +4282,13 @@ void QStyleSheetStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *op
             return;
         }
     break;
+
+    case PE_FrameMenu:
+        if (rule.hasDrawable()) {
+            // Drawn by PE_PanelMenu
+            return;
+        }
+        break;
 
     case PE_PanelMenuBar:
     if (rule.hasDrawable()) {

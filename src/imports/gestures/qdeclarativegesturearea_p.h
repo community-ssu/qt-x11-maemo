@@ -50,6 +50,8 @@
 #include <QtCore/qstring.h>
 #include <QtGui/qgesture.h>
 
+#ifndef QT_NO_GESTURES
+
 QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
@@ -59,7 +61,7 @@ QT_MODULE(Declarative)
 class QDeclarativeBoundSignal;
 class QDeclarativeContext;
 class QDeclarativeGestureAreaPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeGestureArea : public QDeclarativeItem
+class QDeclarativeGestureArea : public QDeclarativeItem
 {
     Q_OBJECT
 
@@ -96,5 +98,7 @@ QT_END_NAMESPACE
 QML_DECLARE_TYPE(QDeclarativeGestureArea)
 
 QT_END_HEADER
+
+#endif // QT_NO_GESTURES
 
 #endif

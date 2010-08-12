@@ -54,13 +54,25 @@ class QNetworkConfigurationPrivate;
 class IapMonitor;
 class QDBusInterface;
 
+inline QNetworkConfiguration::BearerType bearerTypeFromIapType(const QString &iapType)
+{
+    if (iapType == QLatin1String("WLAN_INFRA") ||
+        iapType == QLatin1String("WLAN_ADHOC")) {
+        return QNetworkConfiguration::BearerWLAN;
+    } else if (iapType == QLatin1String("GPRS")) {
+        return QNetworkConfiguration::BearerHSPA;
+    } else {
+        return QNetworkConfiguration::BearerUnknown;
+    }
+}
+
 class IcdNetworkConfigurationPrivate : public QNetworkConfigurationPrivate
 {
 public:
     IcdNetworkConfigurationPrivate();
     ~IcdNetworkConfigurationPrivate();
 
-    QString bearerName() const;
+    virtual QString bearerTypeName() const;
 
     // In Maemo the id field (defined in QNetworkConfigurationPrivate)
     // is the IAP id (which typically is UUID)
@@ -69,11 +81,11 @@ public:
 
     QString service_type;
     QString service_id;
-    uint32_t service_attrs;
+    quint32 service_attrs;
 
     // Network attributes for this IAP, this is the value returned by icd and
     // passed to it when connecting.
-    uint32_t network_attrs;
+    quint32 network_attrs;
 };
 
 inline IcdNetworkConfigurationPrivate *toIcdConfig(QNetworkConfigurationPrivatePointer ptr)
@@ -91,6 +103,7 @@ public:
 
     bool hasIdentifier(const QString &id);
 
+    Q_INVOKABLE void initialize();
     Q_INVOKABLE void requestUpdate();
 
     QNetworkConfigurationManager::Capabilities capabilities() const;
@@ -113,17 +126,16 @@ public:
         QMutexLocker locker(&mutex);
 
         accessPointConfigurations.insert(ptr->id, ptr);
+
+        locker.unlock();
         emit configurationAdded(ptr);
     }
 
     inline void changedSessionConfiguration(QNetworkConfigurationPrivatePointer ptr)
     {
-        QMutexLocker locker(&mutex);
-
         emit configurationChanged(ptr);
     }
 
-    void init();
     void cleanup();
 
     void addConfiguration(QString &iap_id);
@@ -132,14 +144,14 @@ Q_SIGNALS:
     void iapStateChanged(const QString& iapid, uint icd_connection_state);
 
 private Q_SLOTS:
-    void doRequestUpdate(QList<Maemo::IcdScanResult> scanned = QList<Maemo::IcdScanResult>());
-    void cancelAsyncConfigurationUpdate();
     void finishAsyncConfigurationUpdate();
     void asyncUpdateConfigurationsSlot(QDBusMessage msg);
     void connectionStateSignalsSlot(QDBusMessage msg);
 
 private:
     void startListeningStateSignalsForAllConnections();
+    void doRequestUpdate(QList<Maemo::IcdScanResult> scanned = QList<Maemo::IcdScanResult>());
+    void cancelAsyncConfigurationUpdate();
 
 private:
     IapMonitor *iapMonitor;

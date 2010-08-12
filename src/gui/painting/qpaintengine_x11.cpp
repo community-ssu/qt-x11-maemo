@@ -79,6 +79,8 @@
 #include <private/qtessellator_p.h>
 #endif
 
+#include <private/qstylehelper_p.h>
+
 QT_BEGIN_NAMESPACE
 
 extern Drawable qt_x11Handle(const QPaintDevice *pd);
@@ -224,7 +226,10 @@ static const uchar base_dither_matrix[DITHER_SIZE][DITHER_SIZE] = {
 static QPixmap qt_patternForAlpha(uchar alpha, int screen)
 {
     QPixmap pm;
-    QString key = QLatin1String("$qt-alpha-brush$") + QString::number(alpha) + QString::number(screen);
+    QString key = QLatin1Literal("$qt-alpha-brush$")
+                  % HexString<uchar>(alpha)
+                  % HexString<int>(screen);
+
     if (!QPixmapCache::find(key, pm)) {
         // #### why not use a mono image here????
         QImage pattern(DITHER_SIZE, DITHER_SIZE, QImage::Format_ARGB32);
@@ -315,7 +320,7 @@ static Picture getPatternFill(int screen, const QBrush &b)
             return X11->pattern_fills[i].picture;
     }
     // none found, replace one
-    int i = rand() % 16;
+    int i = qrand() % 16;
 
     if (X11->pattern_fills[i].screen != screen && X11->pattern_fills[i].picture) {
 	XRenderFreePicture (X11->display, X11->pattern_fills[i].picture);
@@ -691,11 +696,10 @@ void QX11PaintEngine::drawLines(const QLine *lines, int lineCount)
                 linef = d->matrix.map(QLineF(lines[i]));
             }
             if (clipLine(&linef, d->polygonClipper.boundingRect())) {
-                int x1 = qRound(linef.x1() + aliasedCoordinateDelta);
-                int y1 = qRound(linef.y1() + aliasedCoordinateDelta);
-                int x2 = qRound(linef.x2() + aliasedCoordinateDelta);
-                int y2 = qRound(linef.y2() + aliasedCoordinateDelta);
-
+                int x1 = qFloor(linef.x1() + aliasedCoordinateDelta);
+                int y1 = qFloor(linef.y1() + aliasedCoordinateDelta);
+                int x2 = qFloor(linef.x2() + aliasedCoordinateDelta);
+                int y2 = qFloor(linef.y2() + aliasedCoordinateDelta);
                 XDrawLine(d->dpy, d->hd, d->gc, x1, y1, x2, y2);
             }
         }
@@ -725,11 +729,10 @@ void QX11PaintEngine::drawLines(const QLineF *lines, int lineCount)
         for (int i = 0; i < lineCount; ++i) {
             QLineF linef = d->matrix.map(lines[i]);
             if (clipLine(&linef, d->polygonClipper.boundingRect())) {
-                int x1 = qRound(linef.x1() + aliasedCoordinateDelta);
-                int y1 = qRound(linef.y1() + aliasedCoordinateDelta);
-                int x2 = qRound(linef.x2() + aliasedCoordinateDelta);
-                int y2 = qRound(linef.y2() + aliasedCoordinateDelta);
-
+                int x1 = qFloor(linef.x1() + aliasedCoordinateDelta);
+                int y1 = qFloor(linef.y1() + aliasedCoordinateDelta);
+                int x2 = qFloor(linef.x2() + aliasedCoordinateDelta);
+                int y2 = qFloor(linef.y2() + aliasedCoordinateDelta);
                 XDrawLine(d->dpy, d->hd, d->gc, x1, y1, x2, y2);
             }
         }
@@ -1448,6 +1451,11 @@ void QX11PaintEngine::drawEllipse(const QRectF &rect)
 
 void QX11PaintEngine::drawEllipse(const QRect &rect)
 {
+    if (rect.isEmpty()) {
+        drawRects(&rect, 1);
+        return;
+    }
+
     Q_D(QX11PaintEngine);
     QRect devclip(SHRT_MIN, SHRT_MIN, SHRT_MAX*2 - 1, SHRT_MAX*2 - 1);
     QRect r(rect);
@@ -1680,8 +1688,8 @@ void QX11PaintEnginePrivate::strokePolygon_dev(const QPointF *polygonPoints, int
     if (clippedCount > 0) {
         QVarLengthArray<XPoint> xpoints(clippedCount);
         for (int i = 0; i < clippedCount; ++i) {
-            xpoints[i].x = qRound(clippedPoints[i].x + aliasedCoordinateDelta);
-            xpoints[i].y = qRound(clippedPoints[i].y + aliasedCoordinateDelta);
+            xpoints[i].x = qFloor(clippedPoints[i].x + aliasedCoordinateDelta);
+            xpoints[i].y = qFloor(clippedPoints[i].y + aliasedCoordinateDelta);
         }
         uint numberPoints = qMin(clippedCount, xlibMaxLinePoints);
         XPoint *pts = xpoints.data();

@@ -287,8 +287,6 @@ void QGtkStylePrivate::init()
 {
     resolveGtk();
     initGtkWidgets();
-    if (isThemeAvailable())
-        qApp->installEventFilter(&filter);
 }
 
 GtkWidget* QGtkStylePrivate::gtkWidget(const QHashableLatin1Literal &path)
@@ -775,18 +773,47 @@ QPalette QGtkStylePrivate::gtkWidgetPalette(const QHashableLatin1Literal &gtkWid
     GtkWidget *gtkWidget = QGtkStylePrivate::gtkWidget(gtkWidgetName);
     Q_ASSERT(gtkWidget);
     QPalette pal = QApplication::palette();
-    GdkColor gdkBg = gtkWidget->style->bg[GTK_STATE_NORMAL];
-    GdkColor gdkText = gtkWidget->style->fg[GTK_STATE_NORMAL];
-    GdkColor gdkDisabledText = gtkWidget->style->fg[GTK_STATE_INSENSITIVE];
-    QColor bgColor(gdkBg.red>>8, gdkBg.green>>8, gdkBg.blue>>8);
-    QColor textColor(gdkText.red>>8, gdkText.green>>8, gdkText.blue>>8);
-    QColor disabledTextColor(gdkDisabledText.red>>8, gdkDisabledText.green>>8, gdkDisabledText.blue>>8);
-    pal.setBrush(QPalette::Window, bgColor);
-    pal.setBrush(QPalette::Button, bgColor);
-    pal.setBrush(QPalette::All, QPalette::WindowText, textColor);
-    pal.setBrush(QPalette::Disabled, QPalette::WindowText, disabledTextColor);
-    pal.setBrush(QPalette::All, QPalette::ButtonText, textColor);
-    pal.setBrush(QPalette::Disabled, QPalette::ButtonText, disabledTextColor);
+
+    GdkColor gdkBg, gdkBase, gdkText, gdkForeground;
+    GdkColor gdkSbg, gdkSfg, gdkIbg, gdkIfg;
+    QColor bg, base, text, fg, highlight, highlightText, disabled, disabledText;
+
+    gdkBg = gtkWidget->style->bg[GTK_STATE_NORMAL];
+    gdkForeground = gtkWidget->style->fg[GTK_STATE_NORMAL];
+
+    // Our base and selected color is primarily used for text
+    // so we assume a gtkWidget will have the most correct value
+    gdkBase = gtkWidget->style->base[GTK_STATE_NORMAL];
+    gdkText = gtkWidget->style->text[GTK_STATE_NORMAL];
+    gdkSbg = gtkWidget->style->base[GTK_STATE_SELECTED];
+    gdkSfg = gtkWidget->style->text[GTK_STATE_SELECTED];
+    gdkIbg = gtkWidget->style->base[GTK_STATE_INSENSITIVE];
+    gdkIfg = gtkWidget->style->text[GTK_STATE_INSENSITIVE];
+
+    bg = QColor(gdkBg.red>>8, gdkBg.green>>8, gdkBg.blue>>8);
+    text = QColor(gdkText.red>>8, gdkText.green>>8, gdkText.blue>>8);
+    fg = QColor(gdkForeground.red>>8, gdkForeground.green>>8, gdkForeground.blue>>8);
+    base = QColor(gdkBase.red>>8, gdkBase.green>>8, gdkBase.blue>>8);
+    highlight = QColor(gdkSbg.red>>8, gdkSbg.green>>8, gdkSbg.blue>>8);
+    highlightText = QColor(gdkSfg.red>>8, gdkSfg.green>>8, gdkSfg.blue>>8);
+    disabled = QColor(gdkIbg.red>>8, gdkIbg.green>>8, gdkIbg.blue>>8);
+    disabledText = QColor(gdkIfg.red>>8, gdkIfg.green>>8, gdkIfg.blue>>8);
+
+    pal.setColor(QPalette::HighlightedText, highlightText);
+    pal.setColor(QPalette::Light, bg.lighter(125));
+    pal.setColor(QPalette::Shadow, bg.darker(130));
+    pal.setColor(QPalette::Dark, bg.darker(120));
+    pal.setColor(QPalette::Text, text);
+    pal.setColor(QPalette::WindowText, fg);
+    pal.setColor(QPalette::ButtonText, fg);
+    pal.setColor(QPalette::Base, base);
+
+    pal.setColor(QPalette::Disabled, QPalette::Text, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::WindowText, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::Foreground, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::ButtonText, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::Base, disabled);
+
     return pal;
 }
 

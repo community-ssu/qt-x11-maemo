@@ -1354,7 +1354,8 @@ void QAbstractSocket::connectToHostImplementation(const QString &hostName, quint
     }
 
 #ifdef Q_WS_MAEMO_5
-    QMaemoInternetConnectivity::connectionRequest();
+    if (QMaemoInternetConnectivity::isAutoConnectEnabled())
+        QMaemoInternetConnectivity::connectionRequest();
 #endif
 
 #ifndef QT_NO_NETWORKPROXY
@@ -2390,6 +2391,10 @@ void QAbstractSocket::disconnectFromHostImplementation()
 #if defined(QABSTRACTSOCKET_DEBUG)
         qDebug("QAbstractSocket::disconnectFromHost() aborting immediately");
 #endif
+        if (d->state == HostLookupState) {
+            QHostInfo::abortHostLookup(d->hostLookupId);
+            d->hostLookupId = -1;
+        }
     } else {
         // Perhaps emit closing()
         if (d->state != ClosingState) {

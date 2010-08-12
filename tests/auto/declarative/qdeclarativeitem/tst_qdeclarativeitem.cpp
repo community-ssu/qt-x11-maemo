@@ -44,7 +44,14 @@
 #include <QtDeclarative/qdeclarativecomponent.h>
 #include <QtDeclarative/qdeclarativecontext.h>
 #include <QtDeclarative/qdeclarativeview.h>
-#include <QtDeclarative/qdeclarativeitem.h>
+#include <private/qdeclarativerectangle_p.h>
+#include <private/qdeclarativeitem_p.h>
+#include "../../../shared/util.h"
+
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
 
 class tst_QDeclarativeItem : public QObject
 
@@ -54,7 +61,9 @@ public:
     tst_QDeclarativeItem();
 
 private slots:
+    void initTestCase();
     void keys();
+    void keysProcessingOrder();
     void keyNavigation();
     void smooth();
     void clip();
@@ -63,9 +72,13 @@ private slots:
     void propertyChanges();
     void transforms();
     void transforms_data();
+    void childrenRect();
+    void childrenRectBug();
+    void childrenRectBug2();
 
     void childrenProperty();
     void resourcesProperty();
+    void mouseFocus();
 
 private:
     template<typename T>
@@ -76,14 +89,25 @@ private:
 class KeysTestObject : public QObject
 {
     Q_OBJECT
+
+    Q_PROPERTY(bool processLast READ processLast NOTIFY processLastChanged)
+
 public:
-    KeysTestObject() : mKey(0), mModifiers(0), mForwardedKey(0) {}
+    KeysTestObject() : mKey(0), mModifiers(0), mForwardedKey(0), mLast(false) {}
 
     void reset() {
         mKey = 0;
         mText = QString();
         mModifiers = 0;
         mForwardedKey = 0;
+    }
+
+    bool processLast() const { return mLast; }
+    void setProcessLast(bool b) {
+        if (b != mLast) {
+            mLast = b;
+            emit processLastChanged();
+        }
     }
 
 public slots:
@@ -101,18 +125,71 @@ public slots:
         mForwardedKey = key;
     }
 
+signals:
+    void processLastChanged();
+
 public:
     int mKey;
     QString mText;
     int mModifiers;
     int mForwardedKey;
+    bool mLast;
 
 private:
 };
 
+class KeyTestItem : public QDeclarativeItem
+{
+    Q_OBJECT
+public:
+    KeyTestItem(QDeclarativeItem *parent=0) : QDeclarativeItem(parent), mKey(0) {}
+
+protected:
+    void keyPressEvent(QKeyEvent *e) {
+        keyPressPreHandler(e);
+        if (e->isAccepted())
+            return;
+
+        mKey = e->key();
+
+        if (e->key() == Qt::Key_A)
+            e->accept();
+        else
+            e->ignore();
+
+        if (!e->isAccepted())
+            QDeclarativeItem::keyPressEvent(e);
+    }
+
+    void keyReleaseEvent(QKeyEvent *e) {
+        keyReleasePreHandler(e);
+
+        if (e->isAccepted())
+            return;
+
+        if (e->key() == Qt::Key_B)
+            e->accept();
+        else
+            e->ignore();
+
+        if (!e->isAccepted())
+            QDeclarativeItem::keyReleaseEvent(e);
+    }
+
+public:
+    int mKey;
+};
+
+QML_DECLARE_TYPE(KeyTestItem);
+
 
 tst_QDeclarativeItem::tst_QDeclarativeItem()
 {
+}
+
+void tst_QDeclarativeItem::initTestCase()
+{
+    qmlRegisterType<KeyTestItem>("Test",1,0,"KeyTestItem");
 }
 
 void tst_QDeclarativeItem::keys()
@@ -211,6 +288,69 @@ void tst_QDeclarativeItem::keys()
     QCOMPARE(testObject->mKey, 0);
     QVERIFY(!key.isAccepted());
 
+    canvas->rootContext()->setContextProperty("enableKeyHanding", QVariant(true));
+
+    key = QKeyEvent(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier, "", false, 1);
+    QApplication::sendEvent(canvas, &key);
+    QCOMPARE(testObject->mKey, int(Qt::Key_Return));
+    QVERIFY(key.isAccepted());
+
+    delete canvas;
+    delete testObject;
+}
+
+void tst_QDeclarativeItem::keysProcessingOrder()
+{
+    QDeclarativeView *canvas = new QDeclarativeView(0);
+    canvas->setFixedSize(240,320);
+
+    KeysTestObject *testObject = new KeysTestObject;
+    canvas->rootContext()->setContextProperty("keysTestObject", testObject);
+
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/keyspriority.qml"));
+    canvas->show();
+    qApp->processEvents();
+
+    KeyTestItem *testItem = qobject_cast<KeyTestItem*>(canvas->rootObject());
+    QVERIFY(testItem);
+
+    QEvent wa(QEvent::WindowActivate);
+    QApplication::sendEvent(canvas, &wa);
+    QFocusEvent fe(QEvent::FocusIn);
+    QApplication::sendEvent(canvas, &fe);
+
+    QKeyEvent key(QEvent::KeyPress, Qt::Key_A, Qt::NoModifier, "A", false, 1);
+    QApplication::sendEvent(canvas, &key);
+    QCOMPARE(testObject->mKey, int(Qt::Key_A));
+    QCOMPARE(testObject->mText, QLatin1String("A"));
+    QVERIFY(testObject->mModifiers == Qt::NoModifier);
+    QVERIFY(key.isAccepted());
+
+    testObject->reset();
+
+    testObject->setProcessLast(true);
+
+    key = QKeyEvent(QEvent::KeyPress, Qt::Key_A, Qt::NoModifier, "A", false, 1);
+    QApplication::sendEvent(canvas, &key);
+    QCOMPARE(testObject->mKey, 0);
+    QVERIFY(key.isAccepted());
+
+    testObject->reset();
+
+    key = QKeyEvent(QEvent::KeyPress, Qt::Key_B, Qt::NoModifier, "B", false, 1);
+    QApplication::sendEvent(canvas, &key);
+    QCOMPARE(testObject->mKey, int(Qt::Key_B));
+    QCOMPARE(testObject->mText, QLatin1String("B"));
+    QVERIFY(testObject->mModifiers == Qt::NoModifier);
+    QVERIFY(!key.isAccepted());
+
+    testObject->reset();
+
+    key = QKeyEvent(QEvent::KeyRelease, Qt::Key_B, Qt::NoModifier, "B", false, 1);
+    QApplication::sendEvent(canvas, &key);
+    QCOMPARE(testObject->mKey, 0);
+    QVERIFY(key.isAccepted());
+
     delete canvas;
     delete testObject;
 }
@@ -231,7 +371,7 @@ void tst_QDeclarativeItem::keyNavigation()
 
     QDeclarativeItem *item = findItem<QDeclarativeItem>(canvas->rootObject(), "item1");
     QVERIFY(item);
-    QVERIFY(item->hasFocus());
+    QVERIFY(item->hasActiveFocus());
 
     // right
     QKeyEvent key(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier, "", false, 1);
@@ -240,7 +380,7 @@ void tst_QDeclarativeItem::keyNavigation()
 
     item = findItem<QDeclarativeItem>(canvas->rootObject(), "item2");
     QVERIFY(item);
-    QVERIFY(item->hasFocus());
+    QVERIFY(item->hasActiveFocus());
 
     // down
     key = QKeyEvent(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier, "", false, 1);
@@ -249,7 +389,7 @@ void tst_QDeclarativeItem::keyNavigation()
 
     item = findItem<QDeclarativeItem>(canvas->rootObject(), "item4");
     QVERIFY(item);
-    QVERIFY(item->hasFocus());
+    QVERIFY(item->hasActiveFocus());
 
     // left
     key = QKeyEvent(QEvent::KeyPress, Qt::Key_Left, Qt::NoModifier, "", false, 1);
@@ -258,7 +398,7 @@ void tst_QDeclarativeItem::keyNavigation()
 
     item = findItem<QDeclarativeItem>(canvas->rootObject(), "item3");
     QVERIFY(item);
-    QVERIFY(item->hasFocus());
+    QVERIFY(item->hasActiveFocus());
 
     // up
     key = QKeyEvent(QEvent::KeyPress, Qt::Key_Up, Qt::NoModifier, "", false, 1);
@@ -267,7 +407,7 @@ void tst_QDeclarativeItem::keyNavigation()
 
     item = findItem<QDeclarativeItem>(canvas->rootObject(), "item1");
     QVERIFY(item);
-    QVERIFY(item->hasFocus());
+    QVERIFY(item->hasActiveFocus());
 
     // tab
     key = QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier, "", false, 1);
@@ -276,7 +416,7 @@ void tst_QDeclarativeItem::keyNavigation()
 
     item = findItem<QDeclarativeItem>(canvas->rootObject(), "item2");
     QVERIFY(item);
-    QVERIFY(item->hasFocus());
+    QVERIFY(item->hasActiveFocus());
 
     // backtab
     key = QKeyEvent(QEvent::KeyPress, Qt::Key_Backtab, Qt::NoModifier, "", false, 1);
@@ -285,7 +425,7 @@ void tst_QDeclarativeItem::keyNavigation()
 
     item = findItem<QDeclarativeItem>(canvas->rootObject(), "item1");
     QVERIFY(item);
-    QVERIFY(item->hasFocus());
+    QVERIFY(item->hasActiveFocus());
 
     delete canvas;
 }
@@ -385,12 +525,15 @@ void tst_QDeclarativeItem::mapCoordinates()
             Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, x), Q_ARG(QVariant, y)));
     QCOMPARE(result.value<QPointF>(), qobject_cast<QGraphicsItem*>(a)->mapFromScene(x, y));
 
-    QTest::ignoreMessage(QtWarningMsg, "mapToItem() given argument \"1122\" which is neither null nor an Item");
+    QString warning1 = QUrl::fromLocalFile(SRCDIR "/data/mapCoordinates.qml").toString() + ":7:5: QML Item: mapToItem() given argument \"1122\" which is neither null nor an Item";
+    QString warning2 = QUrl::fromLocalFile(SRCDIR "/data/mapCoordinates.qml").toString() + ":7:5: QML Item: mapFromItem() given argument \"1122\" which is neither null nor an Item";
+
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QVERIFY(QMetaObject::invokeMethod(root, "checkMapAToInvalid",
             Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, x), Q_ARG(QVariant, y)));
     QVERIFY(result.toBool());
 
-    QTest::ignoreMessage(QtWarningMsg, "mapFromItem() given argument \"1122\" which is neither null nor an Item");
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
     QVERIFY(QMetaObject::invokeMethod(root, "checkMapAFromInvalid",
             Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, x), Q_ARG(QVariant, y)));
     QVERIFY(result.toBool());
@@ -462,6 +605,41 @@ void tst_QDeclarativeItem::resourcesProperty()
     delete o;
 }
 
+void tst_QDeclarativeItem::mouseFocus()
+{
+    QDeclarativeView *canvas = new QDeclarativeView(0);
+    QVERIFY(canvas);
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/mouseFocus.qml"));
+    canvas->show();
+    QVERIFY(canvas->rootObject());
+    QApplication::setActiveWindow(canvas);
+    QTest::qWaitForWindowShown(canvas);
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(canvas));
+
+    QDeclarativeItem *item = findItem<QDeclarativeItem>(canvas->rootObject(), "declarativeItem");
+    QVERIFY(item);
+    QSignalSpy focusSpy(item, SIGNAL(activeFocusChanged(bool)));
+
+    QTest::mouseClick(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(item->scenePos()));
+    QApplication::processEvents();
+    QCOMPARE(focusSpy.count(), 1);
+    QVERIFY(item->hasActiveFocus());
+
+    // make sure focusable graphics widget underneath does not steal focus
+    QTest::mouseClick(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(item->scenePos()));
+    QApplication::processEvents();
+    QCOMPARE(focusSpy.count(), 1);
+    QVERIFY(item->hasActiveFocus());
+
+    item->setFocus(false);
+    QVERIFY(!item->hasActiveFocus());
+    QCOMPARE(focusSpy.count(), 2);
+    item->setFocus(true);
+    QCOMPARE(focusSpy.count(), 3);
+
+    delete canvas;
+}
+
 void tst_QDeclarativeItem::propertyChanges()
 {
     QDeclarativeView *canvas = new QDeclarativeView(0);
@@ -486,7 +664,8 @@ void tst_QDeclarativeItem::propertyChanges()
     QSignalSpy baselineOffsetSpy(item, SIGNAL(baselineOffsetChanged(qreal)));
     QSignalSpy childrenRectSpy(parentItem, SIGNAL(childrenRectChanged(QRectF)));
     QSignalSpy focusSpy(item, SIGNAL(focusChanged(bool)));
-    QSignalSpy wantsFocusSpy(parentItem, SIGNAL(wantsFocusChanged(bool)));
+    QSignalSpy wantsFocusSpy(parentItem, SIGNAL(activeFocusChanged(bool)));
+    QSignalSpy childrenChangedSpy(parentItem, SIGNAL(childrenChanged()));
 
     item->setParentItem(parentItem);
     item->setWidth(100.0);
@@ -499,6 +678,10 @@ void tst_QDeclarativeItem::propertyChanges()
     QList<QVariant> parentArguments = parentSpy.first();
     QVERIFY(parentArguments.count() == 1);
     QCOMPARE(item->parentItem(), qvariant_cast<QDeclarativeItem *>(parentArguments.at(0)));
+    QCOMPARE(childrenChangedSpy.count(),1);
+
+    item->setParentItem(parentItem);
+    QCOMPARE(childrenChangedSpy.count(),1);
 
     QCOMPARE(item->width(), 100.0);
     QCOMPARE(widthSpy.count(),1);
@@ -518,18 +701,81 @@ void tst_QDeclarativeItem::propertyChanges()
     QVERIFY(childrenRectArguments.count() == 1);
     QCOMPARE(parentItem->childrenRect(), childrenRectArguments.at(0).toRectF());
 
-    QCOMPARE(item->hasFocus(), true);
+    QCOMPARE(item->hasActiveFocus(), true);
     QCOMPARE(focusSpy.count(),1);
     QList<QVariant> focusArguments = focusSpy.first();
     QVERIFY(focusArguments.count() == 1);
     QCOMPARE(focusArguments.at(0).toBool(), true);
 
+    QCOMPARE(parentItem->hasActiveFocus(), false);
     QCOMPARE(parentItem->hasFocus(), false);
-    QCOMPARE(parentItem->wantsFocus(), true);
-    QCOMPARE(wantsFocusSpy.count(),1);
-    QList<QVariant> wantsFocusArguments = wantsFocusSpy.first();
-    QVERIFY(wantsFocusArguments.count() == 1);
-    QCOMPARE(wantsFocusArguments.at(0).toBool(), true);
+    QCOMPARE(wantsFocusSpy.count(),0);
+
+    delete canvas;
+}
+
+void tst_QDeclarativeItem::childrenRect()
+{
+    QDeclarativeView *canvas = new QDeclarativeView(0);
+    canvas->setFixedSize(240,320);
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/childrenRect.qml"));
+    canvas->show();
+
+    QGraphicsObject *o = canvas->rootObject();
+    QDeclarativeItem *item = o->findChild<QDeclarativeItem*>("testItem");
+    QCOMPARE(item->width(), qreal(0));
+    QCOMPARE(item->height(), qreal(0));
+
+    o->setProperty("childCount", 1);
+    QCOMPARE(item->width(), qreal(10));
+    QCOMPARE(item->height(), qreal(20));
+
+    o->setProperty("childCount", 5);
+    QCOMPARE(item->width(), qreal(50));
+    QCOMPARE(item->height(), qreal(100));
+
+    o->setProperty("childCount", 0);
+    QCOMPARE(item->width(), qreal(0));
+    QCOMPARE(item->height(), qreal(0));
+
+    delete o;
+}
+
+// QTBUG-11383
+void tst_QDeclarativeItem::childrenRectBug()
+{
+    QDeclarativeView *canvas = new QDeclarativeView(0);
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/childrenRectBug.qml"));
+    canvas->show();
+
+    QGraphicsObject *o = canvas->rootObject();
+    QDeclarativeItem *item = o->findChild<QDeclarativeItem*>("theItem");
+    QCOMPARE(item->width(), qreal(200));
+    QCOMPARE(item->height(), qreal(100));
+    QCOMPARE(item->x(), qreal(100));
+
+    delete canvas;
+}
+
+// QTBUG-11465
+void tst_QDeclarativeItem::childrenRectBug2()
+{
+    QDeclarativeView *canvas = new QDeclarativeView(0);
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/childrenRectBug2.qml"));
+    canvas->show();
+
+    QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(canvas->rootObject());
+    QVERIFY(rect);
+    QDeclarativeItem *item = rect->findChild<QDeclarativeItem*>("theItem");
+    QCOMPARE(item->width(), qreal(100));
+    QCOMPARE(item->height(), qreal(110));
+    QCOMPARE(item->x(), qreal(130));
+
+    QDeclarativeItemPrivate *rectPrivate = QDeclarativeItemPrivate::get(rect);
+    rectPrivate->setState("row");
+    QCOMPARE(item->width(), qreal(210));
+    QCOMPARE(item->height(), qreal(50));
+    QCOMPARE(item->x(), qreal(75));
 
     delete canvas;
 }

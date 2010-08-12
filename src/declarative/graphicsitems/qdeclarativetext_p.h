@@ -69,9 +69,10 @@ class Q_DECLARATIVE_EXPORT QDeclarativeText : public QDeclarativeItem
     Q_PROPERTY(HAlignment horizontalAlignment READ hAlign WRITE setHAlign NOTIFY horizontalAlignmentChanged)
     Q_PROPERTY(VAlignment verticalAlignment READ vAlign WRITE setVAlign NOTIFY verticalAlignmentChanged)
     Q_PROPERTY(WrapMode wrapMode READ wrapMode WRITE setWrapMode NOTIFY wrapModeChanged)
-    Q_PROPERTY(bool wrap READ wrap WRITE setWrap NOTIFY wrapModeChanged)
     Q_PROPERTY(TextFormat textFormat READ textFormat WRITE setTextFormat NOTIFY textFormatChanged)
     Q_PROPERTY(TextElideMode elide READ elideMode WRITE setElideMode NOTIFY elideModeChanged) //### elideMode?
+    Q_PROPERTY(qreal paintedWidth READ paintedWidth NOTIFY paintedSizeChanged)
+    Q_PROPERTY(qreal paintedHeight READ paintedHeight NOTIFY paintedSizeChanged)
 
 public:
     QDeclarativeText(QDeclarativeItem *parent=0);
@@ -99,7 +100,8 @@ public:
     enum WrapMode { NoWrap = QTextOption::NoWrap,
                     WordWrap = QTextOption::WordWrap,
                     WrapAnywhere = QTextOption::WrapAnywhere,
-                    WrapAtWordBoundaryOrAnywhere = QTextOption::WrapAtWordBoundaryOrAnywhere
+                    WrapAtWordBoundaryOrAnywhere = QTextOption::WrapAtWordBoundaryOrAnywhere, // COMPAT
+                    Wrap = QTextOption::WrapAtWordBoundaryOrAnywhere
                   };
 
     QString text() const;
@@ -123,8 +125,6 @@ public:
     VAlignment vAlign() const;
     void setVAlign(VAlignment align);
 
-    bool wrap() const;
-    void setWrap(bool w);
     WrapMode wrapMode() const;
     void setWrapMode(WrapMode w);
 
@@ -140,6 +140,11 @@ public:
 
     int resourcesLoading() const; // mainly for testing
 
+    qreal paintedWidth() const;
+    qreal paintedHeight() const;
+
+    QRectF boundingRect() const;
+
 Q_SIGNALS:
     void textChanged(const QString &text);
     void linkActivated(const QString &link);
@@ -152,6 +157,7 @@ Q_SIGNALS:
     void wrapModeChanged();
     void textFormatChanged(TextFormat textFormat);
     void elideModeChanged(TextElideMode mode);
+    void paintedSizeChanged();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -162,9 +168,6 @@ protected:
 private:
     Q_DISABLE_COPY(QDeclarativeText)
     Q_DECLARE_PRIVATE_D(QGraphicsItem::d_ptr.data(), QDeclarativeText)
-
-    friend class QTextDocumentWithImageResources;
-    void reloadWithResources();
 };
 
 QT_END_NAMESPACE

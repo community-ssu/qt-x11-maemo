@@ -324,11 +324,9 @@ void QGraphicsWidget::resize(const QSizeF &size)
 */
 
 /*!
-
   \fn QGraphicsWidget::geometryChanged()
 
-  This signal gets emitted whenever the geometry of the item changes
-  \internal
+  This signal gets emitted whenever the geometry is changed in setGeometry().
 */
 
 /*!
@@ -406,12 +404,6 @@ void QGraphicsWidget::setGeometry(const QRectF &rect)
         QApplication::sendEvent(this, &re);
     }
 }
-
-/*!
-  \fn QGraphicsWidget::geometryChanged()
-
-  This signal gets emitted whenever the geometry is changed in setGeometry().
-*/
 
 /*!
     \fn QRectF QGraphicsWidget::rect() const
@@ -755,6 +747,17 @@ QSizeF QGraphicsWidget::sizeHint(Qt::SizeHint which, const QSizeF &constraint) c
 }
 
 /*!
+    \property QGraphicsWidget::layout
+    \brief The layout of the widget
+*/
+
+/*!
+    \fn void QGraphicsWidget::layoutChanged()
+    This signal gets emitted whenever the layout of the item changes
+    \internal
+*/
+
+/*!
     Returns this widget's layout, or 0 if no layout is currently managing this
     widget.
 
@@ -1093,18 +1096,9 @@ QVariant QGraphicsWidget::itemChange(GraphicsItemChange change, const QVariant &
         }
         break;
     case ItemPositionHasChanged:
-        if (!d->inSetGeometry) {
-            d->inSetPos = 1;
-            // Ensure setGeometry is called (avoid recursion when setPos is
-            // called from within setGeometry).
-            setGeometry(QRectF(pos(), size()));
-            d->inSetPos = 0 ;
-        }
+        d->setGeometryFromSetPos();
         break;
     case ItemParentChange: {
-        QGraphicsItem *parent = qVariantValue<QGraphicsItem *>(value);
-        d->fixFocusChainBeforeReparenting((parent && parent->isWidget()) ? static_cast<QGraphicsWidget *>(parent) : 0, scene());
-
         // Deliver ParentAboutToChange.
         QEvent event(QEvent::ParentAboutToChange);
         QApplication::sendEvent(this, &event);

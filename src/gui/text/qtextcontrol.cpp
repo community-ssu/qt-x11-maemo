@@ -747,7 +747,11 @@ void QTextControl::undo()
 {
     Q_D(QTextControl);
     d->repaintSelection();
+    const int oldCursorPos = d->cursor.position();
     d->doc->undo(&d->cursor);
+    if (d->cursor.position() != oldCursorPos)
+        emit cursorPositionChanged();
+    emit microFocusChanged();
     ensureCursorVisible();
 }
 
@@ -755,7 +759,11 @@ void QTextControl::redo()
 {
     Q_D(QTextControl);
     d->repaintSelection();
+    const int oldCursorPos = d->cursor.position();
     d->doc->redo(&d->cursor);
+        if (d->cursor.position() != oldCursorPos)
+        emit cursorPositionChanged();
+    emit microFocusChanged();
     ensureCursorVisible();
 }
 
@@ -885,8 +893,10 @@ void QTextControl::processEvent(QEvent *e, const QPointF &coordinateOffset, QWid
 void QTextControl::processEvent(QEvent *e, const QMatrix &matrix, QWidget *contextWidget)
 {
     Q_D(QTextControl);
-    if (d->interactionFlags & Qt::NoTextInteraction)
+    if (d->interactionFlags == Qt::NoTextInteraction) {
+        e->ignore();
         return;
+    }
 
     d->contextWidget = contextWidget;
 

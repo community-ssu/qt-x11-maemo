@@ -1622,9 +1622,18 @@ bool qSharedBuild()
   \macro Q_WS_S60
   \relates <QtGlobal>
 
-  Defined on S60.
+  Defined on S60 with the Avkon UI framework.
 
   \sa Q_WS_MAC, Q_WS_WIN, Q_WS_X11, Q_WS_QWS
+ */
+
+/*!
+  \macro Q_WS_MAEMO_5
+  \relates <QtGlobal>
+
+  Defined on Maemo 5.
+
+  \sa Q_WS_MAC, Q_WS_WIN, Q_WS_X11, Q_WS_QWS, Q_WS_S60
  */
 
 #if defined(QT_BUILD_QMAKE)
@@ -1813,7 +1822,6 @@ const QSysInfo::WinVersion QSysInfo::WindowsVersion = QSysInfo::windowsVersion()
 #endif
 
 #ifdef Q_OS_SYMBIAN
-# ifdef Q_WS_S60
 static QSysInfo::S60Version cachedS60Version = QSysInfo::S60Version(-1);
 
 QSysInfo::S60Version QSysInfo::s60Version()
@@ -1885,17 +1893,6 @@ QSysInfo::SymbianVersion QSysInfo::symbianVersion()
         return SV_Unknown;
     }
 }
-#else
-QSysInfo::S60Version QSysInfo::s60Version()
-{
-    return SV_S60_None;
-}
-
-QSysInfo::SymbianVersion QSysInfo::symbianVersion()
-{
-    return SV_Unknown;
-}
-# endif // ifdef Q_WS_S60
 #endif // ifdef Q_OS_SYMBIAN
 
 /*!
@@ -2079,7 +2076,28 @@ static void mac_default_handler(const char *msg)
 }
 #endif // Q_CC_MWERKS && Q_OS_MACX
 
-
+#if !defined(Q_OS_WIN) && !defined(QT_NO_THREAD) && !defined(Q_OS_INTEGRITY) && !defined(Q_OS_QNX) && \
+    defined(_POSIX_THREAD_SAFE_FUNCTIONS) && _POSIX_VERSION >= 200112L
+namespace {
+    // There are two incompatible versions of strerror_r:
+    // a) the XSI/POSIX.1 version, which returns an int,
+    //    indicating success or not
+    // b) the GNU version, which returns a char*, which may or may not
+    //    be the beginning of the buffer we used
+    // The GNU libc manpage for strerror_r says you should use the the XSI
+    // version in portable code. However, it's impossible to do that if
+    // _GNU_SOURCE is defined so we use C++ overloading to decide what to do
+    // depending on the return type
+    static inline QString fromstrerror_helper(int, const QByteArray &buf)
+    {
+        return QString::fromLocal8Bit(buf);
+    }
+    static inline QString fromstrerror_helper(const char *str, const QByteArray &)
+    {
+        return QString::fromLocal8Bit(str);
+    }
+}
+#endif
 
 QString qt_error_string(int errorCode)
 {
@@ -2122,12 +2140,9 @@ QString qt_error_string(int errorCode)
 
         if (ret.isEmpty() && errorCode == ERROR_MOD_NOT_FOUND)
             ret = QString::fromLatin1("The specified module could not be found.");
-
 #elif !defined(QT_NO_THREAD) && defined(_POSIX_THREAD_SAFE_FUNCTIONS) && _POSIX_VERSION >= 200112L && !defined(Q_OS_INTEGRITY) && !defined(Q_OS_QNX)
-
         QByteArray buf(1024, '\0');
-        strerror_r(errorCode, buf.data(), buf.size());
-        ret = QString::fromLocal8Bit(buf.constData());
+        ret = fromstrerror_helper(strerror_r(errorCode, buf.data(), buf.size()), buf);
 #else
         ret = QString::fromLocal8Bit(strerror(errorCode));
 #endif
@@ -2368,7 +2383,7 @@ void qDebug(const char *msg, ...)
     This syntax inserts a space between each item, and
     appends a newline at the end.
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qCritical(), qFatal(), qInstallMsgHandler(),
@@ -2404,7 +2419,7 @@ void qWarning(const char *msg, ...)
     A space is inserted between the items, and a newline is
     appended at the end.
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qWarning(), qFatal(), qInstallMsgHandler(),
@@ -2469,7 +2484,7 @@ void qErrnoWarning(int code, const char *msg, ...)
     Example:
     \snippet doc/src/snippets/code/src_corelib_global_qglobal.cpp 30
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qCritical(), qWarning(), qInstallMsgHandler(),
@@ -2485,6 +2500,19 @@ void qFatal(const char *msg, ...)
 
 // getenv is declared as deprecated in VS2005. This function
 // makes use of the new secure getenv function.
+/*!
+    \relates <QtGlobal>
+
+    Returns the value of the environment variable with name \a
+    varName. To get the variable string, use QByteArray::constData().
+
+    \note qgetenv() was introduced because getenv() from the standard
+    C library was deprecated in VC2005 (and later versions). qgetenv()
+    uses the new replacement function in VC, and calls the standard C
+    library's implementation on all other platforms.
+
+    \sa qputenv()
+*/
 QByteArray qgetenv(const char *varName)
 {
 #if defined(_MSC_VER) && _MSC_VER >= 1400
@@ -2504,6 +2532,20 @@ QByteArray qgetenv(const char *varName)
 #endif
 }
 
+/*!
+    \relates <QtGlobal>
+
+    This function sets the \a value of the environment variable named
+    \a varName. It will create the variable if it does not exist. It
+    returns 0 if the variable could not be set.
+
+    \note qputenv() was introduced because putenv() from the standard
+    C library was deprecated in VC2005 (and later versions). qputenv()
+    uses the replacement function in VC, and calls the standard C
+    library's implementation on all other platforms.
+
+    \sa qgetenv()
+*/
 bool qputenv(const char *varName, const QByteArray& value)
 {
 #if defined(_MSC_VER) && _MSC_VER >= 1400
@@ -2571,55 +2613,6 @@ void qsrand(uint seed)
     // this is also valid for QT_NO_THREAD
     srand(seed);
 #endif
-}
-
-/*! \internal
-    \relates <QtGlobal>
-    \since 4.6
-
-    Seed the PRNG, but only if it has not already been seeded.
-
-    The default seed is a combination of current time, a stack address and a
-    serial counter (since thread stack addresses are re-used).
-*/
-void qsrand()
-{
-#if (defined(Q_OS_UNIX) || defined(Q_OS_WIN)) && !defined(QT_NO_THREAD)
-    SeedStorage *seedStorage = randTLS();
-    if (seedStorage) {
-        SeedStorageType *pseed = seedStorage->localData();
-        if (pseed) {
-            // already seeded
-            return;
-        }
-        seedStorage->setLocalData(pseed = new SeedStorageType);
-        // start beyond 1 to avoid the sequence reset
-        static QBasicAtomicInt serial = Q_BASIC_ATOMIC_INITIALIZER(2);
-        *pseed = QDateTime::currentDateTime().toTime_t()
-                 + quintptr(&pseed)
-                 + serial.fetchAndAddRelaxed(1);
-#if defined(Q_OS_WIN) || defined(Q_OS_SYMBIAN)
-        // for Windows and Symbian the srand function must still be called.
-        srand(*pseed);
-#endif
-    }
-
-//QT_NO_THREAD implementations
-#else
-    static unsigned int seed = 0;
-
-    if (seed)
-        return;
-
-#if defined(Q_OS_SYMBIAN)
-    seed = Math::Random();
-#elif defined(Q_OS_WIN)
-    seed = GetTickCount();
-#else
-    seed = quintptr(&seed) + QDateTime::currentDateTime().toTime_t();
-#endif
-    srand(seed);
-#endif // defined(Q_OS_UNIX) || defined(Q_OS_WIN)) && !defined(QT_NO_THREAD)
 }
 
 /*!

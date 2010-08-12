@@ -60,6 +60,7 @@
 #include <private/qdeclarativemetatype_p.h>
 #include <private/qdeclarativeproperty_p.h>
 
+#include "../../../shared/util.h"
 #include "../shared/debugutil_p.h"
 
 Q_DECLARE_METATYPE(QDeclarativeDebugWatch::State)
@@ -69,16 +70,8 @@ class tst_QDeclarativeDebug : public QObject
 {
     Q_OBJECT
 
-public:
-    tst_QDeclarativeDebug(QDeclarativeDebugTestData *data)
-    {
-        m_conn = data->conn;
-        m_engine = data->engine;
-        m_rootItem = data->items[0];
-    }
-
 private:
-    QDeclarativeDebugObjectReference findRootObject();
+    QDeclarativeDebugObjectReference findRootObject(int context = 0);
     QDeclarativeDebugPropertyReference findProperty(const QList<QDeclarativeDebugPropertyReference> &props, const QString &name) const;
     void waitForQuery(QDeclarativeDebugQuery *query);
 
@@ -93,8 +86,11 @@ private:
     QDeclarativeEngine *m_engine;
     QDeclarativeItem *m_rootItem;
 
+    QObjectList m_components;
+
 private slots:
     void initTestCase();
+    void cleanupTestCase();
 
     void watch_property();
     void watch_object();
@@ -115,9 +111,11 @@ private slots:
     void tst_QDeclarativeDebugObjectReference();
     void tst_QDeclarativeDebugContextReference();
     void tst_QDeclarativeDebugPropertyReference();
+
+    void setMethodBody();
 };
 
-QDeclarativeDebugObjectReference tst_QDeclarativeDebug::findRootObject()
+QDeclarativeDebugObjectReference tst_QDeclarativeDebug::findRootObject(int context)
 {
     QDeclarativeDebugEnginesQuery *q_engines = m_dbg->queryAvailableEngines(this);
     waitForQuery(q_engines);
@@ -129,7 +127,7 @@ QDeclarativeDebugObjectReference tst_QDeclarativeDebug::findRootObject()
 
     if (q_context->rootContext().objects().count() == 0)
         return QDeclarativeDebugObjectReference();
-    QDeclarativeDebugObjectQuery *q_obj = m_dbg->queryObject(q_context->rootContext().objects()[0], this);
+    QDeclarativeDebugObjectQuery *q_obj = m_dbg->queryObject(q_context->rootContext().objects()[context], this);
     waitForQuery(q_obj);
 
     QDeclarativeDebugObjectReference result = q_obj->object();
@@ -278,9 +276,98 @@ void tst_QDeclarativeDebug::compareProperties(const QDeclarativeDebugPropertyRef
 
 void tst_QDeclarativeDebug::initTestCase()
 {
-    m_dbg = new QDeclarativeEngineDebug(m_conn, this);
-
     qRegisterMetaType<QDeclarativeDebugWatch::State>();
+
+    QTest::ignoreMessage(QtWarningMsg, "QDeclarativeDebugServer: Waiting for connection on port 3768...");
+    qputenv("QML_DEBUG_SERVER_PORT", "3768");
+    m_engine = new QDeclarativeEngine(this);
+
+    QList<QByteArray> qml;
+    qml << "import Qt 4.7\n"
+            "Item {"
+                "width: 10; height: 20; scale: blueRect.scale;"
+                "Rectangle { id: blueRect; width: 500; height: 600; color: \"blue\"; }"
+                "Text { color: blueRect.color; }"
+                "MouseArea {"
+                    "onEntered: { console.log('hello') }"
+                "}"
+            "}";
+
+    // add second component to test multiple root contexts
+    qml << "import Qt 4.7\n"
+            "Item {}";
+
+    // and a third to test methods
+    qml << "import Qt 4.7\n"
+            "Item {"
+                "function myMethodNoArgs() { return 3; }\n"
+                "function myMethod(a) { return a + 9; }\n"
+                "function myMethodIndirect() { myMethod(3); }\n"
+            "}";
+
+    for (int i=0; i<qml.count(); i++) {
+        QDeclarativeComponent component(m_engine);
+        component.setData(qml[i], QUrl::fromLocalFile(""));
+        Q_ASSERT(component.isReady());  // fails if bad syntax
+        m_components << qobject_cast<QDeclarativeItem*>(component.create());
+    }
+    m_rootItem = qobject_cast<QDeclarativeItem*>(m_components.first());
+
+    // add an extra context to test for multiple contexts
+    QDeclarativeContext *context = new QDeclarativeContext(m_engine->rootContext(), this);
+    context->setObjectName("tst_QDeclarativeDebug_childContext");
+
+    m_conn = new QDeclarativeDebugConnection(this);
+    m_conn->connectToHost("127.0.0.1", 3768);
+
+    QTest::ignoreMessage(QtWarningMsg, "QDeclarativeDebugServer: Connection established");
+    bool ok = m_conn->waitForConnected();
+    Q_ASSERT(ok);
+    QTRY_VERIFY(QDeclarativeDebugService::hasDebuggingClient());
+
+    m_dbg = new QDeclarativeEngineDebug(m_conn, this);
+}
+
+void tst_QDeclarativeDebug::cleanupTestCase()
+{
+    qDeleteAll(m_components);
+}
+
+void tst_QDeclarativeDebug::setMethodBody()
+{
+    QDeclarativeDebugObjectReference obj = findRootObject(2);
+
+    QObject *root = m_components.at(2);
+    // Without args
+    {
+    QVariant rv;
+    QVERIFY(QMetaObject::invokeMethod(root, "myMethodNoArgs", Qt::DirectConnection,
+                                      Q_RETURN_ARG(QVariant, rv)));
+    QVERIFY(rv == QVariant(qreal(3)));
+
+
+    QVERIFY(m_dbg->setMethodBody(obj.debugId(), "myMethodNoArgs", "return 7"));
+    QTest::qWait(100);
+
+    QVERIFY(QMetaObject::invokeMethod(root, "myMethodNoArgs", Qt::DirectConnection,
+                                      Q_RETURN_ARG(QVariant, rv)));
+    QVERIFY(rv == QVariant(qreal(7)));
+    }
+
+    // With args
+    {
+    QVariant rv;
+    QVERIFY(QMetaObject::invokeMethod(root, "myMethod", Qt::DirectConnection,
+                                      Q_RETURN_ARG(QVariant, rv), Q_ARG(QVariant, QVariant(19))));
+    QVERIFY(rv == QVariant(qreal(28)));
+
+    QVERIFY(m_dbg->setMethodBody(obj.debugId(), "myMethod", "return a + 7"));
+    QTest::qWait(100);
+
+    QVERIFY(QMetaObject::invokeMethod(root, "myMethod", Qt::DirectConnection,
+                                      Q_RETURN_ARG(QVariant, rv), Q_ARG(QVariant, QVariant(19))));
+    QVERIFY(rv == QVariant(qreal(26)));
+    }
 }
 
 void tst_QDeclarativeDebug::watch_property()
@@ -542,7 +629,7 @@ void tst_QDeclarativeDebug::queryRootContexts()
     QCOMPARE(context.debugId(), QDeclarativeDebugService::idForObject(actualContext));
     QCOMPARE(context.name(), actualContext->objectName());
 
-    QCOMPARE(context.objects().count(), 2); // 2 qml component objects created for context in main()
+    QCOMPARE(context.objects().count(), 3); // 3 qml component objects created for context in main()
 
     // root context query sends only root object data - it doesn't fill in
     // the children or property info
@@ -655,7 +742,7 @@ void tst_QDeclarativeDebug::queryExpressionResult()
     delete q_expr;
 
     q_expr = m_dbg->queryExpressionResult(objectId, expr, this);
-    QCOMPARE(q_expr->expression(), expr);
+    QCOMPARE(q_expr->expression().toString(), expr);
     waitForQuery(q_expr);
 
     QCOMPARE(q_expr->result(), result);
@@ -804,40 +891,6 @@ void tst_QDeclarativeDebug::tst_QDeclarativeDebugPropertyReference()
         compareProperties(r, ref);
 }
 
-
-class tst_QDeclarativeDebug_Factory : public QDeclarativeTestFactory
-{
-public:
-    QObject *createTest(QDeclarativeDebugTestData *data)
-    {
-        tst_QDeclarativeDebug *test = new tst_QDeclarativeDebug(data);
-        QDeclarativeContext *c = new QDeclarativeContext(data->engine->rootContext(), test);
-        c->setObjectName("tst_QDeclarativeDebug_childContext");
-        return test;
-    }
-};
-
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-
-    QList<QByteArray> qml;
-    qml << "import Qt 4.7\n"
-            "Item {"
-                "width: 10; height: 20; scale: blueRect.scale;"
-                "Rectangle { id: blueRect; width: 500; height: 600; color: \"blue\"; }"
-                "Text { color: blueRect.color; }"
-                "MouseArea {"
-                    "onEntered: { console.log('hello') }"
-                "}"
-            "}";
-    // add second component to test multiple root contexts
-    qml << "import Qt 4.7\n"
-            "Item {}";
-    tst_QDeclarativeDebug_Factory factory;
-    return QDeclarativeDebugTest::runTests(&factory, qml);
-}
-
-//QTEST_MAIN(tst_QDeclarativeDebug)
+QTEST_MAIN(tst_QDeclarativeDebug)
 
 #include "tst_qdeclarativedebug.moc"

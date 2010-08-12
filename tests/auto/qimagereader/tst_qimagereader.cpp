@@ -114,14 +114,14 @@ private slots:
     void readFromFileAfterJunk_data();
     void readFromFileAfterJunk();
 
+    void devicePosition_data();
+    void devicePosition();
+
     void setBackgroundColor_data();
     void setBackgroundColor();
 
     void supportsAnimation_data();
     void supportsAnimation();
-
-    void description_data();
-    void description();
 
     void readFromResources_data();
     void readFromResources();
@@ -134,6 +134,9 @@ private slots:
 
     void sizeBeforeRead_data();
     void sizeBeforeRead();
+
+    void sizeBeforeFormat_data();
+    void sizeBeforeFormat();
 
     void imageFormatBeforeRead_data();
     void imageFormatBeforeRead();
@@ -707,6 +710,31 @@ void tst_QImageReader::sizeBeforeRead()
     QCOMPARE(size, image.size());
 }
 
+void tst_QImageReader::sizeBeforeFormat_data()
+{
+    imageFormat_data();
+}
+
+void tst_QImageReader::sizeBeforeFormat()
+{
+    QFETCH(QString, fileName);
+
+    QByteArray formatA, formatB;
+
+    {
+        QImageReader reader(prefix + fileName);
+        formatA = reader.format();
+    }
+
+    {
+        QImageReader reader(prefix + fileName);
+        QSize size = reader.size();
+        formatB = reader.format();
+    }
+
+    QCOMPARE(formatA, formatB);
+}
+
 void tst_QImageReader::imageFormatBeforeRead_data()
 {
     imageFormat_data();
@@ -1121,7 +1149,7 @@ void tst_QImageReader::readFromFileAfterJunk()
     QByteArray imageData = imageFile.readAll();
     QVERIFY(!imageData.isNull());
 
-    int iterations = 10;
+    int iterations = 3;
     if (format == "ppm" || format == "pbm" || format == "pgm" || format == "svg" || format == "svgz")
         iterations = 1;
 
@@ -1151,52 +1179,63 @@ void tst_QImageReader::readFromFileAfterJunk()
     }
 }
 
-void tst_QImageReader::description_data()
+void tst_QImageReader::devicePosition_data()
 {
     QTest::addColumn<QString>("fileName");
-    QTest::addColumn<QStringMap>("description");
+    QTest::addColumn<QByteArray>("format");
 
-    QMap<QString, QString> willem;
-    willem["Title"] = "PngSuite";
-    willem["Author"] = "Willem A.J. van Schaik (gwillem@ntuvax.ntu.ac.sg)";
-    willem["Copyright"] = "Copyright Willem van Schaik, Singapore 1995";
-    willem["Description"] = "A compilation of a set of images created to test the "
-                            "various color-types of the PNG format. Included are "
-                            "black&white, color, paletted, with alpha channel, with "
-                            "transparency formats. All bit-depths allowed according "
-                            "to the spec are present.";
-    willem["Software"] = "Created on a NeXTstation color using \"pnmtopng\".";
-    willem["Disclaimer"] = "Freeware.";
-
-    QTest::newRow("PNG") << QString("pngwithtext.png") << willem;
-    QTest::newRow("PNG Compressed") << QString("pngwithcompressedtext.png") << willem;
+    QTest::newRow("pbm") << QString("image.pbm") << QByteArray("pbm");
+    QTest::newRow("pgm") << QString("image.pgm") << QByteArray("pgm");
+    QTest::newRow("ppm-1") << QString("image.ppm") << QByteArray("ppm");
+#ifdef QTEST_HAVE_JPEG
+    QTest::newRow("jpeg-1") << QString("beavis.jpg") << QByteArray("jpeg");
+    QTest::newRow("jpeg-2") << QString("YCbCr_cmyk.jpg") << QByteArray("jpeg");
+    QTest::newRow("jpeg-3") << QString("YCbCr_rgb.jpg") << QByteArray("jpeg");
+#endif
+#if defined QTEST_HAVE_GIF
+    QTest::newRow("gif-1") << QString("earth.gif") << QByteArray("gif");
+#endif
+    QTest::newRow("xbm") << QString("gnus.xbm") << QByteArray("xbm");
+    QTest::newRow("xpm") << QString("marble.xpm") << QByteArray("xpm");
+    QTest::newRow("bmp-1") << QString("colorful.bmp") << QByteArray("bmp");
+    QTest::newRow("bmp-2") << QString("font.bmp") << QByteArray("bmp");
+    QTest::newRow("png") << QString("kollada.png") << QByteArray("png");
+//    QTest::newRow("mng-1") << QString("images/ball.mng") << QByteArray("mng");
+//    QTest::newRow("mng-2") << QString("images/fire.mng") << QByteArray("mng");
+#if defined QTEST_HAVE_SVG
+    QTest::newRow("svg") << QString("rect.svg") << QByteArray("svg");
+    QTest::newRow("svgz") << QString("rect.svgz") << QByteArray("svgz");
+#endif
 }
 
-void tst_QImageReader::description()
+void tst_QImageReader::devicePosition()
 {
     QFETCH(QString, fileName);
-    QFETCH(QStringMap, description);
+    QFETCH(QByteArray, format);
 
-    // Sanity check
-    QVERIFY(!QImage(prefix + fileName).isNull());
+    QImage expected(prefix + fileName);
+    QVERIFY(!expected.isNull());
 
-    QImageReader reader(prefix + fileName);
+    QFile imageFile(prefix + fileName);
+    QVERIFY(imageFile.open(QFile::ReadOnly));
+    QByteArray imageData = imageFile.readAll();
+    QVERIFY(!imageData.isNull());
+    int imageDataSize = imageData.size();
 
-    foreach (QString key, description.keys())
-        QCOMPARE(reader.text(key), description.value(key));
-    QCOMPARE(reader.textKeys(), QStringList(description.keys()));
-
-    QImage image = reader.read();
-    QVERIFY(!image.isNull());
-
-    foreach (QString key, description.keys())
-        QCOMPARE(image.text(key), description.value(key));
-    QCOMPARE(image.textKeys(), QStringList(description.keys()));
-
-    foreach (QString key, description.keys())
-        QCOMPARE(reader.text(key), description.value(key));
-    QCOMPARE(reader.textKeys(), QStringList(description.keys()));
+    const char *preStr = "prebeef\n";
+    int preLen = qstrlen(preStr);
+    imageData.prepend(preStr);
+    if (format != "svg" && format != "svgz") // Doesn't handle trailing data
+        imageData.append("\npostbeef");
+    QBuffer buf(&imageData);
+    buf.open(QIODevice::ReadOnly);
+    buf.seek(preLen);
+    QImageReader reader(&buf, format);
+    QCOMPARE(expected, reader.read());
+    if (format != "ppm" && format != "gif")  // Known not to work
+        QCOMPARE(buf.pos(), qint64(preLen+imageDataSize));
 }
+
 
 void tst_QImageReader::readFromResources_data()
 {
@@ -1303,12 +1342,6 @@ void tst_QImageReader::readFromResources_data()
     QTest::newRow("image.png") << QString("image.png")
                                       << QByteArray("png") << QSize(22, 22)
                                       << QString("");
-    QTest::newRow("pngwithcompressedtext.png") << QString("pngwithcompressedtext.png")
-                                                      << QByteArray("png") << QSize(32, 32)
-                                                      << QString("");
-    QTest::newRow("pngwithtext.png") << QString("pngwithtext.png")
-                                            << QByteArray("png") << QSize(32, 32)
-                                            << QString("");
     QTest::newRow("kollada.png") << QString("kollada.png")
                                         << QByteArray("png") << QSize(436, 160)
                                         << QString("");
@@ -1827,14 +1860,14 @@ void tst_QImageReader::testIgnoresFormatAndExtension()
     QFETCH(QString, expected);
 
     QList<QByteArray> formats = QImageReader::supportedImageFormats();
-    QString fileNameBase = "images/" + name + ".";
+    QString fileNameBase = prefix + name + ".";
 
     foreach (const QByteArray &f, formats) {
         if (f == extension)
             continue;
         QFile tmp(QDir::tempPath() + "/" + name + "_" + expected + "." + f);
 
-        QFile::copy(fileNameBase + extension, QFileInfo(tmp).absoluteFilePath());
+        QVERIFY(QFile::copy(fileNameBase + extension, QFileInfo(tmp).absoluteFilePath()));
 
         QString format;
         QImage image;

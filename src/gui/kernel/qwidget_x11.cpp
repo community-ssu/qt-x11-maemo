@@ -61,6 +61,12 @@
 
 //extern bool qt_sendSpontaneousEvent(QObject *, QEvent *); //qapplication_x11.cpp
 
+#ifdef Q_WS_MAEMO_5
+#  include <QtDBus>
+#  include <mce/mode-names.h>
+#  include <mce/dbus-names.h>
+#endif
+
 #include <private/qpixmap_x11_p.h>
 #include <private/qpaintengine_x11_p.h>
 #include "qt_x11_p.h"
@@ -100,6 +106,192 @@ int qt_x11_create_desktop_on_screen = -1;
 extern void qt_net_update_user_time(QWidget *tlw, unsigned long timestamp);
 
 #ifdef Q_WS_MAEMO_5
+
+bool QMaemo5OrientationManager::manageWindow(QWidget *w, bool add)
+{
+    if (add && (!w || !w->isWindow()))
+        return false;
+    if (add == windows.contains(w))
+        return add;
+    if (add) {
+        windows.append(w);
+        connect(w, SIGNAL(destroyed()), this, SLOT(windowDestroyed()));
+    } else {
+        if (w)
+            disconnect(w, SIGNAL(destroyed()), this, SLOT(windowDestroyed()));
+        windows.removeAll(w);
+    }
+    if (windows.size() == (add ? 1 : 0))
+        enableDBus(add);
+    return true;
+}
+
+void QMaemo5OrientationManager::windowDestroyed()
+{
+    QWidget *w = qobject_cast<QWidget *>(sender());
+    if (!w)
+        return;
+    manageWindow(w, false);
+}
+
+void QMaemo5OrientationManager::orientationChanged(const QString &orientation)
+{
+    // ignore the inverted orientations
+    if (orientation != QLatin1String(MCE_ORIENTATION_PORTRAIT) &&
+        orientation != QLatin1String(MCE_ORIENTATION_LANDSCAPE))
+        return;
+
+    Qt::Orientation o = toOrientation(orientation);
+
+    if (o != lastOrientation) {
+        lastOrientation = o;
+        applyOrientation();
+    }
+}
+
+Qt::Orientation QMaemo5OrientationManager::toOrientation(const QString &nativeOrientation)
+{
+    if (nativeOrientation == QLatin1String(MCE_ORIENTATION_PORTRAIT))
+        return Qt::Vertical;
+    else
+        return Qt::Horizontal;
+}
+
+QMaemo5OrientationManager::QMaemo5OrientationManager()
+    : QObject(QApplication::instance()), lastOrientation(Qt::Horizontal), lastSlideOut(false)
+{
+    // connect to the orientation change signal
+    QDBusConnection::systemBus().connect(QString(), QLatin1String(MCE_SIGNAL_PATH), QLatin1String(MCE_SIGNAL_IF),
+            QLatin1String(MCE_DEVICE_ORIENTATION_SIG),
+            this,
+            SLOT(orientationChanged(QString)));
+
+    // connect to the keyboard slide in/out signal
+    QDBusConnection::systemBus().connect(QString(), QLatin1String("/org/freedesktop/Hal/devices/platform_slide"), QLatin1String("org.freedesktop.Hal.Device"),
+            QLatin1String("Condition"),
+            this,
+            SLOT(halConditionChanged(QString, QString)));
+}
+
+QMaemo5OrientationManager::~QMaemo5OrientationManager()
+{
+    inst = 0;
+}
+
+void QMaemo5OrientationManager::halConditionChanged(const QString &action, const QString &what)
+{
+    if (action != QLatin1String("ButtonPressed") || what != QLatin1String("cover"))
+        return;
+
+    bool slideOut = slideOutState();
+
+    if (slideOut != lastSlideOut) {
+        lastSlideOut = slideOut;
+        applyOrientation();
+    }
+}
+
+bool QMaemo5OrientationManager::slideOutState()
+{
+    QDBusMessage msg = QDBusMessage::createMethodCall(QLatin1String("org.freedesktop.Hal"), QLatin1String("/org/freedesktop/Hal/devices/platform_slide"),
+                                                      QLatin1String("org.freedesktop.Hal.Device"), QLatin1String("GetProperty"));
+    msg << QString::fromLatin1("button.state.value");
+    QDBusMessage reply = QDBusConnection::systemBus().call(msg);
+
+    if (reply.type() == QDBusMessage::ErrorMessage) {
+        qWarning("Unable to retrieve keyboard slide status: %s", qPrintable(reply.errorMessage()));
+        return false;
+    } else {
+        return !reply.arguments().value(0).toBool();
+    }
+}
+
+void QMaemo5OrientationManager::enableDBus(bool doConnect)
+{
+    if (doConnect) {
+        // enable the orientation sensor
+        QDBusConnection::systemBus().call(
+                QDBusMessage::createMethodCall(QLatin1String(MCE_SERVICE), QLatin1String(MCE_REQUEST_PATH),
+                                               QLatin1String(MCE_REQUEST_IF), QLatin1String(MCE_ACCELEROMETER_ENABLE_REQ)));
+
+        // query the current orientation
+        QDBusMessage reply = QDBusConnection::systemBus().call(
+                QDBusMessage::createMethodCall(QLatin1String(MCE_SERVICE), QLatin1String(MCE_REQUEST_PATH),
+                                               QLatin1String(MCE_REQUEST_IF), QLatin1String(MCE_DEVICE_ORIENTATION_GET)));
+        if (reply.type() == QDBusMessage::ErrorMessage) {
+            qWarning("Unable to retrieve device orientation: %s", qPrintable(reply.errorMessage()));
+        } else {
+            lastOrientation = toOrientation(reply.arguments().value(0).toString());
+        }
+
+        //query the current keyboard slide out state
+        lastSlideOut = slideOutState();
+
+        applyOrientation();
+    } else { // disconnect
+        // disable the orientation sensor
+        QDBusConnection::systemBus().call(
+                QDBusMessage::createMethodCall(QLatin1String(MCE_SERVICE), QLatin1String(MCE_REQUEST_PATH),
+                                               QLatin1String(MCE_REQUEST_IF), QLatin1String(MCE_ACCELEROMETER_DISABLE_REQ)));
+    }
+}
+
+void QMaemo5OrientationManager::applyOrientation()
+{
+    foreach (const QPointer<QWidget> &w, windows) {
+        if (!w || !w->isWindow() || !w->testAttribute(Qt::WA_Maemo5AutoOrientation))
+            continue;
+        applyOrientation(w);
+    }
+}
+
+void QMaemo5OrientationManager::applyOrientation(QWidget *w)
+{
+    // Apps linked against 4.5.0 will run with the platform defaults
+    if (QApplicationPrivate::app_compile_version < QT_VERSION_CHECK(4, 6, 0))
+        return;
+
+    const Qt::WidgetAttribute maemo5Orientations[] = { Qt::WA_Maemo5LandscapeOrientation,
+                                                       Qt::WA_Maemo5PortraitOrientation,
+                                                       Qt::WA_Maemo5AutoOrientation };
+    Qt::WidgetAttribute orientation = maemo5Orientations[0];
+
+    for (int i = 0; i < 3; ++i) {
+        if (w->testAttribute(maemo5Orientations[i])) {
+            orientation = maemo5Orientations[i];
+            break;
+        }
+    }
+
+    if (orientation == Qt::WA_Maemo5AutoOrientation) {
+        if (!lastSlideOut && (lastOrientation == Qt::Vertical))
+            orientation = Qt::WA_Maemo5PortraitOrientation;
+        else
+            orientation = Qt::WA_Maemo5LandscapeOrientation;
+    }
+
+    if (orientation == Qt::WA_Maemo5PortraitOrientation) {
+        long on = 1;
+        XChangeProperty(X11->display, w->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+        XChangeProperty(X11->display, w->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+    } else {
+        XDeleteProperty(X11->display, w->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST));
+        XDeleteProperty(X11->display, w->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT));
+    }
+}
+
+QMaemo5OrientationManager *QMaemo5OrientationManager::instance()
+{
+    if (!inst)
+        inst = new QMaemo5OrientationManager();
+    return inst;
+}
+
+
+QMaemo5OrientationManager *QMaemo5OrientationManager::inst = 0;
+
 static void maemo5CheckStackedWindow(QWidget *q)
 {
     if (!q->isWindow())
@@ -121,43 +313,6 @@ static void maemo5CheckStackedWindow(QWidget *q)
     }
 }
 
-static void maemo5CheckOrientation(QWidget *q)
-{
-    // Apps linked against 4.5.0 will run with the platform defaults
-    if (QApplicationPrivate::app_compile_version < QT_VERSION_CHECK(4, 6, 0))
-        return;
-
-    if (!q->isWindow())
-        return;
-
-    const Qt::WidgetAttribute maemo5Orientations[] = { Qt::WA_Maemo5LandscapeOrientation,
-                                                       Qt::WA_Maemo5PortraitOrientation,
-                                                       Qt::WA_Maemo5AutoOrientation };
-    Qt::WidgetAttribute orientation = maemo5Orientations[0];
-
-    for (int i = 0; i < 3; ++i) {
-        if (q->testAttribute(maemo5Orientations[i])) {
-            orientation = maemo5Orientations[i];
-            break;
-        }
-    }
-
-    if (orientation == Qt::WA_Maemo5PortraitOrientation) {
-        long on = 1;
-        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST), XA_CARDINAL, 32,
-                        PropModeReplace, (unsigned char *) &on, 1);
-    } else {
-        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST));
-    }
-    if (orientation != Qt::WA_Maemo5LandscapeOrientation) {
-        long on = 1;
-        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT), XA_CARDINAL, 32,
-                        PropModeReplace, (unsigned char *) &on, 1);
-    } else {
-        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT));
-    }
-}
-
 static void maemo5CheckNonComposited(QWidget *q)
 {
     if (!q->isWindow())
@@ -170,6 +325,11 @@ static void maemo5CheckNonComposited(QWidget *q)
     } else {
         XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_NON_COMPOSITED_WINDOW));
     }
+}
+
+void maemo5CheckOrientation(QWidget *q)
+{
+    QMaemo5OrientationManager::instance()->applyOrientation(q);
 }
 
 #endif // Q_WS_MAEMO_5
@@ -1106,6 +1266,7 @@ bool QWidgetPrivate::isBackgroundInherited() const
 void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
 {
     Q_D(QWidget);
+    d->aboutToDestroy();
     if (!isWindow() && parentWidget())
         parentWidget()->d_func()->invalidateBuffer(d->effectiveRectFor(geometry()));
     d->deactivateWidgetCleanup();
@@ -3122,7 +3283,7 @@ Picture QX11Data::getSolidFill(int screen, const QColor &c)
             return X11->solid_fills[i].picture;
     }
     // none found, replace one
-    int i = rand() % 16;
+    int i = qrand() % 16;
 
     if (X11->solid_fills[i].screen != screen && X11->solid_fills[i].picture) {
         XRenderFreePicture (X11->display, X11->solid_fills[i].picture);

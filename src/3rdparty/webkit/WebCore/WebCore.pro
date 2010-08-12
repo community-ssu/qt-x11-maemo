@@ -25,6 +25,13 @@ symbian: {
     webkitbackup.sources = ../WebKit/qt/symbian/backup_registration.xml
     webkitbackup.path = /private/10202D56/import/packages/$$replace(TARGET.UID3, 0x,)
 
+    contains(QT_CONFIG, declarative) {
+         declarativeImport.sources = $$QT_BUILD_TREE/imports/QtWebKit/qmlwebkitplugin$${QT_LIBINFIX}.dll
+         declarativeImport.sources += ../WebKit/qt/declarative/qmldir
+         declarativeImport.path = c:$$QT_IMPORTS_BASE_DIR/QtWebKit
+         DEPLOYMENT += declarativeImport
+    }
+
     DEPLOYMENT += webkitlibs webkitbackup
 
     # Need to guarantee that these come before system includes of /epoc32/include
@@ -35,12 +42,12 @@ symbian: {
         # Move RW-section base address to start from 0xE00000 instead of the toolchain default 0x400000.
         QMAKE_LFLAGS.ARMCC += --rw-base 0xE00000
         MMP_RULES += ALWAYS_BUILD_AS_ARM
-    } else {
+    }  else {
         QMAKE_CFLAGS -= --thumb
         QMAKE_CXXFLAGS -= --thumb
     }
+    CONFIG(release, debug|release): QMAKE_CXXFLAGS.ARMCC += -OTime -O3
 }
-
 
 isEmpty(OUTPUT_DIR): OUTPUT_DIR = ..
 include($$PWD/../WebKit.pri)
@@ -55,13 +62,11 @@ CONFIG(standalone_package) {
     isEmpty(JSC_GENERATED_SOURCES_DIR):JSC_GENERATED_SOURCES_DIR = $$PWD/../JavaScriptCore/generated
 
     PRECOMPILED_HEADER = $$PWD/../WebKit/qt/WebKit_pch.h
-
-    symbian: TARGET += $${QT_LIBINFIX}
 } else {
     isEmpty(WC_GENERATED_SOURCES_DIR):WC_GENERATED_SOURCES_DIR = generated
     isEmpty(JSC_GENERATED_SOURCES_DIR):JSC_GENERATED_SOURCES_DIR = ../JavaScriptCore/generated
 
-    CONFIG(debug, debug|release) {
+    !CONFIG(release, debug|release) {
         OBJECTS_DIR = obj/debug
     } else { # Release
         OBJECTS_DIR = obj/release
@@ -71,12 +76,14 @@ CONFIG(standalone_package) {
 
 CONFIG(QTDIR_build) {
     include($$QT_SOURCE_TREE/src/qbase.pri)
-    # Qt will set the version for us when building in Qt's tree
 } else {
-    VERSION = $${QT_MAJOR_VERSION}.$${QT_MINOR_VERSION}.$${QT_PATCH_VERSION}
     DESTDIR = $$OUTPUT_DIR/lib
     !static: DEFINES += QT_MAKEDLL
+    symbian: TARGET =$$TARGET$${QT_LIBINFIX}
 }
+moduleFile=$$PWD/../WebKit/qt/qt_webkit_version.pri
+include($$moduleFile)
+VERSION = $${QT_WEBKIT_MAJOR_VERSION}.$${QT_WEBKIT_MINOR_VERSION}.$${QT_WEBKIT_PATCH_VERSION}
 
 unix {
     QMAKE_PKGCONFIG_REQUIRES = QtCore QtGui QtNetwork
@@ -103,15 +110,23 @@ win32-msvc2005|win32-msvc2008:{
 }
 
 # Pick up 3rdparty libraries from INCLUDE/LIB just like with MSVC
-win32-g++ {
+win32-g++* {
     TMPPATH            = $$quote($$(INCLUDE))
     QMAKE_INCDIR_POST += $$split(TMPPATH,";")
     TMPPATH            = $$quote($$(LIB))
     QMAKE_LIBDIR_POST += $$split(TMPPATH,";")
 }
 
-# Assume that symbian OS always comes with sqlite
-symbian:!CONFIG(QTDIR_build): CONFIG += system-sqlite
+symbian {
+    !CONFIG(QTDIR_build) {
+        # Test if symbian OS comes with sqlite
+        exists($${EPOCROOT}epoc32/release/armv5/lib/sqlite3.dso):CONFIG *= system-sqlite
+    } else:!symbian-abld:!symbian-sbsv2 {
+        # When bundled with Qt, all Symbian build systems extract their own sqlite files if
+        # necessary, but on non-mmp based ones we need to specify this ourselves.
+        include($$QT_SOURCE_TREE/src/plugins/sqldrivers/sqlite_symbian/sqlite_symbian.pri)
+    }
+}
 
 
 
@@ -126,7 +141,11 @@ maemo5|symbian|embedded {
     DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1
 }
 
-maemo5 {
+maemo5|symbian {
+    DEFINES += WTF_USE_QT_MOBILE_THEME=1
+}
+
+contains(DEFINES, WTF_USE_QT_MOBILE_THEME=1) {
     DEFINES += ENABLE_NO_LISTBOX_RENDERING=1
 }
 
@@ -135,17 +154,12 @@ addJavaScriptCoreLib(../JavaScriptCore)
 
 
 # HTML5 Media Support
-# We require phonon for versions of Qt < 4.7
-# We require QtMultimedia for versions of Qt >= 4.7
+# We require phonon. QtMultimedia support is disabled currently.
 !contains(DEFINES, ENABLE_VIDEO=.) {
     DEFINES -= ENABLE_VIDEO=1
     DEFINES += ENABLE_VIDEO=0
 
-    lessThan(QT_MINOR_VERSION, 7):contains(QT_CONFIG, phonon) {
-        DEFINES -= ENABLE_VIDEO=0
-        DEFINES += ENABLE_VIDEO=1
-    }
-    !lessThan(QT_MINOR_VERSION, 7):contains(QT_CONFIG, multimedia) {
+    contains(QT_CONFIG, phonon) {
         DEFINES -= ENABLE_VIDEO=0
         DEFINES += ENABLE_VIDEO=1
     }
@@ -161,7 +175,7 @@ defineTest(addExtraCompiler) {
 
     for(file,input) {
         base = $$basename(file)
-        base ~= s/\..+//
+        base ~= s/\\..+//
         newfile=$$replace(outputRule,\\$\\{QMAKE_FILE_BASE\\},$$base)
         SOURCES += $$newfile
     }
@@ -433,7 +447,6 @@ SOURCES += \
     css/FontFamilyValue.cpp \
     css/FontValue.cpp \
     css/MediaFeatureNames.cpp \
-    css/Media.cpp \
     css/MediaList.cpp \
     css/MediaQuery.cpp \
     css/MediaQueryEvaluator.cpp \
@@ -442,6 +455,7 @@ SOURCES += \
     css/ShadowValue.cpp \
     css/StyleBase.cpp \
     css/StyleList.cpp \
+    css/StyleMedia.cpp \
     css/StyleSheet.cpp \
     css/StyleSheetList.cpp \
     css/WebKitCSSKeyframeRule.cpp \
@@ -531,6 +545,7 @@ SOURCES += \
     dom/TreeWalker.cpp \
     dom/UIEvent.cpp \
     dom/UIEventWithKeyState.cpp \
+    dom/ViewportArguments.cpp \
     dom/WebKitAnimationEvent.cpp \
     dom/WebKitTransitionEvent.cpp \
     dom/WheelEvent.cpp \
@@ -1146,7 +1161,6 @@ HEADERS += \
     css/FontFamilyValue.h \
     css/FontValue.h \
     css/MediaFeatureNames.h \
-    css/Media.h \
     css/MediaList.h \
     css/MediaQueryEvaluator.h \
     css/MediaQueryExp.h \
@@ -1155,6 +1169,7 @@ HEADERS += \
     css/ShadowValue.h \
     css/StyleBase.h \
     css/StyleList.h \
+    css/StyleMedia.h \
     css/StyleSheet.h \
     css/StyleSheetList.h \
     css/WebKitCSSKeyframeRule.h \
@@ -1242,6 +1257,7 @@ HEADERS += \
     dom/TreeWalker.h \
     dom/UIEvent.h \
     dom/UIEventWithKeyState.h \
+    dom/ViewportArguments.h \
     dom/WebKitAnimationEvent.h \
     dom/WebKitTransitionEvent.h \
     dom/WheelEvent.h \
@@ -2081,7 +2097,7 @@ SOURCES += \
     platform/qt/SoundQt.cpp \
     platform/qt/LoggingQt.cpp \
     platform/text/qt/StringQt.cpp \
-    platform/qt/TemporaryLinkStubs.cpp \
+    platform/qt/TemporaryLinkStubsQt.cpp \
     platform/text/qt/TextBoundariesQt.cpp \
     platform/text/qt/TextBreakIteratorQt.cpp \
     platform/text/qt/TextCodecQt.cpp \
@@ -2111,13 +2127,15 @@ SOURCES += \
     ../WebKit/qt/Api/qwebinspector.cpp \
     ../WebKit/qt/Api/qwebkitversion.cpp
 
+
+contains(DEFINES, WTF_USE_QT_MOBILE_THEME=1) {
+    HEADERS += platform/qt/Maemo5Webstyle.h
+    SOURCES += platform/qt/Maemo5Webstyle.cpp
+}
+
 maemo5 {
-    HEADERS += \
-        ../WebKit/qt/WebCoreSupport/QtMaemoWebPopup.h \
-        platform/qt/Maemo5Webstyle.h
-    SOURCES += \
-        ../WebKit/qt/WebCoreSupport/QtMaemoWebPopup.cpp \
-        platform/qt/Maemo5Webstyle.cpp
+    HEADERS += ../WebKit/qt/WebCoreSupport/QtMaemoWebPopup.h
+    SOURCES += ../WebKit/qt/WebCoreSupport/QtMaemoWebPopup.cpp
 }
 
 
@@ -2163,7 +2181,7 @@ contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=1) {
             mac {
                 SOURCES += \
                     plugins/mac/PluginPackageMac.cpp \
-                    plugins/mac/PluginViewMac.cpp
+                    plugins/mac/PluginViewMac.mm
                 OBJECTIVE_SOURCES += \
                     platform/text/mac/StringImplMac.mm \
                     platform/mac/WebCoreNSStringExtras.mm
@@ -2368,12 +2386,12 @@ contains(DEFINES, ENABLE_VIDEO=1) {
         rendering/RenderMedia.cpp \
         bindings/js/JSAudioConstructor.cpp
 
-        # QtMultimedia since 4.7
-        greaterThan(QT_MINOR_VERSION, 6) {
+        # QtMultimedia disabled currently
+        false:greaterThan(QT_MINOR_VERSION, 6) {
             HEADERS += platform/graphics/qt/MediaPlayerPrivateQt.h
             SOURCES += platform/graphics/qt/MediaPlayerPrivateQt.cpp
 
-            tobe|!tobe: QT += multimedia
+            tobe|!tobe: QT += mediaservices
         } else {
             HEADERS += \
                 platform/graphics/qt/MediaPlayerPrivatePhonon.h
@@ -2493,8 +2511,12 @@ contains(DEFINES, ENABLE_QT_BEARER=1) {
     SOURCES += \
         platform/network/qt/NetworkStateNotifierQt.cpp
 
-    CONFIG += mobility
-    MOBILITY += bearer
+    # Bearer management is part of Qt 4.7, so don't accidentially
+    # pull in Qt Mobility when building against >= 4.7
+    !greaterThan(QT_MINOR_VERSION, 6) {
+        CONFIG += mobility
+        MOBILITY += bearer
+    }
 }
 
 contains(DEFINES, ENABLE_SVG=1) {
@@ -2844,18 +2866,36 @@ HEADERS += $$WEBKIT_API_HEADERS
 
     !symbian {
         headers.files = $$WEBKIT_INSTALL_HEADERS
-        headers.path = $$[QT_INSTALL_HEADERS]/QtWebKit
-        target.path = $$[QT_INSTALL_LIBS]
 
-        INSTALLS += target headers
+        !isEmpty(INSTALL_HEADERS): headers.path = $$INSTALL_HEADERS/QtWebKit
+        else: headers.path = $$[QT_INSTALL_HEADERS]/QtWebKit
+
+        !isEmpty(INSTALL_LIBS): target.path = $$INSTALL_LIBS
+        else: target.path = $$[QT_INSTALL_LIBS]
+
+        modfile.files = $$moduleFile
+        modfile.path = $$[QMAKE_MKSPECS]/modules
+
+        INSTALLS += target headers modfile
     } else {
         # INSTALLS is not implemented in qmake's s60 generators, copy headers manually
         inst_headers.commands = $$QMAKE_COPY ${QMAKE_FILE_NAME} ${QMAKE_FILE_OUT}
         inst_headers.input = WEBKIT_INSTALL_HEADERS
-        inst_headers.output = $$[QT_INSTALL_HEADERS]/QtWebKit/${QMAKE_FILE_BASE}${QMAKE_FILE_EXT}
+        inst_headers.CONFIG = no_clean
+
+        !isEmpty(INSTALL_HEADERS): inst_headers.output = $$INSTALL_HEADERS/QtWebKit/${QMAKE_FILE_BASE}${QMAKE_FILE_EXT}
+        else: inst_headers.output = $$[QT_INSTALL_HEADERS]/QtWebKit/${QMAKE_FILE_BASE}${QMAKE_FILE_EXT}
+
         QMAKE_EXTRA_COMPILERS += inst_headers
 
-        install.depends += compiler_inst_headers_make_all
+        inst_modfile.commands = $$inst_headers.commands
+        inst_modfile.input = moduleFile
+        inst_modfile.output = $$[QMAKE_MKSPECS]/modules
+        inst_modfile.CONFIG = no_clean
+
+        QMAKE_EXTRA_COMPILERS += inst_modfile
+
+        install.depends += compiler_inst_headers_make_all compiler_inst_modfile_make_all
         QMAKE_EXTRA_TARGETS += install
     }
 
@@ -2873,7 +2913,7 @@ HEADERS += $$WEBKIT_API_HEADERS
         QMAKE_PKGCONFIG_LIBDIR = $$target.path
         QMAKE_PKGCONFIG_INCDIR = $$headers.path
         QMAKE_PKGCONFIG_DESTDIR = pkgconfig
-        lib_replace.match = $$DESTDIR
+        lib_replace.match = $$re_escape($$DESTDIR)
         lib_replace.replace = $$[QT_INSTALL_LIBS]
         QMAKE_PKGCONFIG_INSTALL_REPLACE += lib_replace
     }
@@ -2907,7 +2947,7 @@ CONFIG(QTDIR_build) {
     CONFIG += no_debug_info
 }
 
-!win32-g++:win32:contains(QMAKE_HOST.arch, x86_64):{
+win32:!win32-g++*:contains(QMAKE_HOST.arch, x86_64):{
     asm_compiler.commands = ml64 /c
     asm_compiler.commands +=  /Fo ${QMAKE_FILE_OUT} ${QMAKE_FILE_IN}
     asm_compiler.output = ${QMAKE_VAR_OBJECTS_DIR}${QMAKE_FILE_BASE}$${first(QMAKE_EXT_OBJ)}
@@ -2950,5 +2990,5 @@ symbian {
     }
 }
 
-# WebKit doesn't compile in C++0x mode
+# Disable C++0x mode in WebCore for those who enabled it in their Qt's mkspec
 *-g++*:QMAKE_CXXFLAGS -= -std=c++0x -std=gnu++0x

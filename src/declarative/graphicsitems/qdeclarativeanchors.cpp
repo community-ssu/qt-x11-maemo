@@ -53,6 +53,30 @@ QT_BEGIN_NAMESPACE
 //TODO: should we cache relationships, so we don't have to check each time (parent-child or sibling)?
 //TODO: support non-parent, non-sibling (need to find lowest common ancestor)
 
+static qreal hcenter(QGraphicsItem *i)
+{
+    QGraphicsItemPrivate *item = QGraphicsItemPrivate::get(i);
+
+    qreal width = item->width();
+    int iw = width;
+    if (iw % 2)
+        return (width + 1) / 2;
+    else
+        return width / 2;
+}
+
+static qreal vcenter(QGraphicsItem *i)
+{
+    QGraphicsItemPrivate *item = QGraphicsItemPrivate::get(i);
+
+    qreal height = item->height();
+    int ih = height;
+    if (ih % 2)
+        return (height + 1) / 2;
+    else
+        return height / 2;
+}
+
 //### const item?
 //local position
 static qreal position(QGraphicsObject *item, QDeclarativeAnchorLine::AnchorLine anchorLine)
@@ -73,10 +97,10 @@ static qreal position(QGraphicsObject *item, QDeclarativeAnchorLine::AnchorLine 
         ret = item->y() + d->height();
         break;
     case QDeclarativeAnchorLine::HCenter:
-        ret = item->x() + d->width()/2;
+        ret = item->x() + hcenter(item);
         break;
     case QDeclarativeAnchorLine::VCenter:
-        ret = item->y() + d->height()/2;
+        ret = item->y() + vcenter(item);
         break;
     case QDeclarativeAnchorLine::Baseline:
         if (d->isDeclarativeItem)
@@ -92,26 +116,26 @@ static qreal position(QGraphicsObject *item, QDeclarativeAnchorLine::AnchorLine 
 //position when origin is 0,0
 static qreal adjustedPosition(QGraphicsObject *item, QDeclarativeAnchorLine::AnchorLine anchorLine)
 {
-    int ret = 0;
+    qreal ret = 0.0;
     QGraphicsItemPrivate *d = QGraphicsItemPrivate::get(item);
     switch(anchorLine) {
     case QDeclarativeAnchorLine::Left:
-        ret = 0;
+        ret = 0.0;
         break;
     case QDeclarativeAnchorLine::Right:
         ret = d->width();
         break;
     case QDeclarativeAnchorLine::Top:
-        ret = 0;
+        ret = 0.0;
         break;
     case QDeclarativeAnchorLine::Bottom:
         ret = d->height();
         break;
     case QDeclarativeAnchorLine::HCenter:
-        ret = d->width()/2;
+        ret = hcenter(item);
         break;
     case QDeclarativeAnchorLine::VCenter:
-        ret = d->height()/2;
+        ret = vcenter(item);
         break;
     case QDeclarativeAnchorLine::Baseline:
         if (d->isDeclarativeItem)
@@ -128,7 +152,6 @@ static qreal adjustedPosition(QGraphicsObject *item, QDeclarativeAnchorLine::Anc
     \internal
     \class QDeclarativeAnchors
     \since 4.7
-    \ingroup group_layouts
     \brief The QDeclarativeAnchors class provides a way to lay out items relative to other items.
 
     \warning Currently, only anchoring to siblings or parent is supported.
@@ -190,17 +213,14 @@ void QDeclarativeAnchorsPrivate::centerInChanged()
 
     if (updatingCenterIn < 2) {
         ++updatingCenterIn;
-        QGraphicsItemPrivate *itemPrivate = QGraphicsItemPrivate::get(item);
         if (centerIn == item->parentItem()) {
-            QGraphicsItemPrivate *parentPrivate = QGraphicsItemPrivate::get(item->parentItem());
-            QPointF p((parentPrivate->width() - itemPrivate->width()) / 2. + hCenterOffset,
-                      (parentPrivate->height() - itemPrivate->height()) / 2. + vCenterOffset);
+            QPointF p(hcenter(item->parentItem()) - hcenter(item) + hCenterOffset,
+                      vcenter(item->parentItem()) - vcenter(item) + vCenterOffset);
             setItemPos(p);
 
         } else if (centerIn->parentItem() == item->parentItem()) {
-            QGraphicsItemPrivate *centerPrivate = QGraphicsItemPrivate::get(centerIn);
-            QPointF p(centerIn->x() + (centerPrivate->width() - itemPrivate->width()) / 2. + hCenterOffset,
-                      centerIn->y() + (centerPrivate->height() - itemPrivate->height()) / 2. + vCenterOffset);
+            QPointF p(centerIn->x() + hcenter(centerIn) - hcenter(item) + hCenterOffset,
+                      centerIn->y() + vcenter(centerIn) - vcenter(item) + vCenterOffset);
             setItemPos(p);
         }
 
@@ -221,31 +241,31 @@ void QDeclarativeAnchorsPrivate::clearItem(QGraphicsObject *item)
         centerIn = 0;
     if (left.item == item) {
         left.item = 0;
-        usedAnchors &= ~QDeclarativeAnchors::HasLeftAnchor;
+        usedAnchors &= ~QDeclarativeAnchors::LeftAnchor;
     }
     if (right.item == item) {
         right.item = 0;
-        usedAnchors &= ~QDeclarativeAnchors::HasRightAnchor;
+        usedAnchors &= ~QDeclarativeAnchors::RightAnchor;
     }
     if (top.item == item) {
         top.item = 0;
-        usedAnchors &= ~QDeclarativeAnchors::HasTopAnchor;
+        usedAnchors &= ~QDeclarativeAnchors::TopAnchor;
     }
     if (bottom.item == item) {
         bottom.item = 0;
-        usedAnchors &= ~QDeclarativeAnchors::HasBottomAnchor;
+        usedAnchors &= ~QDeclarativeAnchors::BottomAnchor;
     }
     if (vCenter.item == item) {
         vCenter.item = 0;
-        usedAnchors &= ~QDeclarativeAnchors::HasVCenterAnchor;
+        usedAnchors &= ~QDeclarativeAnchors::VCenterAnchor;
     }
     if (hCenter.item == item) {
         hCenter.item = 0;
-        usedAnchors &= ~QDeclarativeAnchors::HasHCenterAnchor;
+        usedAnchors &= ~QDeclarativeAnchors::HCenterAnchor;
     }
     if (baseline.item == item) {
         baseline.item = 0;
-        usedAnchors &= ~QDeclarativeAnchors::HasBaselineAnchor;
+        usedAnchors &= ~QDeclarativeAnchors::BaselineAnchor;
     }
 }
 
@@ -460,10 +480,10 @@ void QDeclarativeAnchors::resetCenterIn()
 
 bool QDeclarativeAnchorsPrivate::calcStretch(const QDeclarativeAnchorLine &edge1,
                                     const QDeclarativeAnchorLine &edge2,
-                                    int offset1,
-                                    int offset2,
+                                    qreal offset1,
+                                    qreal offset2,
                                     QDeclarativeAnchorLine::AnchorLine line,
-                                    int &stretch)
+                                    qreal &stretch)
 {
     bool edge1IsParent = (edge1.item == item->parentItem());
     bool edge2IsParent = (edge2.item == item->parentItem());
@@ -472,15 +492,15 @@ bool QDeclarativeAnchorsPrivate::calcStretch(const QDeclarativeAnchorLine &edge1
 
     bool invalid = false;
     if ((edge2IsParent && edge1IsParent) || (edge2IsSibling && edge1IsSibling)) {
-        stretch = ((int)position(edge2.item, edge2.anchorLine) + offset2)
-                    - ((int)position(edge1.item, edge1.anchorLine) + offset1);
+        stretch = (position(edge2.item, edge2.anchorLine) + offset2)
+                    - (position(edge1.item, edge1.anchorLine) + offset1);
     } else if (edge2IsParent && edge1IsSibling) {
-        stretch = ((int)position(edge2.item, edge2.anchorLine) + offset2)
-                    - ((int)position(item->parentObject(), line)
-                    + (int)position(edge1.item, edge1.anchorLine) + offset1);
+        stretch = (position(edge2.item, edge2.anchorLine) + offset2)
+                    - (position(item->parentObject(), line)
+                    + position(edge1.item, edge1.anchorLine) + offset1);
     } else if (edge2IsSibling && edge1IsParent) {
-        stretch = ((int)position(item->parentObject(), line) + (int)position(edge2.item, edge2.anchorLine) + offset2)
-                    - ((int)position(edge1.item, edge1.anchorLine) + offset1);
+        stretch = (position(item->parentObject(), line) + position(edge2.item, edge2.anchorLine) + offset2)
+                    - (position(edge1.item, edge1.anchorLine) + offset1);
     } else
         invalid = true;
 
@@ -495,13 +515,13 @@ void QDeclarativeAnchorsPrivate::updateVerticalAnchors()
     if (updatingVerticalAnchor < 2) {
         ++updatingVerticalAnchor;
         QGraphicsItemPrivate *itemPrivate = QGraphicsItemPrivate::get(item);
-        if (usedAnchors & QDeclarativeAnchors::HasTopAnchor) {
+        if (usedAnchors & QDeclarativeAnchors::TopAnchor) {
             //Handle stretching
             bool invalid = true;
-            int height = 0;
-            if (usedAnchors & QDeclarativeAnchors::HasBottomAnchor) {
+            qreal height = 0.0;
+            if (usedAnchors & QDeclarativeAnchors::BottomAnchor) {
                 invalid = calcStretch(top, bottom, topMargin, -bottomMargin, QDeclarativeAnchorLine::Top, height);
-            } else if (usedAnchors & QDeclarativeAnchors::HasVCenterAnchor) {
+            } else if (usedAnchors & QDeclarativeAnchors::VCenterAnchor) {
                 invalid = calcStretch(top, vCenter, topMargin, vCenterOffset, QDeclarativeAnchorLine::Top, height);
                 height *= 2;
             }
@@ -514,10 +534,10 @@ void QDeclarativeAnchorsPrivate::updateVerticalAnchors()
             } else if (top.item->parentItem() == item->parentItem()) {
                 setItemY(position(top.item, top.anchorLine) + topMargin);
             }
-        } else if (usedAnchors & QDeclarativeAnchors::HasBottomAnchor) {
+        } else if (usedAnchors & QDeclarativeAnchors::BottomAnchor) {
             //Handle stretching (top + bottom case is handled above)
-            if (usedAnchors & QDeclarativeAnchors::HasVCenterAnchor) {
-                int height = 0;
+            if (usedAnchors & QDeclarativeAnchors::VCenterAnchor) {
+                qreal height = 0.0;
                 bool invalid = calcStretch(vCenter, bottom, vCenterOffset, -bottomMargin,
                                               QDeclarativeAnchorLine::Top, height);
                 if (!invalid)
@@ -530,17 +550,17 @@ void QDeclarativeAnchorsPrivate::updateVerticalAnchors()
             } else if (bottom.item->parentItem() == item->parentItem()) {
                 setItemY(position(bottom.item, bottom.anchorLine) - itemPrivate->height() - bottomMargin);
             }
-        } else if (usedAnchors & QDeclarativeAnchors::HasVCenterAnchor) {
+        } else if (usedAnchors & QDeclarativeAnchors::VCenterAnchor) {
             //(stetching handled above)
 
             //Handle vCenter
             if (vCenter.item == item->parentItem()) {
                 setItemY(adjustedPosition(vCenter.item, vCenter.anchorLine)
-                              - itemPrivate->height()/2 + vCenterOffset);
+                              - vcenter(item) + vCenterOffset);
             } else if (vCenter.item->parentItem() == item->parentItem()) {
-                setItemY(position(vCenter.item, vCenter.anchorLine) - itemPrivate->height()/2 + vCenterOffset);
+                setItemY(position(vCenter.item, vCenter.anchorLine) - vcenter(item) + vCenterOffset);
             }
-        } else if (usedAnchors & QDeclarativeAnchors::HasBaselineAnchor) {
+        } else if (usedAnchors & QDeclarativeAnchors::BaselineAnchor) {
             //Handle baseline
             if (baseline.item == item->parentItem()) {
                 if (itemPrivate->isDeclarativeItem)
@@ -567,13 +587,13 @@ void QDeclarativeAnchorsPrivate::updateHorizontalAnchors()
     if (updatingHorizontalAnchor < 2) {
         ++updatingHorizontalAnchor;
         QGraphicsItemPrivate *itemPrivate = QGraphicsItemPrivate::get(item);
-        if (usedAnchors & QDeclarativeAnchors::HasLeftAnchor) {
+        if (usedAnchors & QDeclarativeAnchors::LeftAnchor) {
             //Handle stretching
             bool invalid = true;
-            int width = 0;
-            if (usedAnchors & QDeclarativeAnchors::HasRightAnchor) {
+            qreal width = 0.0;
+            if (usedAnchors & QDeclarativeAnchors::RightAnchor) {
                 invalid = calcStretch(left, right, leftMargin, -rightMargin, QDeclarativeAnchorLine::Left, width);
-            } else if (usedAnchors & QDeclarativeAnchors::HasHCenterAnchor) {
+            } else if (usedAnchors & QDeclarativeAnchors::HCenterAnchor) {
                 invalid = calcStretch(left, hCenter, leftMargin, hCenterOffset, QDeclarativeAnchorLine::Left, width);
                 width *= 2;
             }
@@ -586,10 +606,10 @@ void QDeclarativeAnchorsPrivate::updateHorizontalAnchors()
             } else if (left.item->parentItem() == item->parentItem()) {
                 setItemX(position(left.item, left.anchorLine) + leftMargin);
             }
-        } else if (usedAnchors & QDeclarativeAnchors::HasRightAnchor) {
+        } else if (usedAnchors & QDeclarativeAnchors::RightAnchor) {
             //Handle stretching (left + right case is handled in updateLeftAnchor)
-            if (usedAnchors & QDeclarativeAnchors::HasHCenterAnchor) {
-                int width = 0;
+            if (usedAnchors & QDeclarativeAnchors::HCenterAnchor) {
+                qreal width = 0.0;
                 bool invalid = calcStretch(hCenter, right, hCenterOffset, -rightMargin,
                                               QDeclarativeAnchorLine::Left, width);
                 if (!invalid)
@@ -602,12 +622,12 @@ void QDeclarativeAnchorsPrivate::updateHorizontalAnchors()
             } else if (right.item->parentItem() == item->parentItem()) {
                 setItemX(position(right.item, right.anchorLine) - itemPrivate->width() - rightMargin);
             }
-        } else if (usedAnchors & QDeclarativeAnchors::HasHCenterAnchor) {
+        } else if (usedAnchors & QDeclarativeAnchors::HCenterAnchor) {
             //Handle hCenter
             if (hCenter.item == item->parentItem()) {
-                setItemX(adjustedPosition(hCenter.item, hCenter.anchorLine) - itemPrivate->width()/2 + hCenterOffset);
+                setItemX(adjustedPosition(hCenter.item, hCenter.anchorLine) - hcenter(item) + hCenterOffset);
             } else if (hCenter.item->parentItem() == item->parentItem()) {
-                setItemX(position(hCenter.item, hCenter.anchorLine) - itemPrivate->width()/2 + hCenterOffset);
+                setItemX(position(hCenter.item, hCenter.anchorLine) - hcenter(item) + hCenterOffset);
             }
         }
 
@@ -630,10 +650,10 @@ void QDeclarativeAnchors::setTop(const QDeclarativeAnchorLine &edge)
     if (!d->checkVAnchorValid(edge) || d->top == edge)
         return;
 
-    d->usedAnchors |= HasTopAnchor;
+    d->usedAnchors |= TopAnchor;
 
     if (!d->checkVValid()) {
-        d->usedAnchors &= ~HasTopAnchor;
+        d->usedAnchors &= ~TopAnchor;
         return;
     }
 
@@ -647,7 +667,7 @@ void QDeclarativeAnchors::setTop(const QDeclarativeAnchorLine &edge)
 void QDeclarativeAnchors::resetTop()
 {
     Q_D(QDeclarativeAnchors);
-    d->usedAnchors &= ~HasTopAnchor;
+    d->usedAnchors &= ~TopAnchor;
     d->remDepend(d->top.item);
     d->top = QDeclarativeAnchorLine();
     emit topChanged();
@@ -666,10 +686,10 @@ void QDeclarativeAnchors::setBottom(const QDeclarativeAnchorLine &edge)
     if (!d->checkVAnchorValid(edge) || d->bottom == edge)
         return;
 
-    d->usedAnchors |= HasBottomAnchor;
+    d->usedAnchors |= BottomAnchor;
 
     if (!d->checkVValid()) {
-        d->usedAnchors &= ~HasBottomAnchor;
+        d->usedAnchors &= ~BottomAnchor;
         return;
     }
 
@@ -683,7 +703,7 @@ void QDeclarativeAnchors::setBottom(const QDeclarativeAnchorLine &edge)
 void QDeclarativeAnchors::resetBottom()
 {
     Q_D(QDeclarativeAnchors);
-    d->usedAnchors &= ~HasBottomAnchor;
+    d->usedAnchors &= ~BottomAnchor;
     d->remDepend(d->bottom.item);
     d->bottom = QDeclarativeAnchorLine();
     emit bottomChanged();
@@ -702,10 +722,10 @@ void QDeclarativeAnchors::setVerticalCenter(const QDeclarativeAnchorLine &edge)
     if (!d->checkVAnchorValid(edge) || d->vCenter == edge)
         return;
 
-    d->usedAnchors |= HasVCenterAnchor;
+    d->usedAnchors |= VCenterAnchor;
 
     if (!d->checkVValid()) {
-        d->usedAnchors &= ~HasVCenterAnchor;
+        d->usedAnchors &= ~VCenterAnchor;
         return;
     }
 
@@ -719,7 +739,7 @@ void QDeclarativeAnchors::setVerticalCenter(const QDeclarativeAnchorLine &edge)
 void QDeclarativeAnchors::resetVerticalCenter()
 {
     Q_D(QDeclarativeAnchors);
-    d->usedAnchors &= ~HasVCenterAnchor;
+    d->usedAnchors &= ~VCenterAnchor;
     d->remDepend(d->vCenter.item);
     d->vCenter = QDeclarativeAnchorLine();
     emit verticalCenterChanged();
@@ -738,10 +758,10 @@ void QDeclarativeAnchors::setBaseline(const QDeclarativeAnchorLine &edge)
     if (!d->checkVAnchorValid(edge) || d->baseline == edge)
         return;
 
-    d->usedAnchors |= HasBaselineAnchor;
+    d->usedAnchors |= BaselineAnchor;
 
     if (!d->checkVValid()) {
-        d->usedAnchors &= ~HasBaselineAnchor;
+        d->usedAnchors &= ~BaselineAnchor;
         return;
     }
 
@@ -755,7 +775,7 @@ void QDeclarativeAnchors::setBaseline(const QDeclarativeAnchorLine &edge)
 void QDeclarativeAnchors::resetBaseline()
 {
     Q_D(QDeclarativeAnchors);
-    d->usedAnchors &= ~HasBaselineAnchor;
+    d->usedAnchors &= ~BaselineAnchor;
     d->remDepend(d->baseline.item);
     d->baseline = QDeclarativeAnchorLine();
     emit baselineChanged();
@@ -774,10 +794,10 @@ void QDeclarativeAnchors::setLeft(const QDeclarativeAnchorLine &edge)
     if (!d->checkHAnchorValid(edge) || d->left == edge)
         return;
 
-    d->usedAnchors |= HasLeftAnchor;
+    d->usedAnchors |= LeftAnchor;
 
     if (!d->checkHValid()) {
-        d->usedAnchors &= ~HasLeftAnchor;
+        d->usedAnchors &= ~LeftAnchor;
         return;
     }
 
@@ -791,7 +811,7 @@ void QDeclarativeAnchors::setLeft(const QDeclarativeAnchorLine &edge)
 void QDeclarativeAnchors::resetLeft()
 {
     Q_D(QDeclarativeAnchors);
-    d->usedAnchors &= ~HasLeftAnchor;
+    d->usedAnchors &= ~LeftAnchor;
     d->remDepend(d->left.item);
     d->left = QDeclarativeAnchorLine();
     emit leftChanged();
@@ -810,10 +830,10 @@ void QDeclarativeAnchors::setRight(const QDeclarativeAnchorLine &edge)
     if (!d->checkHAnchorValid(edge) || d->right == edge)
         return;
 
-    d->usedAnchors |= HasRightAnchor;
+    d->usedAnchors |= RightAnchor;
 
     if (!d->checkHValid()) {
-        d->usedAnchors &= ~HasRightAnchor;
+        d->usedAnchors &= ~RightAnchor;
         return;
     }
 
@@ -827,7 +847,7 @@ void QDeclarativeAnchors::setRight(const QDeclarativeAnchorLine &edge)
 void QDeclarativeAnchors::resetRight()
 {
     Q_D(QDeclarativeAnchors);
-    d->usedAnchors &= ~HasRightAnchor;
+    d->usedAnchors &= ~RightAnchor;
     d->remDepend(d->right.item);
     d->right = QDeclarativeAnchorLine();
     emit rightChanged();
@@ -846,10 +866,10 @@ void QDeclarativeAnchors::setHorizontalCenter(const QDeclarativeAnchorLine &edge
     if (!d->checkHAnchorValid(edge) || d->hCenter == edge)
         return;
 
-    d->usedAnchors |= HasHCenterAnchor;
+    d->usedAnchors |= HCenterAnchor;
 
     if (!d->checkHValid()) {
-        d->usedAnchors &= ~HasHCenterAnchor;
+        d->usedAnchors &= ~HCenterAnchor;
         return;
     }
 
@@ -863,7 +883,7 @@ void QDeclarativeAnchors::setHorizontalCenter(const QDeclarativeAnchorLine &edge
 void QDeclarativeAnchors::resetHorizontalCenter()
 {
     Q_D(QDeclarativeAnchors);
-    d->usedAnchors &= ~HasHCenterAnchor;
+    d->usedAnchors &= ~HCenterAnchor;
     d->remDepend(d->hCenter.item);
     d->hCenter = QDeclarativeAnchorLine();
     emit horizontalCenterChanged();
@@ -1025,7 +1045,7 @@ void QDeclarativeAnchors::setBaselineOffset(qreal offset)
     emit baselineOffsetChanged();
 }
 
-QDeclarativeAnchors::UsedAnchors QDeclarativeAnchors::usedAnchors() const
+QDeclarativeAnchors::Anchors QDeclarativeAnchors::usedAnchors() const
 {
     Q_D(const QDeclarativeAnchors);
     return d->usedAnchors;
@@ -1033,9 +1053,9 @@ QDeclarativeAnchors::UsedAnchors QDeclarativeAnchors::usedAnchors() const
 
 bool QDeclarativeAnchorsPrivate::checkHValid() const
 {
-    if (usedAnchors & QDeclarativeAnchors::HasLeftAnchor &&
-        usedAnchors & QDeclarativeAnchors::HasRightAnchor &&
-        usedAnchors & QDeclarativeAnchors::HasHCenterAnchor) {
+    if (usedAnchors & QDeclarativeAnchors::LeftAnchor &&
+        usedAnchors & QDeclarativeAnchors::RightAnchor &&
+        usedAnchors & QDeclarativeAnchors::HCenterAnchor) {
         qmlInfo(item) << QDeclarativeAnchors::tr("Cannot specify left, right, and hcenter anchors.");
         return false;
     }
@@ -1064,15 +1084,15 @@ bool QDeclarativeAnchorsPrivate::checkHAnchorValid(QDeclarativeAnchorLine anchor
 
 bool QDeclarativeAnchorsPrivate::checkVValid() const
 {
-    if (usedAnchors & QDeclarativeAnchors::HasTopAnchor &&
-        usedAnchors & QDeclarativeAnchors::HasBottomAnchor &&
-        usedAnchors & QDeclarativeAnchors::HasVCenterAnchor) {
+    if (usedAnchors & QDeclarativeAnchors::TopAnchor &&
+        usedAnchors & QDeclarativeAnchors::BottomAnchor &&
+        usedAnchors & QDeclarativeAnchors::VCenterAnchor) {
         qmlInfo(item) << QDeclarativeAnchors::tr("Cannot specify top, bottom, and vcenter anchors.");
         return false;
-    } else if (usedAnchors & QDeclarativeAnchors::HasBaselineAnchor &&
-               (usedAnchors & QDeclarativeAnchors::HasTopAnchor ||
-                usedAnchors & QDeclarativeAnchors::HasBottomAnchor ||
-                usedAnchors & QDeclarativeAnchors::HasVCenterAnchor)) {
+    } else if (usedAnchors & QDeclarativeAnchors::BaselineAnchor &&
+               (usedAnchors & QDeclarativeAnchors::TopAnchor ||
+                usedAnchors & QDeclarativeAnchors::BottomAnchor ||
+                usedAnchors & QDeclarativeAnchors::VCenterAnchor)) {
         qmlInfo(item) << QDeclarativeAnchors::tr("Baseline anchor cannot be used in conjunction with top, bottom, or vcenter anchors.");
         return false;
     }

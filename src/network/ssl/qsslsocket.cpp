@@ -578,7 +578,7 @@ void QSslSocket::setProtocol(QSsl::SslProtocol protocol)
     certificate is valid.
 
     The default mode is AutoVerifyPeer, which tells QSslSocket to use
-    VerifyPeer for clients, QueryPeer for clients.
+    VerifyPeer for clients and QueryPeer for servers.
 
     \sa setPeerVerifyMode(), peerVerifyDepth(), mode()
 */
@@ -598,7 +598,7 @@ QSslSocket::PeerVerifyMode QSslSocket::peerVerifyMode() const
     certificate is valid.
 
     The default mode is AutoVerifyPeer, which tells QSslSocket to use
-    VerifyPeer for clients, QueryPeer for clients.
+    VerifyPeer for clients and QueryPeer for servers.
 
     Setting this mode after encryption has started has no effect on the
     current connection.
@@ -1333,8 +1333,8 @@ void QSslSocket::setDefaultCaCertificates(const QList<QSslCertificate> &certific
 /*!
     Returns the current default CA certificate database. This database
     is originally set to your system's default CA certificate database.
-    If no system default database is found, Qt will provide its own
-    default database. You can override the default CA certificate database
+    If no system default database is found, an empty database will be
+    returned. You can override the default CA certificate database
     with your own CA certificate database using setDefaultCaCertificates().
 
     Each SSL socket's CA certificate database is initialized to the
@@ -1348,8 +1348,8 @@ QList<QSslCertificate> QSslSocket::defaultCaCertificates()
 }
 
 /*!
-    This function provides a default CA certificate database
-    shipped together with Qt. The CA certificate database
+    This function provides the CA certificate database
+    provided by the operating system. The CA certificate database
     returned by this function is used to initialize the database
     returned by defaultCaCertificates(). You can replace that database
     with your own with setDefaultCaCertificates().
@@ -1560,7 +1560,7 @@ QList<QSslError> QSslSocket::sslErrors() const
 */
 bool QSslSocket::supportsSsl()
 {
-    return QSslSocketPrivate::ensureInitialized();
+    return QSslSocketPrivate::supportsSsl();
 }
 
 /*!
@@ -1702,7 +1702,8 @@ void QSslSocket::connectToHostImplementation(const QString &hostName, quint16 po
     }
 
 #ifdef Q_WS_MAEMO_5
-    QMaemoInternetConnectivity::connectionRequest();
+    if (QMaemoInternetConnectivity::isAutoConnectEnabled())
+        QMaemoInternetConnectivity::connectionRequest();
 #endif
 
 #ifndef QT_NO_NETWORKPROXY

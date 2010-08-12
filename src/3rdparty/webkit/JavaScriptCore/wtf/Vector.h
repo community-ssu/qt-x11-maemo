@@ -686,6 +686,12 @@ namespace WTF {
                 return *this;
         }
         
+// Works around an assert in VS2010. See https://connect.microsoft.com/VisualStudio/feedback/details/558044/std-copy-should-not-check-dest-when-first-last
+#if COMPILER(MSVC) && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL
+        if (!begin())
+            return *this;
+#endif
+
         std::copy(other.begin(), other.begin() + size(), begin());
         TypeOperations::uninitializedCopy(other.begin() + size(), other.end(), end());
         m_size = other.size();
@@ -709,6 +715,12 @@ namespace WTF {
                 return *this;
         }
         
+// Works around an assert in VS2010. See https://connect.microsoft.com/VisualStudio/feedback/details/558044/std-copy-should-not-check-dest-when-first-last
+#if COMPILER(MSVC) && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL
+        if (!begin())
+            return *this;
+#endif
+
         std::copy(other.begin(), other.begin() + size(), begin());
         TypeOperations::uninitializedCopy(other.begin() + size(), other.end(), end());
         m_size = other.size();
@@ -939,7 +951,7 @@ namespace WTF {
                 return;
         }
             
-#if COMPILER(MSVC7)
+#if COMPILER(MSVC7_OR_LOWER)
         // FIXME: MSVC7 generates compilation errors when trying to assign
         // a pointer to a Vector of its base class (i.e. can't downcast). So far
         // I've been unable to determine any logical reason for this, so I can

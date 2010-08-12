@@ -1,0 +1,3 @@
+./opt/qt4-maemo5/bin/qmlviewer
+usr/share/applications/hildon/QMLViewer-experimental.desktop
+usr/share/icons/hicolor/64x64/apps

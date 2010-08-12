@@ -53,6 +53,8 @@
 #include <QFontDatabase>
 
 #include <private/qobject_p.h>
+#include <private/qdeclarativeengine_p.h>
+#include <qdeclarativeinfo.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -77,17 +79,27 @@ public:
 /*!
     \qmlclass FontLoader QDeclarativeFontLoader
     \since 4.7
-    \ingroup group_utility
-    \brief This item allows using fonts by name or url.
+    \brief The FontLoader element allows fonts to be loaded by name or URL.
 
-    Example:
+    The FontLoader element is used to load fonts by name or URL. 
+    
+    The \l status indicates when the font has been loaded, which is useful 
+    for fonts loaded from remote sources.
+
+    For example:
     \qml
-    FontLoader { id: fixedFont; name: "Courier" }
-    FontLoader { id: webFont; source: "http://www.mysite.com/myfont.ttf" }
+    import Qt 4.7
 
-    Text { text: "Fixed-size font"; font.family: fixedFont.name }
-    Text { text: "Fancy font"; font.family: webFont.name }
+    Column { 
+        FontLoader { id: fixedFont; name: "Courier" }
+        FontLoader { id: webFont; source: "http://www.mysite.com/myfont.ttf" }
+
+        Text { text: "Fixed-size font"; font.family: fixedFont.name }
+        Text { text: "Fancy font"; font.family: webFont.name }
+    }
     \endqml
+
+    \sa {declarative/text/fonts}{Fonts example}
 */
 QDeclarativeFontLoader::QDeclarativeFontLoader(QObject *parent)
     : QObject(*(new QDeclarativeFontLoaderPrivate), parent)
@@ -97,15 +109,6 @@ QDeclarativeFontLoader::QDeclarativeFontLoader(QObject *parent)
 QDeclarativeFontLoader::~QDeclarativeFontLoader()
 {
 }
-
-static QString toLocalFileOrQrc(const QUrl& url)
-{
-    QString r = url.toLocalFile();
-    if (r.isEmpty() && url.scheme() == QLatin1String("qrc"))
-        r = QLatin1Char(':') + url.path();
-    return r;
-}
-
 
 /*!
     \qmlproperty url FontLoader::source
@@ -127,7 +130,7 @@ void QDeclarativeFontLoader::setSource(const QUrl &url)
     d->status = Loading;
     emit statusChanged();
 #ifndef QT_NO_LOCALFILE_OPTIMIZED_QML
-    QString lf = toLocalFileOrQrc(d->url);
+    QString lf = QDeclarativeEnginePrivate::urlToLocalFileOrQrc(d->url);
     if (!lf.isEmpty()) {
         int id = QFontDatabase::addApplicationFont(lf);
         if (id != -1) {
@@ -136,7 +139,7 @@ void QDeclarativeFontLoader::setSource(const QUrl &url)
             d->status = QDeclarativeFontLoader::Ready;
         } else {
             d->status = QDeclarativeFontLoader::Error;
-            qWarning() << "Cannot load font:" << url;
+            qmlInfo(this) << "Cannot load font: \"" << url.toString() << "\"";
         }
         emit statusChanged();
     } else
@@ -181,25 +184,36 @@ void QDeclarativeFontLoader::setName(const QString &name)
 }
 
 /*!
-    \qmlproperty enum FontLoader::status
+    \qmlproperty enumeration FontLoader::status
 
     This property holds the status of font loading.  It can be one of:
     \list
-    \o Null - no font has been set
-    \o Ready - the font has been loaded
-    \o Loading - the font is currently being loaded
-    \o Error - an error occurred while loading the font
+    \o FontLoader.Null - no font has been set
+    \o FontLoader.Ready - the font has been loaded
+    \o FontLoader.Loading - the font is currently being loaded
+    \o FontLoader.Error - an error occurred while loading the font
     \endlist
 
-    Note that a change in the status property does not cause anything to happen
-    (although it reflects what has happened to the font loader internally). If you wish
-    to react to the change in status you need to do it yourself, for example in one
-    of the following ways:
-    \list
-    \o Create a state, so that a state change occurs, e.g. State{name: 'loaded'; when: loader.status = FontLoader.Ready;}
-    \o Do something inside the onStatusChanged signal handler, e.g. FontLoader{id: loader; onStatusChanged: if(loader.status == FontLoader.Ready) console.log('Loaded');}
-    \o Bind to the status variable somewhere, e.g. Text{text: if(loader.status!=FontLoader.Ready){'Not Loaded';}else{'Loaded';}}
-    \endlist
+    Use this status to provide an update or respond to the status change in some way.
+    For example, you could:
+
+    \e {Trigger a state change:}
+    \qml 
+        State { name: 'loaded'; when: loader.status = FontLoader.Ready }
+    \endqml
+
+    \e {Implement an \c onStatusChanged signal handler:}
+    \qml 
+        FontLoader {
+            id: loader
+            onStatusChanged: if (loader.status == FontLoader.Ready) console.log('Loaded')
+        }
+    \endqml
+
+    \e {Bind to the status value:}
+    \qml
+        Text { text: loader.status != FontLoader.Ready ? 'Not Loaded' : 'Loaded' }
+    \endqml
 */
 QDeclarativeFontLoader::Status QDeclarativeFontLoader::status() const
 {
@@ -231,7 +245,7 @@ void QDeclarativeFontLoader::replyFinished()
             d->addFontToDatabase(ba);
         } else {
             d->status = Error;
-            qWarning() << "Cannot load font:" << d->reply->url();
+            qmlInfo(this) << "Cannot load font: \"" << d->reply->url().toString() << "\"";
             emit statusChanged();
         }
         d->reply->deleteLater();
@@ -250,7 +264,7 @@ void QDeclarativeFontLoaderPrivate::addFontToDatabase(const QByteArray &ba)
         status = QDeclarativeFontLoader::Ready;
     } else {
         status = QDeclarativeFontLoader::Error;
-        qWarning() << "Cannot load font:" << url;
+        qmlInfo(q) << "Cannot load font: \"" << url.toString() << "\"";
     }
     emit q->statusChanged();
 }

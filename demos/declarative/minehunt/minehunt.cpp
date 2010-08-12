@@ -212,6 +212,8 @@ void MinehuntGame::reset()
     }
     nMines = 12;
     nFlags = 0;
+    emit numMinesChanged();
+    emit numFlagsChanged();
     setPlaying(false);
     QTimer::singleShot(600,this, SLOT(setBoard()));
 }
@@ -304,8 +306,6 @@ bool MinehuntGame::flag(int row, int col)
     emit numFlagsChanged();
     return true;
 }
-
-QML_DECLARE_TYPE(TileData);
 
 class MinehuntExtensionPlugin : public QDeclarativeExtensionPlugin
 {

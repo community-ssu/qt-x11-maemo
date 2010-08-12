@@ -45,6 +45,7 @@
 #include <QPointer>
 #include <QWidget>
 #include <private/qhildoninputmethodprotocol_p.h>
+#include <private/qevent_p.h>
 
 #ifdef Q_WS_MAEMO_5
 
@@ -88,8 +89,12 @@ public:
 
 protected:
     //Filters
-    bool filterKeyPress(QWidget *w, const QKeyEvent *ev);
+    bool filterKey(QWidget *w, const QKeyEvent *ev, bool isLongPress);
     bool x11FilterEvent(QWidget *keywidget, XEvent *event);
+
+private slots:
+    void showSoftKeyboard();
+    void longPressDetected();
 
 private:
     void insertUtf8(int flag, const QString& text);
@@ -103,7 +108,6 @@ private:
     void checkSentenceStart();
     void commitPreeditBuffer();
     void sendSurrounding(bool sendAllContents = false);
-    void inputModeChanged();
     void sendInputMode();
     void setClientCursorLocation(bool offsetIsRelative, int cursorOffset);
     void setCommitMode(HildonIMCommitMode mode, bool clearPreEdit = true);
@@ -112,9 +116,9 @@ private:
                              HildonIMInternalModifierMask lock_mask,
                              HildonIMInternalModifierMask sticky_mask,
                              bool was_press_and_release);
+    void updateInputMethodHints();
 
     //Vars
-    int timerId;
     int mask;
     int options;
     HildonIMTrigger triggerMode;
@@ -125,6 +129,13 @@ private:
     bool autoUpper;
     bool lastInternalChange;
     bool spaceAfterCommit;
+    QTimer *longPressTimer;
+    QScopedPointer<QKeyEventEx> longPressKeyEvent;
+    QWidget *lastKeyWidget;
+    int lastQtKeyCode;
+    QChar combiningChar;      // Unicode representation of the dead key (combining)
+    QChar plainCombiningChar; // Unicode representation of the dead key (plain)
+    QString lastCommitString;
 
     QPointer<QWidget> realFocus; // the widget that really has the focus in case of a QGraphicsProxyWidget
     QPointer<QWidget> lastFocus; // the widget that last had the focus (workaround for HIM bug)

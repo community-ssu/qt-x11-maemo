@@ -54,7 +54,7 @@ QT_BEGIN_NAMESPACE
 QT_MODULE(Declarative)
 
 class QDeclarativeTimerPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeTimer : public QObject, public QDeclarativeParserStatus
+class Q_AUTOTEST_EXPORT QDeclarativeTimer : public QObject, public QDeclarativeParserStatus
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeTimer)
@@ -63,6 +63,7 @@ class Q_DECLARATIVE_EXPORT QDeclarativeTimer : public QObject, public QDeclarati
     Q_PROPERTY(bool running READ isRunning WRITE setRunning NOTIFY runningChanged)
     Q_PROPERTY(bool repeat READ isRepeating WRITE setRepeating NOTIFY repeatChanged)
     Q_PROPERTY(bool triggeredOnStart READ triggeredOnStart WRITE setTriggeredOnStart NOTIFY triggeredOnStartChanged)
+    Q_PROPERTY(QObject *parent READ parent CONSTANT)
 
 public:
     QDeclarativeTimer(QObject *parent=0);

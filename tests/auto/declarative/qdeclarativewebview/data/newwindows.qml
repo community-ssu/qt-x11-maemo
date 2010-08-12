@@ -1,7 +1,7 @@
 // Demonstrates opening new WebViews from HTML
 
-import Qt 4.6
-import org.webkit 1.0
+import Qt 4.7
+import QtWebKit 1.0
 
 Grid {
     columns: 3

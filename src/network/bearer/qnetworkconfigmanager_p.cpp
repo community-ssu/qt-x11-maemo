@@ -54,8 +54,10 @@
 
 QT_BEGIN_NAMESPACE
 
+#ifndef QT_NO_LIBRARY
 Q_GLOBAL_STATIC_WITH_ARGS(QFactoryLoader, loader,
                           (QBearerEngineFactoryInterface_iid, QLatin1String("/bearer")))
+#endif
 
 QNetworkConfigurationManagerPrivate::QNetworkConfigurationManagerPrivate()
 :   pollTimer(0), mutex(QMutex::Recursive), forcedPolling(0), firstUpdate(true)
@@ -148,25 +150,29 @@ QNetworkConfiguration QNetworkConfigurationManagerPrivate::defaultConfiguration(
              end = engine->accessPointConfigurations.end(); it != end; ++it) {
             QNetworkConfigurationPrivatePointer ptr = it.value();
 
-            const QString bearerName = ptr->bearerName();
             QMutexLocker configLocker(&ptr->mutex);
+            QNetworkConfiguration::BearerType bearerType = ptr->bearerType;
 
             if ((ptr->state & QNetworkConfiguration::Discovered) ==
                 QNetworkConfiguration::Discovered) {
                 if (!defaultConfiguration) {
                     defaultConfiguration = ptr;
                 } else {
+                    QMutexLocker defaultConfigLocker(&defaultConfiguration->mutex);
+
                     if (defaultConfiguration->state == ptr->state) {
-                        if (defaultConfiguration->bearerName() == QLatin1String("Ethernet")) {
+                        switch (defaultConfiguration->bearerType) {
+                        case QNetworkConfiguration::BearerEthernet:
                             // do nothing
-                        } else if (defaultConfiguration->bearerName() == QLatin1String("WLAN")) {
-                            // ethernet beats wlan
-                            if (bearerName == QLatin1String("Ethernet"))
-                                defaultConfiguration = ptr;
-                        } else {
-                            // ethernet and wlan beats other
-                            if (bearerName == QLatin1String("Ethernet") ||
-                                bearerName == QLatin1String("WLAN")) {
+                            break;
+                        case QNetworkConfiguration::BearerWLAN:
+                            // Ethernet beats WLAN
+                            defaultConfiguration = ptr;
+                            break;
+                        default:
+                            // Ethernet and WLAN beats other
+                            if (bearerType == QNetworkConfiguration::BearerEthernet ||
+                                bearerType == QNetworkConfiguration::BearerWLAN) {
                                 defaultConfiguration = ptr;
                             }
                         }
@@ -354,6 +360,7 @@ void QNetworkConfigurationManagerPrivate::updateConfigurations()
 
         updating = false;
 
+#ifndef QT_NO_LIBRARY
         QFactoryLoader *l = loader();
 
         QBearerEngine *generic = 0;
@@ -381,12 +388,13 @@ void QNetworkConfigurationManagerPrivate::updateConfigurations()
                 connect(engine, SIGNAL(configurationChanged(QNetworkConfigurationPrivatePointer)),
                         this, SLOT(configurationChanged(QNetworkConfigurationPrivatePointer)));
 
-                QMetaObject::invokeMethod(engine, "requestUpdate");
+                QMetaObject::invokeMethod(engine, "initialize");
             }
         }
 
         if (generic)
             sessionEngines.append(generic);
+#endif // QT_NO_LIBRARY
     }
 
     QBearerEngine *engine = qobject_cast<QBearerEngine *>(sender());
@@ -479,8 +487,10 @@ void QNetworkConfigurationManagerPrivate::pollEngines()
     QMutexLocker locker(&mutex);
 
     for (int i = 0; i < sessionEngines.count(); ++i) {
-        if ((forcedPolling && sessionEngines.at(i)->requiresPolling()) ||
-            sessionEngines.at(i)->configurationsInUse()) {
+        if (!sessionEngines.at(i)->requiresPolling())
+            continue;
+
+        if (forcedPolling || sessionEngines.at(i)->configurationsInUse()) {
             pollingEngines.insert(i);
             QMetaObject::invokeMethod(sessionEngines.at(i), "requestUpdate");
         }

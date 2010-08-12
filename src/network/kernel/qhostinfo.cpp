@@ -44,14 +44,10 @@
 
 #include "QtCore/qscopedpointer.h"
 #include <qabstracteventdispatcher.h>
-#include <private/qunicodetables_p.h>
 #include <qcoreapplication.h>
 #include <qmetaobject.h>
-#include <qregexp.h>
-#include <private/qnativesocketengine_p.h>
 #include <qstringlist.h>
 #include <qthread.h>
-#include <qtimer.h>
 #include <qurl.h>
 
 #ifdef Q_OS_UNIX
@@ -471,6 +467,18 @@ void QHostInfoRunnable::run()
     hostInfo.setLookupId(id);
     resultEmitter.emitResultsReady(hostInfo);
 
+    // now also iterate through the postponed ones
+    QMutableListIterator<QHostInfoRunnable*> iterator(manager->postponedLookups);
+    while (iterator.hasNext()) {
+        QHostInfoRunnable* postponed = iterator.next();
+        if (toBeLookedUp == postponed->toBeLookedUp) {
+            // we can now emit
+            iterator.remove();
+            hostInfo.setLookupId(postponed->id);
+            postponed->resultEmitter.emitResultsReady(hostInfo);
+        }
+    }
+
     manager->lookupFinished(this);
 
     // thread goes back to QThreadPool
@@ -488,9 +496,23 @@ QHostInfoLookupManager::~QHostInfoLookupManager()
     wasDeleted = true;
 
     // don't qDeleteAll currentLookups, the QThreadPool has ownership
-    qDeleteAll(postponedLookups);
-    qDeleteAll(scheduledLookups);
-    qDeleteAll(finishedLookups);
+    clear();
+}
+
+void QHostInfoLookupManager::clear()
+{
+    {
+        QMutexLocker locker(&mutex);
+        qDeleteAll(postponedLookups);
+        qDeleteAll(scheduledLookups);
+        qDeleteAll(finishedLookups);
+        postponedLookups.clear();
+        scheduledLookups.clear();
+        finishedLookups.clear();
+    }
+
+    threadPool.waitForDone();
+    cache.clear();
 }
 
 void QHostInfoLookupManager::work()
@@ -551,13 +573,11 @@ void QHostInfoLookupManager::work()
                 }
             }
 
-            if (scheduled && threadPool.tryStart(scheduled)) {
+            if (scheduled && currentLookups.size() < threadPool.maxThreadCount()) {
                 // runnable now running in new thread, track this in currentLookups
+                threadPool.start(scheduled);
                 iterator.remove();
                 currentLookups.append(scheduled);
-            } else if (scheduled) {
-                // wanted to start, but could not because thread pool is busy
-                break;
             } else {
                 // was postponed, continue iterating
                 continue;
@@ -584,6 +604,23 @@ void QHostInfoLookupManager::abortLookup(int id)
         return;
 
     QMutexLocker locker(&this->mutex);
+
+    // is postponed? delete and return
+    for (int i = 0; i < postponedLookups.length(); i++) {
+        if (postponedLookups.at(i)->id == id) {
+            delete postponedLookups.takeAt(i);
+            return;
+        }
+    }
+
+    // is scheduled? delete and return
+    for (int i = 0; i < scheduledLookups.length(); i++) {
+        if (scheduledLookups.at(i)->id == id) {
+            delete scheduledLookups.takeAt(i);
+            return;
+        }
+    }
+
     if (!abortedLookups.contains(id))
         abortedLookups.append(id);
 }
@@ -636,7 +673,7 @@ void qt_qhostinfo_clear_cache()
 {
     QHostInfoLookupManager* manager = theHostInfoLookupManager();
     if (manager) {
-        manager->cache.clear();
+        manager->clear();
     }
 }
 

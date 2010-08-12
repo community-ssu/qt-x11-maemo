@@ -1,4 +1,4 @@
-import Qt 4.6
+import Qt 4.7
 
 Rectangle {
     property int current: list.currentIndex
@@ -40,7 +40,7 @@ Rectangle {
         id: list
         objectName: "list"
         focus: true
-        currentIndex: 3
+        currentIndex: 20
         width: 240
         height: 320
         keyNavigationWraps: testWrap

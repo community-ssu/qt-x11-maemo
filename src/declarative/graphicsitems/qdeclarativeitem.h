@@ -70,26 +70,27 @@ class Q_DECLARATIVE_EXPORT QDeclarativeItem : public QGraphicsObject, public QDe
     Q_INTERFACES(QDeclarativeParserStatus)
 
     Q_PROPERTY(QDeclarativeItem * parent READ parentItem WRITE setParentItem NOTIFY parentChanged DESIGNABLE false FINAL)
-    Q_PROPERTY(QDeclarativeListProperty<QObject> data READ data DESIGNABLE false)
-    Q_PROPERTY(QDeclarativeListProperty<QObject> resources READ resources DESIGNABLE false)
-    Q_PROPERTY(QDeclarativeListProperty<QDeclarativeState> states READ states DESIGNABLE false)
-    Q_PROPERTY(QDeclarativeListProperty<QDeclarativeTransition> transitions READ transitions DESIGNABLE false)
-    Q_PROPERTY(QString state READ state WRITE setState NOTIFY stateChanged)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeListProperty<QObject> data READ data DESIGNABLE false)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeListProperty<QObject> resources READ resources DESIGNABLE false)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeListProperty<QDeclarativeState> states READ states DESIGNABLE false)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeListProperty<QDeclarativeTransition> transitions READ transitions DESIGNABLE false)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QString state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(QRectF childrenRect READ childrenRect NOTIFY childrenRectChanged DESIGNABLE false FINAL)
-    Q_PROPERTY(QDeclarativeAnchors * anchors READ anchors DESIGNABLE false CONSTANT FINAL)
-    Q_PROPERTY(QDeclarativeAnchorLine left READ left CONSTANT FINAL)
-    Q_PROPERTY(QDeclarativeAnchorLine right READ right CONSTANT FINAL)
-    Q_PROPERTY(QDeclarativeAnchorLine horizontalCenter READ horizontalCenter CONSTANT FINAL)
-    Q_PROPERTY(QDeclarativeAnchorLine top READ top CONSTANT FINAL)
-    Q_PROPERTY(QDeclarativeAnchorLine bottom READ bottom CONSTANT FINAL)
-    Q_PROPERTY(QDeclarativeAnchorLine verticalCenter READ verticalCenter CONSTANT FINAL)
-    Q_PROPERTY(QDeclarativeAnchorLine baseline READ baseline CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchors * anchors READ anchors DESIGNABLE false CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchorLine left READ left CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchorLine right READ right CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchorLine horizontalCenter READ horizontalCenter CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchorLine top READ top CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchorLine bottom READ bottom CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchorLine verticalCenter READ verticalCenter CONSTANT FINAL)
+    Q_PRIVATE_PROPERTY(QDeclarativeItem::d_func(), QDeclarativeAnchorLine baseline READ baseline CONSTANT FINAL)
     Q_PROPERTY(qreal baselineOffset READ baselineOffset WRITE setBaselineOffset NOTIFY baselineOffsetChanged)
     Q_PROPERTY(bool clip READ clip WRITE setClip NOTIFY clipChanged) // ### move to QGI/QGO, NOTIFY
     Q_PROPERTY(bool focus READ hasFocus WRITE setFocus NOTIFY focusChanged FINAL)
-    Q_PROPERTY(bool wantsFocus READ wantsFocus NOTIFY wantsFocusChanged)
+    Q_PROPERTY(bool activeFocus READ hasActiveFocus NOTIFY activeFocusChanged)
     Q_PROPERTY(QDeclarativeListProperty<QGraphicsTransform> transform READ transform DESIGNABLE false FINAL)
     Q_PROPERTY(TransformOrigin transformOrigin READ transformOrigin WRITE setTransformOrigin NOTIFY transformOriginChanged)
+    Q_PROPERTY(QPointF transformOriginPoint READ transformOriginPoint) // transformOriginPoint is read-only for Item
     Q_PROPERTY(bool smooth READ smooth WRITE setSmooth NOTIFY smoothChanged)
     Q_ENUMS(TransformOrigin)
     Q_CLASSINFO("DefaultProperty", "data")
@@ -107,20 +108,10 @@ public:
     QDeclarativeItem *parentItem() const;
     void setParentItem(QDeclarativeItem *parent);
 
-    QDeclarativeListProperty<QObject> data();
-    QDeclarativeListProperty<QObject> resources();
-
-    QDeclarativeAnchors *anchors();
     QRectF childrenRect();
 
     bool clip() const;
     void setClip(bool);
-
-    QDeclarativeListProperty<QDeclarativeState> states();
-    QDeclarativeListProperty<QDeclarativeTransition> transitions();
-
-    QString state() const;
-    void setState(const QString &);
 
     qreal baselineOffset() const;
     void setBaselineOffset(qreal);
@@ -148,7 +139,7 @@ public:
     QRectF boundingRect() const;
     virtual void paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *);
 
-    bool wantsFocus() const;
+    bool hasActiveFocus() const;
     bool hasFocus() const;
     void setFocus(bool);
 
@@ -157,22 +148,15 @@ public:
 
     Q_INVOKABLE QScriptValue mapFromItem(const QScriptValue &item, qreal x, qreal y) const;
     Q_INVOKABLE QScriptValue mapToItem(const QScriptValue &item, qreal x, qreal y) const;
-
-    QDeclarativeAnchorLine left() const;
-    QDeclarativeAnchorLine right() const;
-    QDeclarativeAnchorLine horizontalCenter() const;
-    QDeclarativeAnchorLine top() const;
-    QDeclarativeAnchorLine bottom() const;
-    QDeclarativeAnchorLine verticalCenter() const;
-    QDeclarativeAnchorLine baseline() const;
+    Q_INVOKABLE void forceActiveFocus();
+    Q_INVOKABLE QDeclarativeItem *childAt(qreal x, qreal y) const;
 
 Q_SIGNALS:
-    void childrenChanged();
     void childrenRectChanged(const QRectF &);
     void baselineOffsetChanged(qreal);
     void stateChanged(const QString &);
     void focusChanged(bool);
-    void wantsFocusChanged(bool);
+    void activeFocusChanged(bool);
     void parentChanged(QDeclarativeItem *);
     void transformOriginChanged(TransformOrigin);
     void smoothChanged(bool);
@@ -195,6 +179,10 @@ protected:
     virtual void keyReleaseEvent(QKeyEvent *event);
     virtual void inputMethodEvent(QInputMethodEvent *);
     virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
+    void keyPressPreHandler(QKeyEvent *);
+    void keyReleasePreHandler(QKeyEvent *);
+    void inputMethodPreHandler(QInputMethodEvent *);
+
     virtual void geometryChanged(const QRectF &newGeometry,
                                  const QRectF &oldGeometry);
 
@@ -222,7 +210,9 @@ T qobject_cast(QGraphicsItem *item)
     return qobject_cast<T>(o);
 }
 
+#ifndef QT_NO_DEBUG_STREAM
 QDebug Q_DECLARATIVE_EXPORT operator<<(QDebug debug, QDeclarativeItem *item);
+#endif
 
 QT_END_NAMESPACE
 

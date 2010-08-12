@@ -51,11 +51,13 @@ QT_BEGIN_NAMESPACE
 
 struct ContextData : public QScriptDeclarativeClass::Object {
     ContextData() : overrideObject(0), isSharedContext(true) {}
-    ContextData(QDeclarativeContextData *c, QObject *o) : context(c), scopeObject(o), overrideObject(0), isSharedContext(false) {}
+    ContextData(QDeclarativeContextData *c, QObject *o) 
+    : context(c), scopeObject(o), overrideObject(0), isSharedContext(false), isUrlContext(false) {}
     QDeclarativeGuardedContextData context;
     QDeclarativeGuard<QObject> scopeObject;
     QObject *overrideObject;
-    bool isSharedContext;
+    bool isSharedContext:1;
+    bool isUrlContext:1;
 
     QDeclarativeContextData *getContext(QDeclarativeEngine *engine) {
         if (isSharedContext) {
@@ -72,6 +74,18 @@ struct ContextData : public QScriptDeclarativeClass::Object {
             return scopeObject.data();
         }
     }
+};
+
+struct UrlContextData : public ContextData {
+    UrlContextData(QDeclarativeContextData *c, QObject *o, const QString &u) 
+    : ContextData(c, o), url(u) {
+        isUrlContext = true;
+    }
+    UrlContextData(const QString &u) 
+    : ContextData(0, 0), url(u) {
+        isUrlContext = true;
+    }
+    QString url;
 };
 
 /*
@@ -95,6 +109,21 @@ QScriptValue QDeclarativeContextScriptClass::newContext(QDeclarativeContextData 
     return newObject(scriptEngine, this, new ContextData(context, scopeObject));
 }
 
+QScriptValue QDeclarativeContextScriptClass::newUrlContext(QDeclarativeContextData *context, QObject *scopeObject, 
+                                                           const QString &url)
+{
+    QScriptEngine *scriptEngine = QDeclarativeEnginePrivate::getScriptEngine(engine);
+
+    return newObject(scriptEngine, this, new UrlContextData(context, scopeObject, url));
+}
+
+QScriptValue QDeclarativeContextScriptClass::newUrlContext(const QString &url)
+{
+    QScriptEngine *scriptEngine = QDeclarativeEnginePrivate::getScriptEngine(engine);
+
+    return newObject(scriptEngine, this, new UrlContextData(url));
+}
+
 QScriptValue QDeclarativeContextScriptClass::newSharedContext()
 {
     QScriptEngine *scriptEngine = QDeclarativeEnginePrivate::getScriptEngine(engine);
@@ -109,6 +138,19 @@ QDeclarativeContextData *QDeclarativeContextScriptClass::contextFromValue(const 
 
     ContextData *data = (ContextData *)object(v);
     return data->getContext(engine);
+}
+
+QUrl QDeclarativeContextScriptClass::urlFromValue(const QScriptValue &v)
+{
+    if (scriptClass(v) != this)
+        return QUrl();
+
+    ContextData *data = (ContextData *)object(v);
+    if (data->isUrlContext) {
+        return QUrl(static_cast<UrlContextData *>(data)->url);
+    } else {
+        return QUrl();
+    }
 }
 
 QObject *QDeclarativeContextScriptClass::setOverrideObject(QScriptValue &v, QObject *override)
@@ -184,14 +226,6 @@ QDeclarativeContextScriptClass::queryProperty(QDeclarativeContextData *bindConte
 
         if (data)  {
             lastData = data;
-            lastContext = bindContext;
-            return QScriptClass::HandlesReadAccess;
-        }
-    }
-
-    for (int ii = 0; ii < bindContext->scripts.count(); ++ii) {
-        lastFunction = QScriptDeclarativeClass::function(bindContext->scripts.at(ii), name);
-        if (lastFunction.isValid()) {
             lastContext = bindContext;
             return QScriptClass::HandlesReadAccess;
         }

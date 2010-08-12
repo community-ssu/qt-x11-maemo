@@ -58,11 +58,14 @@
 /* ==== COMPILER() - the compiler being used to build the project ==== */
 
 /* COMPILER(MSVC) Microsoft Visual C++ */
-/* COMPILER(MSVC7) Microsoft Visual C++ v7 or lower*/
+/* COMPILER(MSVC7_OR_LOWER) Microsoft Visual C++ 2003 or lower*/
+/* COMPILER(MSVC9_OR_LOWER) Microsoft Visual C++ 2008 or lower*/
 #if defined(_MSC_VER)
 #define WTF_COMPILER_MSVC 1
 #if _MSC_VER < 1400
-#define WTF_COMPILER_MSVC7 1
+#define WTF_COMPILER_MSVC7_OR_LOWER 1
+#elif _MSC_VER < 1600
+#define WTF_COMPILER_MSVC9_OR_LOWER 1
 #endif
 #endif
 
@@ -79,9 +82,14 @@
 #endif
 
 /* COMPILER(MINGW) - MinGW GCC */
-#if defined(MINGW) || defined(__MINGW32__)
+/* COMPILER(MINGW64) - mingw-w64 GCC - only used as additional check to exclude mingw.org specific functions */
+#if defined(__MINGW32__)
 #define WTF_COMPILER_MINGW 1
-#endif
+#include <_mingw.h> /* private MinGW header */
+    #if defined(__MINGW64_VERSION_MAJOR) /* best way to check for mingw-w64 vs mingw.org */
+        #define WTF_COMPILER_MINGW64 1
+    #endif /* __MINGW64_VERSION_MAJOR */
+#endif /* __MINGW32__ */
 
 /* COMPILER(WINSCW) - CodeWarrior for Symbian emulator */
 #if defined(__WINSCW__)
@@ -692,11 +700,11 @@
 #define HAVE_SYS_TIME_H 1
 #define HAVE_SYS_TIMEB_H 1
 
-#if !defined(BUILDING_ON_TIGER) && !defined(BUILDING_ON_LEOPARD)
+#if !defined(TARGETING_TIGER) && !defined(TARGETING_LEOPARD)
 
 #define HAVE_DISPATCH_H 1
 
-#if !PLATFORM(IPHONE) && !PLATFORM(QT)
+#if !PLATFORM(IPHONE)
 #define HAVE_MADV_FREE_REUSE 1
 #define HAVE_MADV_FREE 1
 #define HAVE_PTHREAD_SETNAME_NP 1
@@ -993,11 +1001,14 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
 
 #if PLATFORM(QT)
 #if (CPU(X86) && OS(WINDOWS) && COMPILER(MINGW) && GCC_VERSION >= 40100) \
+    || (CPU(X86_64) && OS(WINDOWS) && COMPILER(MINGW64) && GCC_VERSION >= 40100) \
     || (CPU(X86) && OS(WINDOWS) && COMPILER(MSVC)) \
     || (CPU(X86) && OS(LINUX) && GCC_VERSION >= 40100) \
     || (CPU(X86_64) && OS(LINUX) && GCC_VERSION >= 40100) \
     || (CPU(ARM_TRADITIONAL) && OS(LINUX)) \
-    || (CPU(MIPS) && OS(LINUX))
+    || (CPU(MIPS) && OS(LINUX)) \
+    || (CPU(X86) && OS(DARWIN)) \
+    || (CPU(X86_64) && OS(DARWIN))
 #define ENABLE_YARR 1
 #define ENABLE_YARR_JIT 1
 #endif
@@ -1030,10 +1041,6 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
 #if PLATFORM(QT)
 #define WTF_USE_QXMLSTREAM 1
 #define WTF_USE_QXMLQUERY 1
-#endif
-
-#if !PLATFORM(QT)
-#define WTF_USE_FONT_FAST_PATH 1
 #endif
 
 /* Accelerated compositing */

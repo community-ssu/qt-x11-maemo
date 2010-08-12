@@ -10,8 +10,7 @@ include(../qbase.pri)
 
 include(audio/audio.pri)
 include(video/video.pri)
-include(base/base.pri)
-include(playback/playback.pri)
-include(effects/effects.pri)
 
-symbian: TARGET.UID3 = 0x2001E627
+symbian: {
+    TARGET.UID3 = 0x2001E627
+}

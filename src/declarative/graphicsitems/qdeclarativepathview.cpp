@@ -49,6 +49,7 @@
 #include <qlistmodelinterface_p.h>
 #include <QGraphicsSceneEvent>
 
+#include <qmath.h>
 #include <math.h>
 
 QT_BEGIN_NAMESPACE
@@ -89,6 +90,26 @@ void QDeclarativePathViewAttached::setValue(const QByteArray &name, const QVaria
     m_metaobject->setValue(name, val);
 }
 
+
+void QDeclarativePathViewPrivate::init()
+{
+    Q_Q(QDeclarativePathView);
+    offset = 0;
+    q->setAcceptedMouseButtons(Qt::LeftButton);
+    q->setFlag(QGraphicsItem::ItemIsFocusScope);
+    q->setFiltersChildEvents(true);
+    q->connect(&tl, SIGNAL(updated()), q, SLOT(ticked()));
+    lastPosTime.invalidate();
+    static int timelineCompletedIdx = -1;
+    static int movementEndingIdx = -1;
+    if (timelineCompletedIdx == -1) {
+        timelineCompletedIdx = QDeclarativeTimeLine::staticMetaObject.indexOfSignal("completed()");
+        movementEndingIdx = QDeclarativePathView::staticMetaObject.indexOfSlot("movementEnding()");
+    }
+    QMetaObject::connect(&tl, timelineCompletedIdx,
+                         q, movementEndingIdx, Qt::DirectConnection);
+}
+
 QDeclarativeItem *QDeclarativePathViewPrivate::getItem(int modelIndex)
 {
     Q_Q(QDeclarativePathView);
@@ -98,9 +119,8 @@ QDeclarativeItem *QDeclarativePathViewPrivate::getItem(int modelIndex)
         if (!attType) {
             // pre-create one metatype to share with all attached objects
             attType = new QDeclarativeOpenMetaObjectType(&QDeclarativePathViewAttached::staticMetaObject, qmlEngine(q));
-            foreach(const QString &attr, path->attributes()) {
+            foreach(const QString &attr, path->attributes())
                 attType->createProperty(attr.toUtf8());
-            }
         }
         qPathViewAttachedType = attType;
         QDeclarativePathViewAttached *att = static_cast<QDeclarativePathViewAttached *>(qmlAttachedPropertiesObject<QDeclarativePathView>(item));
@@ -110,6 +130,8 @@ QDeclarativeItem *QDeclarativePathViewPrivate::getItem(int modelIndex)
             att->setOnPath(true);
         }
         item->setParentItem(q);
+        QDeclarativeItemPrivate *itemPrivate = static_cast<QDeclarativeItemPrivate*>(QGraphicsItemPrivate::get(item));
+        itemPrivate->addItemChangeListener(this, QDeclarativeItemPrivate::Geometry);
     }
     requestedIndex = -1;
     return item;
@@ -121,6 +143,8 @@ void QDeclarativePathViewPrivate::releaseItem(QDeclarativeItem *item)
         return;
     if (QDeclarativePathViewAttached *att = attached(item))
         att->setOnPath(false);
+    QDeclarativeItemPrivate *itemPrivate = static_cast<QDeclarativeItemPrivate*>(QGraphicsItemPrivate::get(item));
+    itemPrivate->removeItemChangeListener(this, QDeclarativeItemPrivate::Geometry);
     model->release(item);
 }
 
@@ -280,8 +304,8 @@ void QDeclarativePathViewPrivate::updateItem(QDeclarativeItem *item, qreal perce
             att->setValue(attr.toUtf8(), path->attributeAt(attr, percent));
     }
     QPointF pf = path->pointAt(percent);
-    item->setX(pf.x() - item->width()*item->scale()/2);
-    item->setY(pf.y() - item->height()*item->scale()/2);
+    item->setX(qRound(pf.x() - item->width()/2));
+    item->setY(qRound(pf.y() - item->height()/2));
 }
 
 void QDeclarativePathViewPrivate::regenerate()
@@ -306,20 +330,41 @@ void QDeclarativePathViewPrivate::regenerate()
     \brief The PathView element lays out model-provided items on a path.
     \inherits Item
 
-    The model is typically provided by a QAbstractListModel "C++ model object", but can also be created directly in QML.
+    A PathView displays data from models created from built-in QML elements like ListModel
+    and XmlListModel, or custom model classes defined in C++ that inherit from
+    QAbstractListModel.
 
-    The items are laid out along a path defined by a \l Path and may be flicked to scroll.
+    The view has a \l model, which defines the data to be displayed, and
+    a \l delegate, which defines how the data should be displayed.  
+    The \l delegate is instantiated for each item on the \l path.
+    The items may be flicked to move them along the path.
+
+    For example, if there is a simple list model defined in a file \c ContactModel.qml like this:
+
+    \snippet doc/src/snippets/declarative/pathview/ContactModel.qml 0
+
+    This data can be represented as a PathView, like this:
 
     \snippet doc/src/snippets/declarative/pathview/pathview.qml 0
 
     \image pathview.gif
 
-    Note that views do not enable \e clip automatically.  If the view
+    (Note the above example uses PathAttribute to scale and modify the
+    opacity of the items as they rotate. This additional code can be seen in the
+    PathAttribute documentation.)
+
+    The \c focus can be set to \c true to enable keyboard navigation.
+    The path view itself is a focus scope (see \l{qmlfocus#Acquiring Focus and Focus Scopes}{the focus documentation page} for more details).
+
+    Delegates are instantiated as needed and may be destroyed at any time.
+    State should \e never be stored in a delegate.
+
+    \bold Note that views do not enable \e clip automatically.  If the view
     is not clipped by another item or the screen, it will be necessary
     to set \e {clip: true} in order to have the out of view items clipped
     nicely.
 
-    \sa Path
+    \sa Path, {declarative/modelviews/pathview}{PathView example}
 */
 
 QDeclarativePathView::QDeclarativePathView(QDeclarativeItem *parent)
@@ -338,6 +383,13 @@ QDeclarativePathView::~QDeclarativePathView()
     if (d->ownModel)
         delete d->model;
 }
+
+/*!
+    \qmlattachedproperty PathView PathView::view
+    This attached property holds the view that manages this delegate instance.
+
+    It is attached to each instance of the delegate.
+*/
 
 /*!
     \qmlattachedproperty bool PathView::onPath
@@ -414,7 +466,7 @@ void QDeclarativePathView::setModel(const QVariant &model)
         d->model = vim;
     } else {
         if (!d->ownModel) {
-            d->model = new QDeclarativeVisualDataModel(qmlContext(this));
+            d->model = new QDeclarativeVisualDataModel(qmlContext(this), this);
             d->ownModel = true;
         }
         if (QDeclarativeVisualDataModel *dataModel = qobject_cast<QDeclarativeVisualDataModel*>(d->model))
@@ -467,12 +519,14 @@ void QDeclarativePathView::setPath(QDeclarativePath *path)
         disconnect(d->path, SIGNAL(changed()), this, SLOT(refill()));
     d->path = path;
     connect(d->path, SIGNAL(changed()), this, SLOT(refill()));
-    d->clear();
-    if (d->attType) {
-        d->attType->release();
-        d->attType = 0;
+    if (d->isValid() && isComponentComplete()) {
+        d->clear();
+        if (d->attType) {
+            d->attType->release();
+            d->attType = 0;
+        }
+        d->regenerate();
     }
-    d->regenerate();
     emit pathChanged();
 }
 
@@ -522,6 +576,37 @@ void QDeclarativePathView::setCurrentIndex(int idx)
 }
 
 /*!
+    \qmlmethod PathView::incrementCurrentIndex()
+
+    Increments the current index.
+
+    \bold Note: methods should only be called after the Component has completed.
+*/
+void QDeclarativePathView::incrementCurrentIndex()
+{
+    setCurrentIndex(currentIndex()+1);
+}
+
+
+/*!
+    \qmlmethod PathView::decrementCurrentIndex()
+
+    Decrements the current index.
+
+    \bold Note: methods should only be called after the Component has completed.
+*/
+void QDeclarativePathView::decrementCurrentIndex()
+{
+    Q_D(QDeclarativePathView);
+    if (d->model && d->model->count()) {
+        int idx = currentIndex()-1;
+        if (idx < 0)
+            idx = d->model->count() - 1;
+        setCurrentIndex(idx);
+    }
+}
+
+/*!
     \qmlproperty real PathView::offset
 
     The offset specifies how far along the path the items are from their initial positions.
@@ -557,7 +642,7 @@ void QDeclarativePathViewPrivate::setOffset(qreal o)
 }
 
 /*!
-    \qmlproperty component PathView::highlight
+    \qmlproperty Component PathView::highlight
     This property holds the component to use as the highlight.
 
     An instance of the highlight component will be created for each view.
@@ -618,12 +703,12 @@ QDeclarativeItem *QDeclarativePathView::highlightItem()
     These properties set the preferred range of the highlight (current item)
     within the view.  The preferred values must be in the range 0.0-1.0.
 
-    If highlightRangeMode is set to \e ApplyRange the view will
+    If highlightRangeMode is set to \e PathView.ApplyRange the view will
     attempt to maintain the highlight within the range, however
     the highlight can move outside of the range at the ends of the path
     or due to a mouse interaction.
 
-    If highlightRangeMode is set to \e StrictlyEnforceRange the highlight will never
+    If highlightRangeMode is set to \e PathView.StrictlyEnforceRange the highlight will never
     move outside of the range.  This means that the current item will change
     if a keyboard or mouse action would cause the highlight to move
     outside of the range.
@@ -631,14 +716,14 @@ QDeclarativeItem *QDeclarativePathView::highlightItem()
     Note that this is the correct way to influence where the
     current item ends up when the view moves. For example, if you want the
     currently selected item to be in the middle of the path, then set the
-    highlight range to be 0.5,0.5 and highlightRangeMode to StrictlyEnforceRange.
+    highlight range to be 0.5,0.5 and highlightRangeMode to PathView.StrictlyEnforceRange.
     Then, when the path scrolls,
     the currently selected item will be the item at that position. This also applies to
     when the currently selected item changes - it will scroll to within the preferred
     highlight range. Furthermore, the behaviour of the current item index will occur
     whether or not a highlight exists.
 
-    The default value is \e StrictlyEnforceRange.
+    The default value is \e PathView.StrictlyEnforceRange.
 
     Note that a valid range requires preferredHighlightEnd to be greater
     than or equal to preferredHighlightBegin.
@@ -786,11 +871,71 @@ void QDeclarativePathView::setInteractive(bool interactive)
 }
 
 /*!
-    \qmlproperty component PathView::delegate
+    \qmlproperty bool PathView::moving
+
+    This property holds whether the view is currently moving
+    due to the user either dragging or flicking the view.
+*/
+bool QDeclarativePathView::isMoving() const
+{
+    Q_D(const QDeclarativePathView);
+    return d->moving;
+}
+
+/*!
+    \qmlproperty bool PathView::flicking
+
+    This property holds whether the view is currently moving
+    due to the user flicking the view.
+*/
+bool QDeclarativePathView::isFlicking() const
+{
+    Q_D(const QDeclarativePathView);
+    return d->flicking;
+}
+
+/*!
+    \qmlsignal PathView::onMovementStarted()
+
+    This handler is called when the view begins moving due to user
+    interaction.
+*/
+
+/*!
+    \qmlsignal PathView::onMovementEnded()
+
+    This handler is called when the view stops moving due to user
+    interaction.  If a flick was generated, this handler will
+    be triggered once the flick stops.  If a flick was not
+    generated, the handler will be triggered when the
+    user stops dragging - i.e. a mouse or touch release.
+*/
+
+/*!
+    \qmlsignal PathView::onFlickStarted()
+
+    This handler is called when the view is flicked.  A flick
+    starts from the point that the mouse or touch is released,
+    while still in motion.
+*/
+
+/*!
+    \qmlsignal PathView::onFlickEnded()
+
+    This handler is called when the view stops moving due to a flick.
+*/
+
+/*!
+    \qmlproperty Component PathView::delegate
 
     The delegate provides a template defining each item instantiated by the view.
     The index is exposed as an accessible \c index property.  Properties of the
     model are also available depending upon the type of \l {qmlmodels}{Data Model}.
+
+    The number of elements in the delegate has a direct effect on the
+    flicking performance of the view when pathItemCount is specified.  If at all possible, place functionality
+    that is not needed for the normal display of the delegate in a \l Loader which
+    can load additional elements when needed.
 
     Note that the PathView will layout the items based on the size of the root
     item in the delegate.
@@ -843,6 +988,7 @@ void QDeclarativePathView::setPathItemCount(int i)
     if (i < 1)
         i = 1;
     d->pathItems = i;
+    d->updateMappedRange();
     if (d->isValid() && isComponentComplete()) {
         d->regenerate();
     }
@@ -896,7 +1042,11 @@ void QDeclarativePathView::mousePressEvent(QGraphicsSceneMouseEvent *event)
             return;
     }
 
-    d->stealMouse = false;
+    if (d->tl.isActive() && d->flicking)
+        d->stealMouse = true; // If we've been flicked then steal the click.
+    else
+        d->stealMouse = false;
+
     d->lastElapsed = 0;
     d->lastDist = 0;
     QDeclarativeItemPrivate::start(d->lastPosTime);
@@ -906,7 +1056,7 @@ void QDeclarativePathView::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void QDeclarativePathView::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     Q_D(QDeclarativePathView);
-    if (!d->interactive || d->lastPosTime.isNull())
+    if (!d->interactive || !d->lastPosTime.isValid())
         return;
 
     if (!d->stealMouse) {
@@ -932,6 +1082,11 @@ void QDeclarativePathView::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             d->lastDist = diff;
             d->startPc = newPc;
         }
+        if (!d->moving) {
+            d->moving = true;
+            emit movingChanged();
+            emit movementStarted();
+        }
     }
 }
 
@@ -940,7 +1095,7 @@ void QDeclarativePathView::mouseReleaseEvent(QGraphicsSceneMouseEvent *)
     Q_D(QDeclarativePathView);
     d->stealMouse = false;
     setKeepMouseGrab(false);
-    if (!d->interactive || d->lastPosTime.isNull())
+    if (!d->interactive || !d->lastPosTime.isValid())
         return;
 
     qreal elapsed = qreal(d->lastElapsed + QDeclarativeItemPrivate::elapsed(d->lastPosTime)) / 1000.;
@@ -961,17 +1116,29 @@ void QDeclarativePathView::mouseReleaseEvent(QGraphicsSceneMouseEvent *)
             else
                 dist = qRound(dist - d->offset) + d->offset;
             // Calculate accel required to stop on item boundary
-            accel = v2 / (2.0f * qAbs(dist));
+            if (dist <= 0.) {
+                dist = 0.;
+                accel = 0.;
+            } else {
+                accel = v2 / (2.0f * qAbs(dist));
+            }
         }
         d->moveOffset.setValue(d->offset);
         d->tl.accel(d->moveOffset, velocity, accel, dist);
         d->tl.callback(QDeclarativeTimeLineCallback(&d->moveOffset, d->fixOffsetCallback, d));
+        if (!d->flicking) {
+            d->flicking = true;
+            emit flickingChanged();
+            emit flickStarted();
+        }
     } else {
         d->fixOffset();
     }
 
-    d->lastPosTime = QTime();
+    d->lastPosTime.invalidate();
     ungrabMouse();
+    if (!d->tl.isActive())
+        movementEnding();
 }
 
 bool QDeclarativePathView::sendMouseEvent(QGraphicsSceneMouseEvent *event)
@@ -1012,8 +1179,8 @@ bool QDeclarativePathView::sendMouseEvent(QGraphicsSceneMouseEvent *event)
             grabMouse();
 
         return d->stealMouse;
-    } else if (!d->lastPosTime.isNull()) {
-        d->lastPosTime = QTime();
+    } else if (d->lastPosTime.isValid()) {
+        d->lastPosTime.invalidate();
     }
     return false;
 }
@@ -1041,12 +1208,26 @@ bool QDeclarativePathView::sceneEventFilter(QGraphicsItem *i, QEvent *e)
     return QDeclarativeItem::sceneEventFilter(i, e);
 }
 
+bool QDeclarativePathView::event(QEvent *event)
+{
+    if (event->type() == QEvent::User) {
+        refill();
+        return true;
+    }
+
+    return QDeclarativeItem::event(event);
+}
+
 void QDeclarativePathView::componentComplete()
 {
     Q_D(QDeclarativePathView);
     QDeclarativeItem::componentComplete();
     d->createHighlight();
-    d->regenerate();
+    // It is possible that a refill has already happended to to Path
+    // bindings being handled in the componentComplete().  If so
+    // don't do it again.
+    if (d->items.count() == 0)
+        d->regenerate();
     d->updateHighlight();
 }
 
@@ -1056,6 +1237,7 @@ void QDeclarativePathView::refill()
     if (!d->isValid() || !isComponentComplete())
         return;
 
+    d->layoutScheduled = false;
     bool currentVisible = false;
 
     // first move existing items and remove items off path
@@ -1101,7 +1283,8 @@ void QDeclarativePathView::refill()
         while ((pos > startPos || !d->items.count()) && d->items.count() < count) {
 //            qDebug() << "append" << idx;
             QDeclarativeItem *item = d->getItem(idx);
-            item->setZValue(idx+1);
+            if (d->model->completePending())
+                item->setZValue(idx+1);
             if (d->currentIndex == idx) {
                 item->setFocus(true);
                 if (QDeclarativePathViewAttached *att = d->attached(item))
@@ -1114,7 +1297,8 @@ void QDeclarativePathView::refill()
                 d->firstIndex = idx;
             d->items.append(item);
             d->updateItem(item, pos);
-            d->model->completeItem();
+            if (d->model->completePending())
+                d->model->completeItem();
             ++idx;
             if (idx >= d->model->count())
                 idx = 0;
@@ -1128,7 +1312,8 @@ void QDeclarativePathView::refill()
         while (pos >= 0.0 && pos < startPos) {
 //            qDebug() << "prepend" << idx;
             QDeclarativeItem *item = d->getItem(idx);
-            item->setZValue(idx+1);
+            if (d->model->completePending())
+                item->setZValue(idx+1);
             if (d->currentIndex == idx) {
                 item->setFocus(true);
                 if (QDeclarativePathViewAttached *att = d->attached(item))
@@ -1139,7 +1324,8 @@ void QDeclarativePathView::refill()
             }
             d->items.prepend(item);
             d->updateItem(item, pos);
-            d->model->completeItem();
+            if (d->model->completePending())
+                d->model->completeItem();
             d->firstIndex = idx;
             idx = d->firstIndex - 1;
             if (idx < 0)
@@ -1251,6 +1437,19 @@ void QDeclarativePathView::createdItem(int index, QDeclarativeItem *item)
 {
     Q_D(QDeclarativePathView);
     if (d->requestedIndex != index) {
+        if (!d->attType) {
+            // pre-create one metatype to share with all attached objects
+            d->attType = new QDeclarativeOpenMetaObjectType(&QDeclarativePathViewAttached::staticMetaObject, qmlEngine(this));
+            foreach(const QString &attr, d->path->attributes())
+                d->attType->createProperty(attr.toUtf8());
+        }
+        qPathViewAttachedType = d->attType;
+        QDeclarativePathViewAttached *att = static_cast<QDeclarativePathViewAttached *>(qmlAttachedPropertiesObject<QDeclarativePathView>(item));
+        qPathViewAttachedType = 0;
+        if (att) {
+            att->m_view = this;
+            att->setOnPath(false);
+        }
         item->setParentItem(this);
         d->updateItem(item, index < d->firstIndex ? 0.0 : 1.0);
     }
@@ -1267,6 +1466,21 @@ void QDeclarativePathView::ticked()
     d->updateCurrent();
 }
 
+void QDeclarativePathView::movementEnding()
+{
+    Q_D(QDeclarativePathView);
+    if (d->flicking) {
+        d->flicking = false;
+        emit flickingChanged();
+        emit flickEnded();
+    }
+    if (d->moving && !d->stealMouse) {
+        d->moving = false;
+        emit movingChanged();
+        emit movementEnded();
+    }
+}
+
 // find the item closest to the snap position
 int QDeclarativePathViewPrivate::calcCurrentIndex()
 {
@@ -1276,6 +1490,7 @@ int QDeclarativePathViewPrivate::calcCurrentIndex()
         if (offset < 0)
             offset += model->count();
         current = qRound(qAbs(qmlMod(model->count() - offset, model->count())));
+        current = current % model->count();
     }
 
     return current;

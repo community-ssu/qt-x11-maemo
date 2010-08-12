@@ -674,6 +674,11 @@ const uint * QT_FASTCALL fetchTransformedBilinear(uint *buffer, const Operator *
     int image_width = data->texture.width;
     int image_height = data->texture.height;
 
+    int image_x1 = data->texture.x1;
+    int image_y1 = data->texture.y1;
+    int image_x2 = data->texture.x2;
+    int image_y2 = data->texture.y2;
+
     const qreal cx = x + 0.5;
     const qreal cy = y + 0.5;
 
@@ -708,17 +713,17 @@ const uint * QT_FASTCALL fetchTransformedBilinear(uint *buffer, const Operator *
                 y2 = y1 + 1;
                 y2 %= image_height;
             } else {
-                if (x1 < 0) {
-                    x2 = x1 = 0;
-                } else if (x1 >= image_width - 1) {
-                    x2 = x1 = image_width - 1;
+                if (x1 < image_x1) {
+                    x2 = x1 = image_x1;
+                } else if (x1 >= image_x2 - 1) {
+                    x2 = x1 = image_x2 - 1;
                 } else {
                     x2 = x1 + 1;
                 }
-                if (y1 < 0) {
-                    y2 = y1 = 0;
-                } else if (y1 >= image_height - 1) {
-                    y2 = y1 = image_height - 1;
+                if (y1 < image_y1) {
+                    y2 = y1 = image_y1;
+                } else if (y1 >= image_y2 - 1) {
+                    y2 = y1 = image_y2 - 1;
                 } else {
                     y2 = y1 + 1;
                 }
@@ -5009,7 +5014,8 @@ Q_STATIC_TEMPLATE_FUNCTION void blendTiled(int count, const QSpan *spans, void *
                 length -= copy_image_width;
                 copy_image_width *= 2;
             }
-            qt_memconvert(dest, src, length);
+            if (length > 0)
+                qt_memconvert(dest, src, length);
         } else {
             while (length) {
                 int l = qMin(image_width - sx, length);
@@ -7812,6 +7818,15 @@ void qInitDrawhelperAsm()
 
 #ifdef QT_HAVE_SSE2
         if (features & SSE2) {
+            extern void QT_FASTCALL comp_func_SourceOver_sse2(uint *destPixels,
+                                                  const uint *srcPixels,
+                                                  int length,
+                                                  uint const_alpha);
+            extern void QT_FASTCALL comp_func_solid_SourceOver_sse2(uint *destPixels, int length, uint color, uint const_alpha);
+
+            functionForModeAsm[0] = comp_func_SourceOver_sse2;
+            functionForModeSolidAsm[0] = comp_func_solid_SourceOver_sse2;
+
             extern void qt_blend_rgb32_on_rgb32_sse2(uchar *destPixels, int dbpl,
                                                      const uchar *srcPixels, int sbpl,
                                                      int w, int h,
@@ -7820,7 +7835,6 @@ void qInitDrawhelperAsm()
                                                        const uchar *srcPixels, int sbpl,
                                                        int w, int h,
                                                        int const_alpha);
-
 
             qBlendFunctions[QImage::Format_RGB32][QImage::Format_RGB32] = qt_blend_rgb32_on_rgb32_sse2;
             qBlendFunctions[QImage::Format_ARGB32_Premultiplied][QImage::Format_RGB32] = qt_blend_rgb32_on_rgb32_sse2;
@@ -7885,8 +7899,12 @@ void qInitDrawhelperAsm()
             qDrawHelper[QImage::Format_RGB16].alphamapBlit = qt_alphamapblit_quint16_neon;
 
             functionForMode_C[QPainter::CompositionMode_SourceOver] = qt_blend_argb32_on_argb32_scanline_neon;
+            functionForModeSolid_C[QPainter::CompositionMode_SourceOver] = comp_func_solid_SourceOver_neon;
             destFetchProc[QImage::Format_RGB16] = qt_destFetchRGB16_neon;
             destStoreProc[QImage::Format_RGB16] = qt_destStoreRGB16_neon;
+
+            qMemRotateFunctions[QImage::Format_RGB16][0] = qt_memrotate90_16_neon;
+            qMemRotateFunctions[QImage::Format_RGB16][2] = qt_memrotate270_16_neon;
         }
 #endif
 

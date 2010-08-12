@@ -983,19 +983,9 @@ bool QMenuPrivate::mouseEventTaken(QMouseEvent *e)
     return false;
 }
 
-class ExceptionGuard
-{
-public:
-    inline ExceptionGuard(bool *w = 0) : watched(w) { Q_ASSERT(!(*watched)); *watched = true; }
-    inline ~ExceptionGuard() { *watched = false; }
-    inline operator bool() { return *watched; }
-private:
-    bool *watched;
-};
-
 void QMenuPrivate::activateCausedStack(const QList<QPointer<QWidget> > &causedStack, QAction *action, QAction::ActionEvent action_e, bool self)
 {
-    ExceptionGuard guard(&activationRecursionGuard);
+    QBoolBlocker guard(activationRecursionGuard);
 #ifdef QT3_SUPPORT
     const int actionId = q_func()->findIdForAction(action);
 #endif
@@ -1834,7 +1824,7 @@ void QMenu::popup(const QPoint &p, QAction *atAction)
     QSize size = sizeHint();
     QRect screen;
 #ifndef QT_NO_GRAPHICSVIEW
-    bool isEmbedded = d->nearestGraphicsProxyWidget(this);
+    bool isEmbedded = !bypassGraphicsProxyWidget(this) && d->nearestGraphicsProxyWidget(this);
     if (isEmbedded)
         screen = d->popupGeometry(this);
     else
@@ -2803,7 +2793,9 @@ void QMenu::mouseMoveEvent(QMouseEvent *e)
 
     QAction *action = d->actionAt(e->pos());
     if (!action) {
-        if (d->hasHadMouse)
+        if (d->hasHadMouse
+            && (!d->currentAction
+                || !(d->currentAction->menu() && d->currentAction->menu()->isVisible())))
             d->setCurrentAction(0);
         return;
     } else if(e->buttons()) {

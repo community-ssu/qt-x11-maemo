@@ -414,11 +414,13 @@ bool PluginView::platformStart()
 
 void PluginView::platformDestroy()
 {
-    QWebPageClient* client = m_parentFrame->view()->hostWindow()->platformPageClient();
-    if (client && qobject_cast<QGraphicsWebView*>(client->pluginParent()))
-        delete static_cast<PluginContainerSymbian*>(platformPluginWidget())->proxy();
-    else
-        delete platformPluginWidget();
+    if (platformPluginWidget()) {
+        PluginContainerSymbian* container = static_cast<PluginContainerSymbian*>(platformPluginWidget());
+        if (container && container->proxy())
+            delete container->proxy();
+        else
+            delete container;
+    }
 }
 
 void PluginView::halt()

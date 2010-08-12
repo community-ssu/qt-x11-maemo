@@ -42,6 +42,7 @@
 #include "private/qdeclarativetransitionmanager_p_p.h"
 
 #include "private/qdeclarativestate_p_p.h"
+#include "private/qdeclarativestate_p.h"
 
 #include <qdeclarativebinding_p.h>
 #include <qdeclarativeglobal_p.h>
@@ -150,9 +151,9 @@ void QDeclarativeTransitionManager::transition(const QList<QDeclarativeAction> &
                 QDeclarativePropertyPrivate::write(action.property, action.toValue, QDeclarativePropertyPrivate::BypassInterceptor | QDeclarativePropertyPrivate::DontRemoveBinding);
             } else if (action.event->isReversable()) {
                 if (action.reverseEvent)
-                    action.event->reverse();
+                    action.event->reverse(QDeclarativeActionEvent::FastForward);
                 else
-                    action.event->execute();
+                    action.event->execute(QDeclarativeActionEvent::FastForward);
             }
         }
 
@@ -232,6 +233,7 @@ void QDeclarativeTransitionManager::transition(const QList<QDeclarativeAction> &
             action.property.write(action.toValue);
         }
     }
+#ifndef QT_NO_DEBUG_STREAM
     if (stateChangeDebug()) {
         foreach(const QDeclarativeAction &action, applyList) {
             if (action.event)
@@ -242,6 +244,7 @@ void QDeclarativeTransitionManager::transition(const QList<QDeclarativeAction> &
                            << "To:" << action.toValue;
         }
     }
+#endif
     if (!transition)
         d->applyBindings();
 }

@@ -286,13 +286,8 @@ bool QHttpNetworkConnectionPrivate::handleAuthenticateChallenge(QAbstractSocket 
 
     resend = false;
     //create the response header to be used with QAuthenticatorPrivate.
-    QHttpResponseHeader responseHeader;
     QList<QPair<QByteArray, QByteArray> > fields = reply->header();
-    QList<QPair<QByteArray, QByteArray> >::const_iterator it = fields.constBegin();
-    while (it != fields.constEnd()) {
-        responseHeader.addValue(QString::fromLatin1(it->first), QString::fromUtf8(it->second));
-        it++;
-    }
+
     //find out the type of authentication protocol requested.
     QAuthenticatorPrivate::Method authMethod = reply->d_func()->authenticationMethod(isProxy);
     if (authMethod != QAuthenticatorPrivate::None) {
@@ -310,7 +305,7 @@ bool QHttpNetworkConnectionPrivate::handleAuthenticateChallenge(QAbstractSocket 
         if (auth->isNull())
             auth->detach();
         QAuthenticatorPrivate *priv = QAuthenticatorPrivate::getPrivate(*auth);
-        priv->parseHttpResponse(responseHeader, isProxy);
+        priv->parseHttpResponse(fields, isProxy);
 
         if (priv->phase == QAuthenticatorPrivate::Done) {
             if ((isProxy && pendingProxyAuthSignal) ||(!isProxy && pendingAuthSignal)) {
@@ -343,9 +338,16 @@ bool QHttpNetworkConnectionPrivate::handleAuthenticateChallenge(QAbstractSocket 
                 copyCredentials(i,  auth, isProxy);
                 QMetaObject::invokeMethod(q, "_q_restartAuthPendingRequests", Qt::QueuedConnection);
             }
+        } else if (priv->phase == QAuthenticatorPrivate::Start) {
+            // If the url's authenticator has a 'user' set we will end up here (phase is only set to 'Done' by
+            // parseHttpResponse above if 'user' is empty). So if credentials were supplied with the request,
+            // such as in the case of an XMLHttpRequest, this is our only opportunity to cache them.
+            emit q->cacheCredentials(reply->request(), auth, q);
         }
-        // changing values in QAuthenticator will reset the 'phase'
-        if (priv->phase == QAuthenticatorPrivate::Done) {
+        // - Changing values in QAuthenticator will reset the 'phase'.
+        // - If withCredentials has been set to false (e.g. by QtWebKit for a cross-origin XMLHttpRequest) then
+        //   we need to bail out if authentication is required.
+        if (priv->phase == QAuthenticatorPrivate::Done || !reply->request().withCredentials()) {
             // authentication is cancelled, send the current contents to the user.
             emit channels[i].reply->headerChanged();
             emit channels[i].reply->readyRead();
@@ -489,7 +491,11 @@ void QHttpNetworkConnectionPrivate::fillPipeline(QAbstractSocket *socket)
 
     int i = indexOf(socket);
 
-    if (! (defaultPipelineLength - channels[i].alreadyPipelinedRequests.length() >= 2)) {
+    // return fast if there was no reply right now processed
+    if (channels[i].reply == 0)
+        return;
+
+    if (! (defaultPipelineLength - channels[i].alreadyPipelinedRequests.length() >= defaultRePipelineLength)) {
         return;
     }
 
@@ -712,6 +718,7 @@ void QHttpNetworkConnectionPrivate::removeReply(QHttpNetworkReply *reply)
 
 // This function must be called from the event loop. The only
 // exception is documented in QHttpNetworkConnectionPrivate::queueRequest
+// although it is called _q_startNextRequest, it will actually start multiple requests when possible
 void QHttpNetworkConnectionPrivate::_q_startNextRequest()
 {
     //resend the necessary ones.
@@ -729,26 +736,23 @@ void QHttpNetworkConnectionPrivate::_q_startNextRequest()
 
     // dequeue new ones
 
-    QAbstractSocket *socket = 0;
+    // return fast if there is nothing to do
+    if (highPriorityQueue.isEmpty() && lowPriorityQueue.isEmpty())
+        return;
+    // try to get a free AND connected socket
     for (int i = 0; i < channelCount; ++i) {
-        QAbstractSocket *chSocket = channels[i].socket;
-        // try to get a free AND connected socket
         if (!channels[i].isSocketBusy() && channels[i].socket->state() == QAbstractSocket::ConnectedState) {
-            socket = chSocket;
-            dequeueAndSendRequest(socket);
-            break;
+            dequeueAndSendRequest(channels[i].socket);
         }
     }
 
-    if (!socket) {
-        for (int i = 0; i < channelCount; ++i) {
-            QAbstractSocket *chSocket = channels[i].socket;
-            // try to get a free unconnected socket
-            if (!channels[i].isSocketBusy()) {
-                socket = chSocket;
-                dequeueAndSendRequest(socket);
-                break;
-            }
+    // return fast if there is nothing to do
+    if (highPriorityQueue.isEmpty() && lowPriorityQueue.isEmpty())
+        return;
+    // try to get a free unconnected socket
+    for (int i = 0; i < channelCount; ++i) {
+        if (!channels[i].isSocketBusy()) {
+            dequeueAndSendRequest(channels[i].socket);
         }
     }
 

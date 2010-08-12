@@ -48,6 +48,11 @@
 #include <QtCore/qfileinfo.h>
 #include <QtCore/qdir.h>
 
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
+
 inline QUrl TEST_FILE(const QString &filename)
 {
     QFileInfo fileInfo(__FILE__);
@@ -310,7 +315,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object()
         QCOMPARE(prop.propertyTypeName(), "int");
         QCOMPARE(QString(prop.property().name()), QString("defaultProperty"));
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == 0);
-        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>:-1: Unable to assign null to int");
+        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>: Unable to assign null to int");
         QVERIFY(QDeclarativePropertyPrivate::setBinding(prop, binding.data()) == 0);
         QVERIFY(binding != 0);
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == binding.data());
@@ -409,7 +414,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string()
         QCOMPARE(prop.propertyTypeName(), "int");
         QCOMPARE(QString(prop.property().name()), QString("defaultProperty"));
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == 0);
-        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>:-1: Unable to assign null to int");
+        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>: Unable to assign null to int");
         QVERIFY(QDeclarativePropertyPrivate::setBinding(prop, binding.data()) == 0);
         QVERIFY(binding != 0);
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == binding.data());
@@ -602,7 +607,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_context()
         QCOMPARE(prop.propertyTypeName(), "int");
         QCOMPARE(QString(prop.property().name()), QString("defaultProperty"));
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == 0);
-        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>:-1: Unable to assign null to int");
+        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>: Unable to assign null to int");
         QVERIFY(QDeclarativePropertyPrivate::setBinding(prop, binding.data()) == 0);
         QVERIFY(binding != 0);
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == binding.data());
@@ -701,7 +706,7 @@ void tst_qdeclarativeproperty::qmlmetaproperty_object_string_context()
         QCOMPARE(prop.propertyTypeName(), "int");
         QCOMPARE(QString(prop.property().name()), QString("defaultProperty"));
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == 0);
-        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>:-1: Unable to assign null to int");
+        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>: Unable to assign null to int");
         QVERIFY(QDeclarativePropertyPrivate::setBinding(prop, binding.data()) == 0);
         QVERIFY(binding != 0);
         QVERIFY(QDeclarativePropertyPrivate::binding(prop) == binding.data());

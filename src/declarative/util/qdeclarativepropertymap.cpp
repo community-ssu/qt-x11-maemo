@@ -98,28 +98,31 @@ void QDeclarativePropertyMapMetaObject::propertyCreated(int, QMetaPropertyBuilde
 /*!
     \class QDeclarativePropertyMap
     \since 4.7
-    \brief The QDeclarativePropertyMap class allows you to set key-value pairs that can be used in bindings.
+    \brief The QDeclarativePropertyMap class allows you to set key-value pairs that can be used in QML bindings.
 
     QDeclarativePropertyMap provides a convenient way to expose domain data to the UI layer.
     The following example shows how you might declare data in C++ and then
     access it in QML.
 
-    Setup in C++:
+    In the C++ file:
     \code
-    //create our data
+    // create our data
     QDeclarativePropertyMap ownerData;
     ownerData.insert("name", QVariant(QString("John Smith")));
     ownerData.insert("phone", QVariant(QString("555-5555")));
 
-    //expose it to the UI layer
-    QDeclarativeContext *ctxt = view->bindContext();
-    ctxt->setProperty("owner", &data);
+    // expose it to the UI layer
+    QDeclarativeView view;
+    QDeclarativeContext *ctxt = view.rootContext();
+    ctxt->setContextProperty("owner", &ownerData);
+
+    view.setSource(QUrl::fromLocalFile("main.qml"));
+    view.show();
     \endcode
 
-    Then, in QML:
+    Then, in \c main.qml:
     \code
-    Text { text: owner.name }
-    Text { text: owner.phone }
+    Text { text: owner.name + " " + owner.phone }
     \endcode
 
     The binding is dynamic - whenever a key's value is updated, anything bound to that
@@ -265,7 +268,7 @@ QVariant &QDeclarativePropertyMap::operator[](const QString &key)
 
     Same as value().
 */
-const QVariant QDeclarativePropertyMap::operator[](const QString &key) const
+QVariant QDeclarativePropertyMap::operator[](const QString &key) const
 {
     return value(key);
 }

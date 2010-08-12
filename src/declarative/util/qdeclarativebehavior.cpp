@@ -48,6 +48,7 @@
 #include <qdeclarativeinfo.h>
 #include <qdeclarativeproperty_p.h>
 #include <qdeclarativeguard_p.h>
+#include <qdeclarativeengine_p.h>
 
 #include <private/qobject_p.h>
 
@@ -57,12 +58,16 @@ class QDeclarativeBehaviorPrivate : public QObjectPrivate
 {
     Q_DECLARE_PUBLIC(QDeclarativeBehavior)
 public:
-    QDeclarativeBehaviorPrivate() : animation(0), enabled(true) {}
+    QDeclarativeBehaviorPrivate() : animation(0), enabled(true), finalized(false)
+      , blockRunningChanged(false) {}
 
     QDeclarativeProperty property;
     QVariant currentValue;
+    QVariant targetValue;
     QDeclarativeGuard<QDeclarativeAbstractAnimation> animation;
     bool enabled;
+    bool finalized;
+    bool blockRunningChanged;
 };
 
 /*!
@@ -70,26 +75,24 @@ public:
     \since 4.7
     \brief The Behavior element allows you to specify a default animation for a property change.
 
-    Behaviors provide one way to specify \l{qdeclarativeanimation.html}{animations} in QML.
+    A Behavior defines the default animation to be applied whenever a 
+    particular property value changes.
 
-    In the example below, the rectangle will use a bounce easing curve over 200 millisecond for any changes to its y property:
-    \code
-    Rectangle {
-        width: 20; height: 20
-        color: "#00ff00"
-        y: 200  // initial value
-        Behavior on y {
-            NumberAnimation {
-                easing.type: "OutBounce"
-                easing.amplitude: 100
-                duration: 200
-            }
-        }
-    }
-    \endcode
+    For example, the following Behavior defines a NumberAnimation to be run
+    whenever the \l Rectangle's \c width value changes. When the MouseArea
+    is clicked, the \c width is changed, triggering the behavior's animation:
 
-    Currently only a single Behavior may be specified for a property;
-    this Behavior can be enabled and disabled via the \l{enabled} property.
+    \snippet doc/src/snippets/declarative/behavior.qml 0
+
+    Note that a property cannot have more than one assigned Behavior. To provide
+    multiple animations within a Behavior, use ParallelAnimation or
+    SequentialAnimation.
+
+    If a \l{QML States}{state change} has a \l Transition that matches the same property as a
+    Behavior, the \l Transition animation overrides the Behavior for that
+    state change.
+
+    \sa {QML Animation}, {declarative/animation/behaviors}{Behavior example}, QtDeclarative
 */
 
 
@@ -106,7 +109,7 @@ QDeclarativeBehavior::~QDeclarativeBehavior()
     \qmlproperty Animation Behavior::animation
     \default
 
-    The animation to use when the behavior is triggered.
+    This property holds the animation to run when the behavior is triggered.
 */
 
 QDeclarativeAbstractAnimation *QDeclarativeBehavior::animation()
@@ -127,12 +130,27 @@ void QDeclarativeBehavior::setAnimation(QDeclarativeAbstractAnimation *animation
     if (d->animation) {
         d->animation->setDefaultTarget(d->property);
         d->animation->setDisableUserControl();
+        connect(d->animation->qtAnimation(),
+                SIGNAL(stateChanged(QAbstractAnimation::State,QAbstractAnimation::State)),
+                this,
+                SLOT(qtAnimationStateChanged(QAbstractAnimation::State,QAbstractAnimation::State)));
     }
 }
 
+
+void QDeclarativeBehavior::qtAnimationStateChanged(QAbstractAnimation::State newState,QAbstractAnimation::State)
+{
+    Q_D(QDeclarativeBehavior);
+    if (!d->blockRunningChanged)
+        d->animation->notifyRunningChanged(newState == QAbstractAnimation::Running);
+}
+
+
 /*!
     \qmlproperty bool Behavior::enabled
-    Whether the Behavior will be triggered when the property it is tracking changes.
+
+    This property holds whether the behavior will be triggered when the tracked
+    property changes value.
 
     By default a Behavior is enabled.
 */
@@ -156,15 +174,23 @@ void QDeclarativeBehavior::write(const QVariant &value)
 {
     Q_D(QDeclarativeBehavior);
     qmlExecuteDeferred(this);
-    if (!d->animation || !d->enabled) {
+    if (!d->animation || !d->enabled || !d->finalized) {
         QDeclarativePropertyPrivate::write(d->property, value, QDeclarativePropertyPrivate::BypassInterceptor | QDeclarativePropertyPrivate::DontRemoveBinding);
+        d->targetValue = value;
         return;
     }
 
-    d->currentValue = d->property.read();
+    if (d->animation->isRunning() && value == d->targetValue)
+        return;
 
-    if (d->animation->qtAnimation()->duration() != -1)
+    d->currentValue = d->property.read();
+    d->targetValue = value;
+
+    if (d->animation->qtAnimation()->duration() != -1
+            && d->animation->qtAnimation()->state() != QAbstractAnimation::Stopped) {
+        d->blockRunningChanged = true;
         d->animation->qtAnimation()->stop();
+    }
 
     QDeclarativeStateOperation::ActionList actions;
     QDeclarativeAction action;
@@ -176,6 +202,7 @@ void QDeclarativeBehavior::write(const QVariant &value)
     QList<QDeclarativeProperty> after;
     d->animation->transition(actions, after, QDeclarativeAbstractAnimation::Forward);
     d->animation->qtAnimation()->start();
+    d->blockRunningChanged = false;
     if (!after.contains(d->property))
         QDeclarativePropertyPrivate::write(d->property, value, QDeclarativePropertyPrivate::BypassInterceptor | QDeclarativePropertyPrivate::DontRemoveBinding);    
 }
@@ -187,6 +214,15 @@ void QDeclarativeBehavior::setTarget(const QDeclarativeProperty &property)
     d->currentValue = property.read();
     if (d->animation)
         d->animation->setDefaultTarget(property);
+
+    QDeclarativeEnginePrivate *engPriv = QDeclarativeEnginePrivate::get(qmlEngine(this));
+    engPriv->registerFinalizedParserStatusObject(this, this->metaObject()->indexOfSlot("componentFinalized()"));
+}
+
+void QDeclarativeBehavior::componentFinalized()
+{
+    Q_D(QDeclarativeBehavior);
+    d->finalized = true;
 }
 
 QT_END_NAMESPACE

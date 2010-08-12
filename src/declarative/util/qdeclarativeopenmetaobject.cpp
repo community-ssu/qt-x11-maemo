@@ -161,6 +161,12 @@ public:
         prop.second = true;
     }
 
+    inline bool hasData(int idx) const {
+        if (idx >= data.count())
+            return false;
+        return data[idx].second;
+    }
+
     bool autoCreate;
     QDeclarativeOpenMetaObject *q;
     QAbstractDynamicMetaObject *parent;
@@ -295,6 +301,12 @@ void QDeclarativeOpenMetaObject::setValue(const QByteArray &name, const QVariant
     activate(d->object, id + d->type->d->signalOffset, 0);
 }
 
+// returns true if this value has been initialized by a call to either value() or setValue()
+bool QDeclarativeOpenMetaObject::hasValue(int id) const
+{
+    return d->hasData(id);
+}
+
 void QDeclarativeOpenMetaObject::setCached(bool c)
 {
     if (c == d->cacheProperties || !d->type->d->engine)
@@ -305,7 +317,7 @@ void QDeclarativeOpenMetaObject::setCached(bool c)
     QDeclarativeData *qmldata = QDeclarativeData::get(d->object, true);
     if (d->cacheProperties) {
         if (!d->type->d->cache)
-            d->type->d->cache = QDeclarativePropertyCache::create(d->type->d->engine, this);
+            d->type->d->cache = new QDeclarativePropertyCache(d->type->d->engine, this);
         qmldata->propertyCache = d->type->d->cache;
         d->type->d->cache->addref();
     } else {

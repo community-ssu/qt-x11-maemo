@@ -80,6 +80,7 @@ class QMakeProject
 
     bool recursive;
     bool own_prop;
+    bool backslashWarned;
     QString pfile, cfile;
     QMakeProperty *prop;
     void reset();
@@ -117,7 +118,7 @@ public:
     ~QMakeProject();
 
     enum { ReadCache=0x01, ReadConf=0x02, ReadCmdLine=0x04, ReadProFile=0x08,
-           ReadPostFiles=0x10, ReadFeatures=0x20, ReadConfigs=0x40, ReadAll=0xFF };
+           ReadFeatures=0x20, ReadConfigs=0x40, ReadAll=0xFF };
     inline bool parse(const QString &text) { return parse(text, vars); }
     bool read(const QString &project, uchar cmd=ReadAll);
     bool read(uchar cmd=ReadAll);
@@ -126,7 +127,6 @@ public:
     QStringList userTestFunctions() { return testFunctions.keys(); }
 
     QString projectFile();
-    QString configFile();
     inline QMakeProperty *properties() { return prop; }
 
     bool doProjectTest(QString str, QMap<QString, QStringList> &place);
@@ -150,11 +150,11 @@ public:
     bool isActiveConfig(const QString &x, bool regex=false,
                         QMap<QString, QStringList> *place=NULL);
 
-    bool isSet(const QString &v);
-    bool isEmpty(const QString &v);
-    QStringList &values(const QString &v);
-    QString first(const QString &v);
-    QMap<QString, QStringList> &variables();
+    bool isSet(const QString &v); // No compat mapping, no magic variables
+    bool isEmpty(const QString &v); // With compat mapping, but no magic variables
+    QStringList &values(const QString &v); // With compat mapping and magic variables
+    QString first(const QString &v); // ditto
+    QMap<QString, QStringList> &variables(); // No compat mapping and magic, obviously
 
     bool isRecursive() const { return recursive; }
 
@@ -173,14 +173,8 @@ inline QString QMakeProject::projectFile()
     return pfile;
 }
 
-inline QString QMakeProject::configFile()
-{ return cfile; }
-
 inline QStringList &QMakeProject::values(const QString &v)
 { return values(v, vars); }
-
-inline bool QMakeProject::isEmpty(const QString &v)
-{ return !isSet(v) || values(v).isEmpty(); }
 
 inline bool QMakeProject::isSet(const QString &v)
 { return vars.contains(v); }

@@ -48,6 +48,9 @@
 #include <qaudio.h>
 #include <qaudioformat.h>
 
+#if defined(Q_OS_SYMBIAN)
+#define SRCDIR ""
+#endif
 
 class tst_QAudioOutput : public QObject
 {
@@ -131,7 +134,7 @@ void tst_QAudioOutput::notifyInterval()
 void tst_QAudioOutput::pullFile()
 {
     if(available) {
-        QFile file(SRCDIR "4.wav");
+        QFile file(SRCDIR"4.wav");
         QVERIFY(file.exists());
         file.open(QIODevice::ReadOnly);
 
@@ -178,10 +181,9 @@ void tst_QAudioOutput::pullFile()
 void tst_QAudioOutput::pushFile()
 {
     if(available) {
-        QFile file(SRCDIR "4.wav");
+        QFile file(SRCDIR"4.wav");
         QVERIFY(file.exists());
-        file.open(QIODevice::ReadOnly);
-
+        QVERIFY(file.open(QIODevice::ReadOnly));
         const qint64 fileSize = file.size();
 
         QIODevice* feed = audio->start();
@@ -192,7 +194,13 @@ void tst_QAudioOutput::pushFile()
         qint64 counter=0;
         qint64 written=0;
         while(written < fileSize) {
-            written+=feed->write(buffer+written,fileSize-written);
+            if(int write = feed->write(buffer+written,fileSize-written))
+                written += write;
+            else
+            {
+                QString error = QString("Can't write to QIODevice: %1 Audio Error: %2").arg(feed->errorString(), QString::number((int)audio->error()));
+                QFAIL(error.toLatin1());
+            }
             QTest::qWait(20);
             counter++;
         }

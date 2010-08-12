@@ -1,3 +1,3496 @@
+2010-06-14  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Stack overflow when converting navigator object to QVariant
+        https://bugs.webkit.org/show_bug.cgi?id=40572
+
+        Protect against infinite recursion in JSValue->QVariant conversion.
+        This fixes a crash when trying to convert MimeType objects (they
+        recurse infinitely and on-the-fly via the enabledPlugin property.)
+
+        * bridge/qt/qt_runtime.cpp:
+        (JSC::Bindings::convertValueToQVariant):
+
+2010-03-30  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Brady Eidson.
+
+        REGRESSION (r56439) - Crash when a renderer for a file upload control
+        with a selected file is recreated
+        https://bugs.webkit.org/show_bug.cgi?id=36723
+
+        RenderFileUploadControl::chooseIconForFiles was called before
+        m_fileChooser was initialized.
+
+        * platform/FileChooser.cpp:
+        (WebCore::FileChooser::FileChooser): Introduce m_isInitializing flag to
+          avoid FileChooserClient::repaint() call.
+        (WebCore::FileChooser::loadIcon):
+        (WebCore::FileChooser::iconLoaded):
+        * platform/FileChooser.h: Add a FielChooser parameter to
+          FileChooserClient::chooseIconForFiles().
+        * rendering/RenderFileUploadControl.cpp:
+        (WebCore::RenderFileUploadControl::chooseIconForFiles):
+        (WebCore::RenderFileUploadControl::paintObject): Add an assertion.
+        * rendering/RenderFileUploadControl.h:
+
+2010-07-06  Nikolas Zimmermann  <nzimmermann@rim.com>
+
+        Reviewed by Dirk Schulze.
+
+        <use> on <font-face> causes crashes, if SVGUseElement gets detached
+        https://bugs.webkit.org/show_bug.cgi?id=41621
+
+        Do not call removeFromMappedElementSheet() from the SVGFontFaceElement destructor,
+        as that can potentially cause the element to be reattached while destructing.
+
+        In order to fix the crash in the testcase, the order of calling the base-class detach
+        method in SVGUseElement and the instance/shadow tree destruction has to be reversed,
+        matching the order in removedFromDocument().
+
+        Test: svg/custom/use-font-face-crash.svg
+
+        * svg/SVGFontFaceElement.cpp:
+        (WebCore::SVGFontFaceElement::~SVGFontFaceElement): Remove removeFromMappedElementSheet() call.
+        * svg/SVGUseElement.cpp:
+        (WebCore::SVGUseElement::detach): Reverse order of calling base-class detach method and instance/shadow tree destruction.
+
+2010-07-06  Nikolas Zimmermann  <nzimmermann@rim.com>
+
+        Reviewed by Darin Adler.
+
+        <use> on <font-face> causes crashes, if SVGUseElement gets detached
+        https://bugs.webkit.org/show_bug.cgi?id=41621
+
+        Do not call removeFromMappedElementSheet() from the destructor, as the call to document()->updateStyleSelector() that can potentially
+        cause the element to be reattached while destructing. It's not needed at all, because removedFromDocument() is called before destruction,
+        which already calls removeFromMappedElementSheet() - at this point it's still safe to update the style selector.
+
+        The crash is reproducable when using <use> on <font-face>.
+
+        Test: svg/custom/use-font-face-crash.svg
+
+        * svg/SVGFontFaceElement.cpp:
+        (WebCore::SVGFontFaceElement::~SVGFontFaceElement):
+
+2010-07-05  Nikolas Zimmermann  <nzimmermann@rim.com>
+
+        Reviewed by Darin Adler.
+
+        Memory corruption with SVG <use> element
+        https://bugs.webkit.org/show_bug.cgi?id=40994
+
+        Fix race condition in svgAttributeChanged. Never call svgAttributeChanged() from attributeChanged()
+        when we're synchronizing SVG attributes. It leads to either unnecessary extra work being done or
+        crashes. Especially together with <polyline>/<polygon> which always synchronize the SVGAnimatedPoints
+        datastructure with the points attribute, no matter if there are changes are not. This should be
+        furhter optimized, but this fix is sane and fixes the root of the evil races.
+
+        Test: svg/custom/use-property-synchronization-crash.svg
+
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::attributeChanged):
+
+2010-06-11  Abhishek Arya  <inferno@chromium.org>
+
+        Reviewed by David Hyatt.
+
+        Don't process floats if parent node is not a RenderBlock.
+        https://bugs.webkit.org/show_bug.cgi?id=40033
+
+        Test: svg/text/clear-floats-crash.svg
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::clearFloats):
+
+2010-06-23  Nikolas Zimmermann  <nzimmermann@rim.com>
+
+        Reviewed by Eric Seidel.
+
+        Reproducible crash in com.apple.WebCore 0x01ed3784 WebCore::RenderLineBoxList::appendLineBox(WebCore::InlineFlowBox*) + 36
+        https://bugs.webkit.org/show_bug.cgi?id=40953
+
+        REGRESSION (r58209-58231): Memory corruption with invalid SVG
+        https://bugs.webkit.org/show_bug.cgi?id=40173
+
+        Fix several crashes, all related to <foreignObject> and/or invalid SVG documents.
+        - Only allow <svg> nodes, as direct children of a <foreignObject>, not any other "partial" SVG content.
+        - Assure to create RenderSVGRoot objects for <svg> nodes in <foreignObject>, treat them as "outermost SVG elements".
+        - Never allow any partial SVG content to appear in any document. Only <svg> elements are allowed.
+
+        Tests: svg/custom/bug45331.svg
+               svg/foreignObject/disallowed-svg-nodes-as-direct-children.svg
+               svg/foreignObject/no-crash-with-svg-content-in-html-document.svg
+               svg/foreignObject/svg-document-as-direct-child.svg
+               svg/foreignObject/svg-document-in-html-document.svg
+               svg/foreignObject/text-tref-02-b.svg
+
+        * dom/Element.cpp: Added childShouldCreateRenderer, with ENABLE(SVG) guards.
+        (WebCore::Element::childShouldCreateRenderer): Only create a renderer for a SVG child, if we're a SVG element, or if the child is a <svg> element.
+        * dom/Element.h: Added childShouldCreateRenderer, with ENABLE(SVG) guards.
+        * svg/SVGForeignObjectElement.cpp:
+        (WebCore::SVGForeignObjectElement::childShouldCreateRenderer): Disallow arbitary SVG content, only <svg> elements are allowed as direct children of a <foreignObject>
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::isOutermostSVG): Be sure to create RenderSVGRoot objects for <svg> elements inside <foreignObject>
+
+2010-06-10  Abhishek Arya  <inferno@chromium.org>
+
+        Reviewed by Dave Hyatt.
+
+        Do not render CSS Styles :first-letter and :first-line in a SVG text element context. 
+        https://bugs.webkit.org/show_bug.cgi?id=40031
+
+        Test: svg/text/text-style-invalid.svg
+
+        * rendering/RenderSVGText.cpp:
+        (WebCore::RenderSVGText::firstLineBlock):
+        (WebCore::RenderSVGText::updateFirstLetter):
+        * rendering/RenderSVGText.h:
+
+2010-07-01  Justin Schuh  <jschuh@chromium.org>
+
+        Reviewed by Dan Bernstein.
+
+        Prevent crash on counter destruction
+        https://bugs.webkit.org/show_bug.cgi?id=40032
+
+        Added counter destruction to RenderWidget::destroy()
+
+        Test: fast/css/counters/destroy-counter-crash.html
+
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::destroy):
+
+2010-06-29  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Darin Adler.
+
+        <rdar://problem/7975842> Certain text is repeated after using splitText()
+
+        Tests: fast/text/setData-dirty-lines.html
+               fast/text/splitText-dirty-lines.html
+
+        * dom/CharacterData.cpp:
+        (WebCore::CharacterData::setData): Call RenderText::setTextWithOffset() rather than
+        setText(), because only the former correctly dirties line boxes.
+        * dom/Text.cpp:
+        (WebCore::Text::splitText): Ditto.
+
+2010-06-25  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        <rdar://problem/8000667> Certain text is repeated before and after a line break
+
+        Test: fast/text/bidi-explicit-embedding-past-end.html
+
+        * platform/text/BidiResolver.h:
+        (WebCore::::createBidiRunsForLine): Committing explicit embedding past the end of the range
+        creates BidiRuns up to the end of the range, so at that point, we can stop iterating.
+
+2010-06-10  Tony Chang  <tony@chromium.org>
+
+        Reviewed by Kent Tamura.
+
+        crash when focus is changed while trying to focus next element
+        https://bugs.webkit.org/show_bug.cgi?id=40407
+
+        Test: fast/events/focus-change-crash.html
+
+        * dom/Element.cpp:
+        (WebCore::Element::focus):
+
+2010-07-01  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Clamp color stops passed to QGradient to 1.0
+        [https://bugs.webkit.org/show_bug.cgi?id=41484
+
+        Fixes an issue where color stops would be silently dropped from radial gradients.
+
+        * platform/graphics/qt/GradientQt.cpp:
+        (WebCore::Gradient::platformGradient):
+
+2010-07-07  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        Reviewed by Darin Adler.
+
+        Prevent assertion/duplicate loads for non-deferred subtitute-data loads
+
+        https://bugs.webkit.org/show_bug.cgi?id=30879
+
+        MainResourceLoader uses the member m_initialRequest to store requests for future
+        deferred loads. When doing the actual load in handleDataLoadNow(), we therefore
+        have to clear this request so that subsequent entries into the loader will not
+        start yet another load.
+
+        This can happen as a result of a PageGroupLoadDeferrer going out of scope when
+        returning from Chrome::runJavaScriptAlert(), which calls setDeferredLoading(false),
+        but only in the case of using both substitute-data and non-deferred main resource
+        load together. That's why two new DRT functions were added:
+
+         * queueLoadHTMLString()
+         * setDeferMainResourceLoad()
+
+        The change adds DRT hooks for Mac, Win and Qt for these two functions. For Mac
+        and Win the hook uses new SPI in WebDataSource. For Qt a new static member was
+        added to the FrameLoaderClientQt and accessed though DumpRenderTreeSupportQt.
+
+        Test: fast/loader/non-deferred-substitute-load.html
+
+        * loader/MainResourceLoader.cpp:
+        (WebCore::MainResourceLoader::handleDataLoadNow):
+
+2010-07-16  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Spatial navigation: do not consider outline for focusable element boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=42474
+
+        Test: fast/events/spatial-navigation/snav-zero-margin-content.html
+
+        Currently in WebCore::renderRectRelativeToRootDocument function, we are calling
+        RenderObject::absoluteClippedOverflowRect to obtain the rect boundary of a given
+        renderer/element. This method deals with outline, which is out of elements boundary.
+        It makes spatial navigation to fail on common sites like google.gom: "Web, Images, Map, etc"
+        are inaccessible.
+
+        Patch replaces RenderObject::absoluteClippedOverflowRect by Node::getRect,
+        which returns only the absolute bounding box rect of the Element.
+
+        * page/SpatialNavigation.cpp:
+        (WebCore::renderRectRelativeToRootDocument):
+        (WebCore::checkNegativeCoordsForNode):
+
+2010-07-21  Kristian Amlie <kristian.amlie@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Added automatic sqlite extraction for Symbian to QtWebKit.
+
+        Also added sqlite detection in case sqlite is not present in the SDK.
+        This is possible if WebKit is compiled standalone.
+
+        The inclusion part is a consequence of commit c578c6c1d6d in the Qt
+        repository. It will not work on Qt versions < 4.7.1, but that is ok,
+        since the only build system it will affect is marked as experimental
+        in the whole 4.7 series.
+
+        * WebCore.pro:
+
+2010-05-14  Abhishek Arya  <inferno@chromium.org>
+
+        Reviewed by David Hyatt.
+
+        Move the m_width(Length) and m_columns(RenderTable::ColumnStruct)
+        vector out-of-bounds check out of the ASSERT into the main code.
+        https://bugs.webkit.org/show_bug.cgi?id=38261
+
+        Test: fast/table/fixed-table-layout-large-colspan-crash.html
+
+        * rendering/FixedTableLayout.cpp:
+        (WebCore::FixedTableLayout::calcWidthArray):
+
+2010-05-21  Beth Dakin  <bdakin@apple.com>
+
+        Reviewed by Darin Adler.
+
+        Fix for <rdar://problem/8009118> Crash in WebCore::toAlphabetic() 
+        while running MangleMe
+        -and corresponding-
+        https://bugs.webkit.org/show_bug.cgi?id=39508
+
+        The math was slightly off here, and we wound up trying to access an 
+        array at index -1 in some cases. We need to decrement numberShadow 
+        rather than subtracting one from the result of the modulo 
+        operation.
+
+        * rendering/RenderListMarker.cpp:
+        (WebCore::toAlphabeticOrNumeric):
+
+2010-05-20  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Dave Hyatt.
+
+        <rdar://problem/8007953> Textarea using custom font appears blank
+
+        Test: fast/css/font-face-in-shadow-DOM.html
+
+        When a remote font is loaded, CSSFontSelector forces a style recalc, which replaces all
+        RenderSyles that have FontFallbackLists referencing the placeholder font with fresh
+        RenderStyles. However, it does not descend into shadow DOM trees, so those may end up with
+        styles that still reference the placeholder font.
+
+        The fix is to add RenderObject::requiresForcedStyleRecalcPropagation() and have it return
+        true from renderers that maintain shadow DOM trees or otherwise keep their own RenderStyles.
+
+        * dom/Element.cpp:
+        (WebCore::Element::recalcStyle): Check if forced style recalc needs to propagated.
+        * rendering/RenderButton.h:
+        (WebCore::RenderButton::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderDataGrid.h:
+        (WebCore::RenderDataGrid::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderFileUploadControl.h:
+        (WebCore::RenderFileUploadControl::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderListItem.h:
+        (WebCore::RenderListItem::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderMedia.h:
+        (WebCore::RenderMedia::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderMenuList.h:
+        (WebCore::RenderMenuList::RenderMenuList::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderProgress.h:
+        (WebCore::RenderProgress::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderSlider.h:
+        (WebCore::RenderSlider::requiresForcedStyleRecalcPropagation):
+        * rendering/RenderTextControl.h:
+        (WebCore::RenderTextControl::requiresForcedStyleRecalcPropagation):
+
+2010-04-02  Justin Schuh  <jschuh@chromium.org>
+
+        Reviewed by Alexey Proskuryakov.
+
+        XHR allows arbitrary XSRF across domains 
+        https://bugs.webkit.org/show_bug.cgi?id=36843
+
+        Added a one-line change to prevent bypassing the XDC check on
+        synchronous preflighted requests. Added layout tests to cover
+        variations of this problem.
+
+        Tests: http/tests/xmlhttprequest/access-control-preflight-async-header-denied.html
+               http/tests/xmlhttprequest/access-control-preflight-async-method-denied.html
+               http/tests/xmlhttprequest/access-control-preflight-sync-header-denied.html
+               http/tests/xmlhttprequest/access-control-preflight-sync-method-denied.html
+
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::preflightFailure):
+
+2010-04-28  Julien Chaffraix  <jchaffraix@webkit.org>
+
+        Reviewed by Alexey Proskuryakov.
+
+        [XHR] Cross-Origin synchronous request with credential raises NETWORK_ERR
+        https://bugs.webkit.org/show_bug.cgi?id=37781
+        <rdar://problem/7905150>
+
+        Tests: http/tests/xmlhttprequest/access-control-preflight-credential-async.html
+               http/tests/xmlhttprequest/access-control-preflight-credential-sync.html
+
+        Rolling the patch in as I could not reproduce Qt results locally.
+
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::DocumentThreadableLoader): Now we remove the
+        credential from the request here to avoid forgetting to do so in the different code path.
+        (WebCore::DocumentThreadableLoader::makeSimpleCrossOriginAccessRequest): Just add the
+        "Origin" header.
+        (WebCore::DocumentThreadableLoader::loadRequest): Check here the the credential have
+        been removed so that we don't leak them. Also tweaked a comment to make it clear that
+        the URL check has issue when credential is involved.
+
+2010-04-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Adam Roben.
+
+        Windows build fix.
+
+        * platform/network/cf/ResourceHandleCFNet.cpp: Declare CFURLConnectionCreateWithProperties
+        for now, as it's mistakenly missing from WebKitSupportLibrary headers.
+
+2010-05-19  Abhishek Arya  <inferno@chromium.org>
+
+        Reviewed by David Hyatt.
+
+        Check that the node is a text node before doing a static cast
+        to a Text class pointer.
+        https://bugs.webkit.org/show_bug.cgi?id=38626    
+
+        Test: fast/text/text-transform-nontext-node-crash.xhtml
+
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::originalText):
+        * rendering/RenderTextFragment.cpp:
+        (WebCore::RenderTextFragment::originalText):
+        (WebCore::RenderTextFragment::previousCharacter):
+
+2010-05-12  Abhishek Arya  <inferno@chromium.org>
+
+        Reviewed by Darin Adler.
+
+        HTML Entity Escape the contents of a textarea node when accessed
+        via the innerHTML and outerHTML node properties.
+        https://bugs.webkit.org/show_bug.cgi?id=38922
+
+        Test: fast/innerHTML/innerHTML-special-elements.html
+
+        * editing/markup.cpp:
+        (WebCore::appendStartMarkup):
+
+2010-05-12  James Robinson  <jamesr@chromium.org>
+
+        Patch by Dan Bernstein.
+
+        Reviewed by David Hyatt.
+
+        Fix marking the layout root's parent as needing layout
+        https://bugs.webkit.org/show_bug.cgi?id=37760
+
+        If an element gets marked as needing layout due to the recalcStyle()
+        call in FrameView::layout(), the m_layoutSchedulingEnabled flag will
+        be set to false.  It's possible at this point that a parent of the
+        existing FrameView::m_layoutRoot will be marked as needing layout.
+
+        This patch updates FrameView::scheduleRelayoutOfSubtree to account
+        for this case.
+
+        Manual test only due to subtle timing issues.
+
+        * manual-tests/layoutroot_detach.xml: Added.
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scheduleRelayoutOfSubtree):
+
+2010-05-10  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Darin Adler.
+
+        Fix for https://bugs.webkit.org/show_bug.cgi?id=38583
+        <rdar://problem/7948784> Crash in Element::normalizeAttributes.
+
+        Test: fast/dom/Element/normalize-crash.html
+
+        * dom/Element.cpp:
+        (WebCore::Element::normalizeAttributes): Copy attributes to a vector
+        before iterating.
+        * dom/NamedAttrMap.cpp:
+        (WebCore::NamedNodeMap::copyAttributesToVector): Added.
+        * dom/NamedAttrMap.h:
+
+2010-05-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Darin Adler.
+
+        Based on a patch by Eric Seidel.
+
+        https://bugs.webkit.org/show_bug.cgi?id=28697
+        <rdar://problem/7946578> WebKit crash on WebCore::Node::nodeIndex()
+
+        It's not OK to call ContainerNode::willRemoveChild() in a loop, because Range code assumes
+        that it can adjust start and end position to any node except for the one being removed -
+        so these notifications cannot be batched.
+
+        Test: fast/dom/Range/remove-all-children-crash.html
+
+        * dom/ContainerNode.cpp:
+        (WebCore::willRemoveChild): Removed unused ExceptionCode.
+        (WebCore::willRemoveChildren): New function, used in removeChildren() case.
+        (WebCore::ContainerNode::removeChild): ExceptionCode return was always 0, don't bother with it.
+        (WebCore::ContainerNode::removeChildren): Call willRemoveChildrenFromNode.
+        (WebCore::dispatchChildRemovalEvents): Moved some logic out into willRemoveChildrenFromNode
+        and willRemoveChild.
+
+        * dom/Document.cpp:
+        (WebCore::Document::nodeChildrenWillBeRemoved): New function, used in removeChildren() case.
+
+        * dom/Document.h: 
+        (WebCore::Document::nodeChildrenWillBeRemoved): New function, used in removeChildren() case.
+
+        * dom/Range.h:
+        * dom/Range.cpp:
+        (WebCore::boundaryNodeChildrenWillBeRemoved): New function, used in removeChildren() case.
+        (WebCore::Range::nodeChildrenWillBeRemoved): Ditto.
+
+2010-05-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Adam Barth.
+
+        https://bugs.webkit.org/show_bug.cgi?id=38497
+        <rdar://problem/7759438> Make sure that http URLs always have a host in SecurityOrigin
+
+        This is a hardening fix, and behavior really depends on what an underlying networking layer
+        does. So, no test.
+
+        * page/SecurityOrigin.cpp:
+        (WebCore::schemeRequiresAuthority): List schemes that need an authority for successful loading.
+        (WebCore::SecurityOrigin::SecurityOrigin): Never let e.g. http origins with empty authorities
+        have the same security origin.
+
+2010-05-03  Abhishek Arya  <inferno@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        Add support for controlling clipboard access from javascript.
+        Clipboard access from javascript is disabled by default.
+        https://bugs.webkit.org/show_bug.cgi?id=27751
+
+        Test: editing/execCommand/clipboard-access.html
+
+        * WebCore.base.exp:
+        * editing/EditorCommand.cpp:
+        (WebCore::supportedCopyCut):
+        (WebCore::supportedPaste):
+        (WebCore::createCommandMap):
+        * page/Settings.cpp:
+        (WebCore::Settings::Settings):
+        (WebCore::Settings::setJavaScriptCanAccessClipboard):
+        * page/Settings.h:
+        (WebCore::Settings::javaScriptCanAccessClipboard):
+
+2010-04-30  Abhishek Arya  <inferno@chromium.org>
+
+        Reviewed by David Kilzer.
+
+        Convert m_documentUnderMouse, m_dragInitiator to RefPtr.
+        Eliminated unused m_dragInitiator accessor to prevent dereferencing.
+        https://bugs.webkit.org/show_bug.cgi?id=37618
+
+        Test: editing/pasteboard/drag-drop-iframe-refresh-crash.html
+
+        * page/DragController.cpp:
+        (WebCore::DragController::tryDocumentDrag):
+        (WebCore::DragController::concludeEditDrag):
+        * page/DragController.h:
+        (WebCore::DragController::draggingImageURL):
+        (WebCore::DragController::documentUnderMouse):
+
+2010-04-14  Justin Schuh  <jschuh@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        Javascript URL can be set as iframe.src via multiple DOM aliases
+        https://bugs.webkit.org/show_bug.cgi?id=37031
+
+        Moved frame/iframe checks from Attr to Node on inherited members.
+        Node child manipulation methods now return NOT_SUPPORTED_ERR if used
+        on a frame/iframe src attribute.
+        NamedNodeMap set methods now perform frame/iframe src checks.
+        Moved allowSettingSrcToJavascriptURL static helper function from 
+        JSElementCustom.cpp to exported function in JSDOMBinding.h.
+
+        * bindings/js/JSAttrCustom.cpp:
+        (WebCore::JSAttr::setValue):
+        * bindings/js/JSDOMBinding.cpp:
+        (WebCore::allowSettingSrcToJavascriptURL):
+        * bindings/js/JSDOMBinding.h:
+        * bindings/js/JSElementCustom.cpp:
+        * bindings/js/JSNamedNodeMapCustom.cpp:
+        (WebCore::JSNamedNodeMap::setNamedItem):
+        (WebCore::JSNamedNodeMap::setNamedItemNS):
+        * bindings/js/JSNodeCustom.cpp:
+        (WebCore::isAttrFrameSrc):
+        (WebCore::JSNode::setNodeValue):
+        (WebCore::JSNode::setTextContent):
+        (WebCore::JSNode::insertBefore):
+        (WebCore::JSNode::replaceChild):
+        (WebCore::JSNode::removeChild):
+        (WebCore::JSNode::appendChild):
+        * bindings/v8/custom/V8AttrCustom.cpp:
+        * bindings/v8/custom/V8NamedNodeMapCustom.cpp:
+        (WebCore::V8NamedNodeMap::setNamedItemNSCallback):
+        (WebCore::V8NamedNodeMap::setNamedItemCallback):
+        (WebCore::toV8):
+        * bindings/v8/custom/V8NodeCustom.cpp:
+        (WebCore::isFrameSrc):
+        (WebCore::V8Node::textContentAccessorSetter):
+        (WebCore::V8Node::nodeValueAccessorSetter):
+        (WebCore::V8Node::insertBeforeCallback):
+        (WebCore::V8Node::replaceChildCallback):
+        (WebCore::V8Node::removeChildCallback):
+        (WebCore::V8Node::appendChildCallback):
+        * dom/Attr.idl:
+        * dom/NamedNodeMap.idl:
+        * dom/Node.idl:
+
+2010-03-26  Justin Schuh  <jschuh@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        Security: iFrame.src accepts JavaScript URL via nodeValue or textContent
+        https://bugs.webkit.org/show_bug.cgi?id=36502
+
+        Overrode inherited nodeValue and textContent in Attr.idl so they proxy 
+        to value, which performs a security check.
+
+        Test: http/tests/security/xss-DENIED-iframe-src-alias.html
+
+        * bindings/js/JSAttrCustom.cpp:
+        (WebCore::JSAttr::nodeValue):
+        (WebCore::JSAttr::setNodeValue):
+        (WebCore::JSAttr::textContent):
+        (WebCore::JSAttr::setTextContent):
+        * bindings/v8/custom/V8AttrCustom.cpp:
+        (WebCore::V8Attr::nodeValueAccessorSetter):
+        (WebCore::V8Attr::nodeValueAccessorGetter):
+        (WebCore::V8Attr::textContentAccessorSetter):
+        (WebCore::V8Attr::textContentAccessorGetter):
+        * dom/Attr.idl:
+
+2010-05-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Darin Adler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=38260
+        <rdar://problem/7917548> Fix whitespace removing in deprecatedParseURL().
+
+        Broken all the way since r4 (yes, that's a revision number).
+
+        Test: http/tests/security/xss-DENIED-javascript-with-spaces.html
+
+        * css/CSSHelper.cpp: (WebCore::deprecatedParseURL): Fixed loop conditions for remaining length.
+
+2010-04-23  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        <rdar://problem/7898436> :after content is duplicated
+
+        Test: fast/css-generated-content/after-duplicated-after-split.html
+
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::splitInlines): Pass the correct owner of the child list.
+
+2010-03-30  Chris Evans  <cevans@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        Taint the canvas if an SVG-derived pattern is rendered into it.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36838
+
+        Test: fast/canvas/svg-taint.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::createPattern):
+          Take into account the image's hasSingleSecurityOrigin() property.
+
+2010-04-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Darinn Adler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=37230
+        <rdar://problem/7813115> REGRESSION (4.0.5): Safari asks for credentials all the time when
+        authenticating to Windows IIS Server
+
+        * platform/network/ProtectionSpace.h: (WebCore::ProtectionSpaceAuthenticationScheme): Added
+        a constant for ProtectionSpaceAuthenticationSchemeUnknown.
+
+        * platform/network/cf/AuthenticationCF.cpp: (WebCore::core):
+        * platform/network/cf/SocketStreamHandleCFNet.cpp: (WebCore::authenticationSchemeFromAuthenticationMethod):
+        Return ProtectionSpaceAuthenticationSchemeUnknown for unknown scheme.
+
+        * platform/network/mac/AuthenticationMac.mm:
+        (WebCore::mac): Support NTLM on systems older than 10.6. We actually get this string from
+        NSURLConnection, even though there was no public constant.
+        (WebCore::core): Return ProtectionSpaceAuthenticationSchemeUnknown for unknown scheme.
+
+2010-04-19  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Darin Adler.
+
+        Make the fix for <rdar://problem/7873647> from r57759 more robust.
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateHoverActiveState): Use RefPtrs for the Nodes.
+
+2010-04-16  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        <rdar://problem/7873647> Crash when updating hover state
+
+        Test: fast/dynamic/hover-style-recalc-crash.html
+
+        Updating the hover state of an element caused the document to need style
+        recalc, and then updating the hover state of a link caused style recalc,
+        which changed the render tree while updateHoverActiveState() was iterating
+        over it, leading to a crash.
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateHoverActiveState): Collect the nodes to be
+        updated into vectors, then update their active and hover states.
+
+2010-03-31  Mark Rowe  <mrowe@apple.com>
+
+        Reviewed by Darin Adler.
+
+        <http://webkit.org/b/36878> REGRESSION: Trailing colon on hostnames (with no port specified) causes "Not allowed to use restricted network port"
+
+        * platform/KURL.cpp:
+        (WebCore::KURL::port): Explicitly handle the case of a colon being present in the URL after the host name but with
+        no port number before the path.  This is handled in the same manner as the colon and port being omitted completely.
+
+2010-03-24  Mark Rowe  <mrowe@apple.com>
+
+        Revert the portion of r56489 that dealt with port zero as it introduced some test failures.
+
+        * platform/KURL.cpp:
+        (WebCore::KURL::port): Use the "ok" argument to charactersToUIntStrict to determine whether
+        it was able to successfully parse the string as an unsigned integer, rather than relying on
+        the fact it returned zero when it failed.
+
+2010-03-24  Mark Rowe  <mrowe@apple.com>
+
+        Reviewed by Darin Adler.
+
+        WebKit should treat port numbers outside the valid range as being blacklisted
+        <http://webkit.org/b/36571> / <rdar://problem/7790908>
+
+        * platform/KURL.cpp:
+        (WebCore::KURL::port): Map invalid port numbers to invalidPortNumber.
+        (WebCore::portAllowed): Add invalidPortNumber to the blacklist.
+        * platform/KURLGoogle.cpp:  invalid port numbers to invalidPortNumber.
+        (WebCore::KURL::port): Add invalidPortNumber to the blacklist.
+        Also bring this in to sync with KURL.  Having this identical code in two places is stupid.
+
+2010-05-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Adele Peterson.
+
+        https://bugs.webkit.org/show_bug.cgi?id=26824
+        <rdar://problem/7018610> EventHandler can operate on a wrong frame if focus changes during
+        keyboard event dispatch.
+
+        EventHandler object is tied to a frame, so it's wrong for it to continue processing a keyboard
+        event if focused frame changes between keydown and keypress.
+
+        * manual-tests/focus-change-between-key-events.html: Added.
+
+        * page/EventHandler.cpp: (WebCore::EventHandler::keyEvent): Bail out early if focused frame
+        changes while dispatching keydown. Also made similar changes for Windows to maintain matching
+        behavior, even though EventHandler was re-entered anyway due to WM_KEYDOWN and WM_CHAR being
+        separate events.
+
+2010-07-02  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Canvas arcTo() should draw straight line to p1 if p0, p1 and p2 are collinear
+
+        The implementation of PathQt's addArcTo() was not float-safe and also had
+        a case where it drew an 'infinite' line, which is not part of the spec.
+
+        http://www.whatwg.org/specs/web-apps/current-work/#dom-context-2d-arcto
+
+        We now use qFuzzyCompare() in both cases. The method isPointOnPathBorder()
+        also had the same problem, and was refactored a bit in the process of fixing
+        the bug.
+
+        Initial patch by Andreas Kling.
+
+        https://bugs.webkit.org/show_bug.cgi?id=41412
+
+        * platform/graphics/qt/PathQt.cpp:
+
+2010-03-26  Shu Chang  <chang.shu@nokia.com>
+
+        Reviewed by Eric Seidel.
+
+        [Qt] Prevent referring d->m_job in the future because calling abort()
+        deletes the instance itself.
+        https://bugs.webkit.org/show_bug.cgi?id=36618
+
+        Test: http/tests/appcache/fallback.html
+
+        * platform/network/qt/ResourceHandleQt.cpp:
+        (WebCore::ResourceHandle::cancel):
+
+2010-06-28  Sam Magnuson  <smagnuson@netflix.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] GraphicsLayerQt delay seems unnecessary.
+        https://bugs.webkit.org/show_bug.cgi?id=40846
+
+        Test: compositing/animation/busy-indicator.html
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::recache):
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+        (WebCore::GraphicsLayerQt::setContentsToImage):
+        (WebCore::GraphicsLayerQt::addAnimation):
+
+2010-06-25  Sam Magnuson  <smagnuson@netflix.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] When any geometry change happens to a node it will resize the
+        backing cache
+        https://bugs.webkit.org/show_bug.cgi?id=40378
+
+        Continue to grow the cache, but never toss it. When the pixmap
+        cache gets too big it will be lost and created at the right size
+        next time.
+
+        No new tests: this is an optimization.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::recache):
+        (WebCore::GraphicsLayerQtImpl::paint):
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+
+2010-06-30  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Spatial Navigation: make elements in inner frames nested more than 1 level deep focusable
+        https://bugs.webkit.org/show_bug.cgi?id=41160
+
+        Patch addresses the problem of spatial navigation not work properly with nested
+        inner frames by adding the isNodeDeepDescendantOfDocument method. It recursively checks
+        if a give node is descendant of a given document or any parent of it.
+
+        Test: fast/events/spatial-navigation/snav-iframe-nested.html
+
+        * page/FocusController.cpp:
+        (WebCore::FocusController::deepFindFocusableNodeInDirection):
+        * page/SpatialNavigation.cpp:
+        (WebCore::isNodeDeepDescendantOfDocument):
+        * page/SpatialNavigation.h:
+
+2010-06-30  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Crash when uploading document to Google Docs
+        https://bugs.webkit.org/show_bug.cgi?id=40795
+
+        Fix bug where the local file wasn't opened (for POSTing)
+        if it were the first element in the form.
+
+        * platform/network/qt/QNetworkReplyHandler.cpp:
+        (WebCore::FormDataIODevice::FormDataIODevice):
+        (WebCore::FormDataIODevice::moveToNextElement):
+        (WebCore::FormDataIODevice::openFileForCurrentElement):
+        * platform/network/qt/QNetworkReplyHandler.h:
+
+2010-06-29  Abhinav Mithal <abhinav.mithal@nokia.com>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] [Symbian] Fix doube-deallocation while destroying PluginContainerSymbian
+        https://bugs.webkit.org/show_bug.cgi?id=37303
+
+        * plugins/symbian/PluginViewSymbian.cpp:
+        (WebCore::PluginView::platformDestroy):
+
+2010-06-29  Kristian Amlie  <kristian.amlie@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt/Symbian] Fixed deployment paths for WebKit declarative plugin.
+
+        * WebCore.pro:
+
+2010-06-28  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Replace single treat-as-space characters with normal space
+        https://bugs.webkit.org/show_bug.cgi?id=41278
+
+        This keeps Qt from attempting glyph substitution and loading a bunch
+        of extra fonts when encountering &nbsp; entities.
+
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::Font::floatWidthForComplexText):
+
+2010-06-24  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Unreviewed Symbian build fix.
+
+        The QML WebKit integration needs to be part of QtWebKit.sis
+
+        * WebCore.pro: Deploy qmlwebkitplugin.dll.
+
+2010-06-23  Benjamin Poulain  <benjamin.poulain@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Do not render the full frame when there is some elements with fixed positioning
+        https://bugs.webkit.org/show_bug.cgi?id=33150
+
+        Do not render the full frame when there is some elements with fixed positioning
+        https://bugs.webkit.org/show_bug.cgi?id=33150
+
+        The frame view take into acount the list of fixed object when scrolling
+        the view. If the number of object is lower than a certain threshold, the pixel
+        are blitted, and the invalidated area updated.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::addFixedObject):
+        (WebCore::FrameView::removeFixedObject):
+        (WebCore::FrameView::scrollContentsFastPath):
+        * page/FrameView.h:
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::scrollContents):
+        (WebCore::ScrollView::scrollContentsFastPath):
+        * platform/ScrollView.h:
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::repaintRectIncludingDescendants):
+        * rendering/RenderLayer.h:
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::styleWillChange):
+
+2010-05-18  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Allocate the m_preloads list hash set dynamically and free it when done.
+        https://bugs.webkit.org/show_bug.cgi?id=39309
+        <rdar://problem/7998495>
+
+        This saves about 6000 bytes on a fully loaded document.
+
+        * loader/DocLoader.cpp:
+        (WebCore::DocLoader::requestPreload):
+        (WebCore::DocLoader::clearPreloads):
+        * loader/DocLoader.h:
+
+2010-05-18  Anders Carlsson  <andersca@apple.com>
+
+        Revert unintended indentation and unnecessary nested name specifier.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::clipOutPositionedObjects):
+        (WebCore::RenderBlock::insertPositionedObject):
+
+2010-05-18  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Add an inlineCapacity template parameter to ListHashSet and use it to shrink the positioned object list hash set.
+        https://bugs.webkit.org/show_bug.cgi?id=39304
+        <rdar://problem/7998366>
+
+        Set the inlineCapacity for the positionedObjects ListHashSet to 4 instead of 256. Since a RenderBlock usually has 
+        few positioned objects, this saves memory.
+
+        * WebCore.base.exp:
+        * rendering/RenderBlock.cpp:
+        (WebCore::clipOutPositionedObjects):
+        (WebCore::RenderBlock::insertPositionedObject):
+        * rendering/RenderBlock.h:
+        (WebCore::RenderBlock::positionedObjects):
+
+2010-06-22  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Unreviewed Qt/Symbian build fix.
+
+        Fix "make clean" to not try to execute clean commands for
+        the extra targets we use to simulate "make install".
+
+        * WebCore.pro: Use no_clean in CONFIG of extra compilers.
+
+2010-06-21  Balazs Kelemen  <kb@inf.u-szeged.hu>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Avoid unnecessary image conversion in RGBA32Buffer::zeroFill()
+        https://bugs.webkit.org/show_bug.cgi?id=40910
+
+        * platform/image-decoders/qt/RGBA32BufferQt.cpp:
+        (WebCore::RGBA32Buffer::zeroFill):
+
+2010-05-31  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Implement the simple text code path.
+        https://bugs.webkit.org/show_bug.cgi?id=40077
+
+        Remove the FONT_FAST_PATH macro and use the Qt's
+        fast text implementation instead of the one of WebKit.
+
+        The Qt::TextBypassShaping flag is used to tell Qt to
+        only use the glyph advances.
+
+        Qt 4.7 is needed to get this flag thus the complex path is always
+        used if QtWebKit is compiled against an earlier version.
+
+        Contrary to the WebKit's implementation, the complex code path
+        is taken if the text is RightToLeft, justified or is formatted
+        with non-zero letter or word spacing.
+
+        * platform/graphics/Font.cpp:
+        (WebCore::Font::drawText):
+        (WebCore::Font::floatWidth):
+        (WebCore::Font::selectionRectForText):
+        (WebCore::Font::offsetForPosition):
+        * platform/graphics/Font.h:
+        (WebCore::Font::isRoundingHackCharacter):
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::fromRawDataWithoutRef):
+        (WebCore::needComplexCodePath):
+        (WebCore::setupPlatformContext):
+        (WebCore::Font::canReturnFallbackFontsForComplexText):
+        (WebCore::Font::drawSimpleText):
+        (WebCore::Font::drawComplexText):
+        (WebCore::Font::floatWidthForSimpleText):
+        (WebCore::Font::offsetForPositionForSimpleText):
+        (WebCore::Font::selectionRectForSimpleText):
+
+2010-06-03  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        Move the text code path detection code from FontFastPath.cpp to Font.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=40077
+
+        This is a patch preliminary to the implementation of the
+        simple font code path for the Qt port.
+
+        * platform/graphics/Font.cpp:
+        (WebCore::Font::setCodePath):
+        (WebCore::Font::codePath):
+        * platform/graphics/Font.h:
+        * platform/graphics/FontFastPath.cpp:
+
+2010-04-30  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Adele Peterson.
+
+        Part of <rdar://problem/6649734> Text repainting does not account for glyphs which draw outside the typographic bounds of the font
+        https://bugs.webkit.org/show_bug.cgi?id=6274
+
+        Account for glyph overflow of characters in the range U+1E00..U+2000, but without sending them
+        through the complex text code path. Instead, introduce a variant of the fast path that tracks
+        glyph overflow.
+
+        * platform/graphics/Font.cpp:
+        (WebCore::Font::drawText): Use codePath().
+        (WebCore::Font::floatWidth): Use codePath(). Pass the GlyphOverflow pointer through to
+        floatWidthForSimpleText() if the code path is SimpleWithGlyphOverflow.
+        (WebCore::Font::selectionRectForText): Use codePath().
+        (WebCore::Font::offsetForPosition): Ditto.
+        * platform/graphics/Font.h: Replaced canUseGlyphCache() with codePath(). Added a GlyphOverflow
+        parameter to floatWidthForSimpleText().
+        * platform/graphics/FontFastPath.cpp:
+        Removed ROMAN_AND_GREEK_DIACRITICS_CAN_USE_GLYPH_CACHE.
+        (WebCore::Font::codePath): Renamed canUseGlyphCache() to this. Where it used to return false,
+        it now returns Complex. Where it used to return true, it now returns Simple, except for
+        the range U+1E00..U+2000, where it now returns SimpleWithGlyphOverflow.
+        (WebCore::Font::floatWidthForSimpleText): Added a GlyphOverflow parameter. If not 0, have the
+        width iterator account for glyph bounds, then update the GlyphOverflow accordingly.
+        * platform/graphics/WidthIterator.cpp:
+        (WebCore::WidthIterator::WidthIterator): Added boolean parameter telling the width iterator
+        whether to account for glyph bounds. Initialize m_accountForGlyphBounds accordingly. Initialize
+        m_maxGlyphBoundingBoxY, m_minGlyphBoundingBoxY, m_firstGlyphOverflow and m_lastGlyphOverflow.
+        (WebCore::WidthIterator::advance): If accounting for glyph bounds, update the above member variables.
+        * platform/graphics/WidthIterator.h:
+        (WebCore::WidthIterator::maxGlyphBoundingBoxY): Added this accessor.
+        (WebCore::WidthIterator::minGlyphBoundingBoxY): Ditto.
+        (WebCore::WidthIterator::firstGlyphOverflow): Ditto.
+        (WebCore::WidthIterator::lastGlyphOverflow): Ditto.
+
+2010-04-21  Ojan Vafai  <ojan@chromium.org>
+
+        Reviewed by Adele Peterson.
+
+        http://trac.webkit.org/changeset/57215 caused perf/memory regressions
+        https://bugs.webkit.org/show_bug.cgi?id=37292
+
+        #if out the canUseGlyphCache Changes from r57215 as they caused a 
+        8% perf regression on Chromium's international page load tests so that
+        the perf regression can be fixed properly without being left in the tree.
+
+        * platform/graphics/FontFastPath.cpp:
+        (WebCore::Font::canUseGlyphCache):
+
+2010-04-07  Enrica Casucci  <enrica@apple.com>
+
+        Reviewed by Dave Hyatt.
+
+        Text repainting does not account for glyphs which draw outside the typographic bounds of the font (6274).
+        <rdar://problem/6649734>
+        <https://bugs.webkit.org/show_bug.cgi?id=6274>
+        
+        In order to be able to handle successfully this case, it is necessary to change the glyph width cache to store
+        the bounding box for the glyph instead of the simply caching the glyph width.
+        Retrieving the bounding box for the glyph is expensive, therefore we do it only
+        when we are rendering text using the complex text path to minimize the performance impact.
+        To support characters with stacked diacritics, the method canUseGlyphCache has been modified to
+        return false for the range of characters with stacked diacritics.
+        The glyph cache has been also updated to allow storing the glyph bounding box together with the
+        horizontal width. The bounding box is populated only for complex text.
+        
+        The original version of this patch has been written by Dan Bernstein.
+
+        Test: fast/repaint/stacked-diacritics.html
+
+        * Android.mk: File name change.
+        * GNUmakefile.am: File name change.
+        * WebCore.base.exp: Added parameter in exported function.
+        * WebCore.gypi: File name change.
+        * WebCore.vcproj/WebCore.vcproj: File name change.
+        * WebCore.xcodeproj/project.pbxproj: File name change.
+        * platform/graphics/Font.cpp:
+        (WebCore::Font::floatWidth): Added glyphOverflow parameter.
+        * platform/graphics/Font.h:
+        (WebCore::GlyphOverflow::GlyphOverflow): Added.
+        (WebCore::Font::width): Added glyphOverflow parameter.
+        * platform/graphics/FontFastPath.cpp:
+        (WebCore::Font::canUseGlyphCache): Modified to render characters with stacked diacritics with complex text path.
+        * platform/graphics/GlyphMetricsMap.cpp: Copied from WebCore/platform/graphics/GlyphWidthMap.cpp.
+        (WebCore::GlyphMetricsMap::locatePageSlowCase): Class name changed to reflect new semantics.
+        * platform/graphics/GlyphMetricsMap.h: Copied from WebCore/platform/graphics/GlyphWidthMap.h.
+        (WebCore::GlyphMetricsMap::GlyphMetricsMap):
+        (WebCore::GlyphMetricsMap::~GlyphMetricsMap):
+        (WebCore::GlyphMetricsMap::metricsForGlyph):
+        (WebCore::GlyphMetricsMap::widthForGlyph):
+        (WebCore::GlyphMetricsMap::setMetricsForGlyph):
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::metricsForGlyph):
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::setMetricsForGlyph):
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::setMetricsForIndex):
+        (WebCore::GlyphMetricsMap::locatePage):
+        * platform/graphics/GlyphWidthMap.cpp: Removed.
+        * platform/graphics/GlyphWidthMap.h: Removed.
+        * platform/graphics/SimpleFontData.cpp:
+        (WebCore::SimpleFontData::platformGlyphInit):
+        * platform/graphics/SimpleFontData.h:
+        (WebCore::):
+        (WebCore::SimpleFontData::widthForGlyph):
+        (WebCore::SimpleFontData::metricsForGlyph):
+        * platform/graphics/cairo/SimpleFontDataCairo.cpp:
+        (WebCore::SimpleFontData::platformMetricsForGlyph): Name and signature change.
+        * platform/graphics/chromium/FontChromiumWin.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added parameter.
+        * platform/graphics/chromium/FontLinux.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added parameter.
+        * platform/graphics/chromium/SimpleFontDataChromiumWin.cpp:
+        (WebCore::SimpleFontData::platformMetricsForGlyph): Name and signature change.
+        * platform/graphics/chromium/SimpleFontDataLinux.cpp:
+        (WebCore::SimpleFontData::platformWidthForGlyph): Name and signature vachange
+        * platform/graphics/efl/FontEfl.cpp:
+        (WebCore::Font::floatWidthForComplexText): Name and signature change.
+        * platform/graphics/gtk/SimpleFontDataPango.cpp:
+        (WebCore::SimpleFontData::platformMetricsForGlyph): Name and signature change.
+        * platform/graphics/haiku/FontHaiku.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added parameter.
+        * platform/graphics/haiku/SimpleFontDataHaiku.cpp:
+        (WebCore::SimpleFontData::platformMetricsForGlyph): Name and signature change.
+        * platform/graphics/mac/ComplexTextController.cpp:
+        (WebCore::ComplexTextController::ComplexTextController):
+        (WebCore::ComplexTextController::adjustGlyphsAndAdvances):
+        * platform/graphics/mac/ComplexTextController.h:
+        (WebCore::ComplexTextController::minGlyphBoundingBoxX):
+        (WebCore::ComplexTextController::maxGlyphBoundingBoxX):
+        (WebCore::ComplexTextController::minGlyphBoundingBoxY):
+        (WebCore::ComplexTextController::maxGlyphBoundingBoxY):
+        * platform/graphics/mac/FontComplexTextMac.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added paramter.
+        * platform/graphics/mac/SimpleFontDataMac.mm:
+        (WebCore::SimpleFontData::platformMetricsForGlyph): Name and signature change.
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added paramter.
+        * platform/graphics/win/FontWin.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added parameter.
+        * platform/graphics/win/SimpleFontDataCGWin.cpp:
+        (WebCore::SimpleFontData::platformMetricsForGlyph): Name and signature change.
+        * platform/graphics/win/SimpleFontDataWin.cpp:
+        (WebCore::SimpleFontData::metricsForGDIGlyph):
+        * platform/graphics/win/UniscribeController.cpp:
+        (WebCore::UniscribeController::UniscribeController):
+        (WebCore::UniscribeController::shapeAndPlaceItem):
+        * platform/graphics/win/UniscribeController.h:
+        (WebCore::UniscribeController::minGlyphBoundingBoxX):
+        (WebCore::UniscribeController::maxGlyphBoundingBoxX):
+        (WebCore::UniscribeController::minGlyphBoundingBoxY):
+        (WebCore::UniscribeController::maxGlyphBoundingBoxY):
+        * platform/graphics/wince/FontWince.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added parameter.
+        * platform/graphics/wx/FontWx.cpp:
+        (WebCore::Font::floatWidthForComplexText): Added parameter.
+        * platform/graphics/wx/SimpleFontDataWx.cpp:
+        (WebCore::SimpleFontData::platformMetricsForGlyph): Name and signature change.
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::placeBoxesHorizontally):
+        (WebCore::InlineFlowBox::computeLogicalBoxHeights):
+        (WebCore::InlineFlowBox::computeVerticalOverflow):
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::setFallbackFonts):
+        (WebCore::InlineTextBox::fallbackFonts):
+        (WebCore::InlineTextBox::setGlyphOverflow):
+        (WebCore::InlineTextBox::glyphOverflow):
+        * rendering/InlineTextBox.h:
+        (WebCore::InlineTextBox::clearGlyphOverflowAndFallbackFontMap): Added.
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlock::computeHorizontalPositionsForLine):
+        (WebCore::RenderBlock::layoutInlineChildren):
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::RenderText):
+        (WebCore::RenderText::styleDidChange):
+        (WebCore::RenderText::widthFromCache):
+        (WebCore::RenderText::trimmedPrefWidths):
+        (WebCore::RenderText::calcPrefWidths):
+        (WebCore::RenderText::setText):
+        (WebCore::RenderText::width):
+        * rendering/RenderText.h:
+
+2010-03-23  Evan Martin  <evan@chromium.org>
+
+        Reviewed by Dmitry Titov.
+
+        [chromium] use integral glyph widths
+        https://bugs.webkit.org/show_bug.cgi?id=36510
+
+        Despite WebKit (and Skia, to an extent) supporting non-integral
+        glyph widths, the font code path we hit in Skia only supports
+        integral glyph positions.  This means that we would accumulate
+        offsets when drawing a sequence up non-integer-width glyphs
+        which would cause gaps when snapped to the pixel grid when drawing.
+
+        * platform/graphics/chromium/SimpleFontDataLinux.cpp:
+        (WebCore::SimpleFontData::platformWidthForGlyph):
+        round glyph widths to integers.
+
+2010-06-21  Benjamin Poulain  <benjamin.poulain@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Decode images directly to QPixmap
+        https://bugs.webkit.org/show_bug.cgi?id=40797
+
+        Decode images to QPixmap directly instead of QImage when possible.
+        RGBA32Buffer transforms the pixmap back to image if
+        necessary.
+
+        This improve the performance with certain graphic system, and
+        can reduce memory usage.
+
+        * platform/graphics/qt/ImageDecoderQt.cpp:
+        (WebCore::ImageDecoderQt::setData):
+        (WebCore::ImageDecoderQt::internalHandleCurrentImage):
+        * platform/image-decoders/ImageDecoder.h:
+        (WebCore::RGBA32Buffer::getAddr):
+        * platform/image-decoders/qt/RGBA32BufferQt.cpp:
+        (WebCore::RGBA32Buffer::clear):
+        (WebCore::RGBA32Buffer::zeroFill):
+        (WebCore::RGBA32Buffer::copyBitmapData):
+        (WebCore::RGBA32Buffer::setSize):
+        (WebCore::RGBA32Buffer::asNewNativeImage):
+        (WebCore::RGBA32Buffer::setPixmap):
+
+2010-06-17  Benjamin Poulain  <benjamin.poulain@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Get rid of the the unused imageSize of ImageDecoderQt::internalHandleCurrentImage()
+        https://bugs.webkit.org/show_bug.cgi?id=40620
+
+        Remove an unused variable.
+
+        * platform/graphics/qt/ImageDecoderQt.cpp:
+        (WebCore::ImageDecoderQt::internalHandleCurrentImage):
+
+2010-06-18  Ananth Jasty  <ext-ananth.jasty@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Text spacing miscalculation when using wordSpacing.
+        https://bugs.webkit.org/show_bug.cgi?id=40483
+
+        Removed wordSpacing compensation in FontQt whitespace width
+        calculation. The QFontMetrics::width() overload that takes
+        a character does not take QFont's word spacing into account.
+
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::Font::floatWidthForComplexText):
+
+2010-06-13  Robert Hogan  <robert@webkit.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        WebCore EventHandler needs to take account of onLoad events 
+        fired before layout() complete
+
+        https://bugs.webkit.org/show_bug.cgi?id=40102
+
+        WebCore 'cheats' by firing onLoad events before the frame's layout
+        has been performed. This can result in event listeners performing
+        operations that depend on the document's final layout, such as
+        scrolling operations.
+
+        When scrolling a frameview in eventhandler ensure the layout is complete.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::scrollRecursively):
+
+2010-06-10  Raine Makelainen  <raine.makelainen@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Impossible to set input method hints based HTML5 input types
+        https://bugs.webkit.org/show_bug.cgi?id=40107
+
+        Helper methods for checking "tel", "number", "email",
+        and "url" input element types.
+
+        * html/HTMLInputElement.h:
+        (WebCore::HTMLInputElement::isTelephoneField):
+        (WebCore::HTMLInputElement::isNumberField):
+        (WebCore::HTMLInputElement::isEmailField):
+        (WebCore::HTMLInputElement::isUrlField):
+
+2010-06-17  Mark Brand  <mabrand@mabrand.nl>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] use "win32-g++*" scope to match all MinGW makespecs
+
+        The scope "win32-g++" comes from the name of the makespec. However, it
+        is frequently used to check for MinGW. This works fine as long as
+        win32-g++ is the only makespec for MinGW. Now we need the wildcard
+        to cover "win32-g++-cross" as well.
+
+        * WebCore.pro:
+
+2010-06-16  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Kenneth Christiansen.
+
+        Spatial Navigation: using offset{Left,Top} is not enough to get the proper inner frames position
+        https://bugs.webkit.org/show_bug.cgi?id=39439
+
+        As pointed out by Darin Adler in https://bugs.webkit.org/show_bug.cgi?id=18662#c20,
+        "It's not correct to use the offsetLeft and offsetTop of the frame owner element's renderer because
+        that's just the distance from the offsetParent, not the absolute position".
+
+        Patch fixes that behavior by now considering the offsetTop and offsetLeft the offsetParent recursively,
+        starting from the HtmlFrameOwnerElement. Previously, only calling offsetTop and offsetLeft works
+        because all tests were done in htmls where the {i}frame element was a directly a child of the body,
+        e.g. <html>...<body><iframe src=xxx>....<body></html>.
+
+        Test: fast/events/spatial-navigation/snav-iframe-recursive-offset-parent.html
+
+        * page/SpatialNavigation.cpp:
+        (WebCore::renderRectRelativeToRootDocument):
+
+2010-06-16  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Spatial Navigation: refactor scrollInDirection to work with scrollable content
+        https://bugs.webkit.org/show_bug.cgi?id=39195
+
+        scrollInDirection now receives as parameter the node that the Spatial Navigation
+        found as the more appropriated to move focus to. If it is in a scrollable container
+        (e.g. <div> with clipped overflow content), it scrolls recursively starting from
+        the container, not the current focused node.
+
+        Test: fast/events/spatial-navigation/snav-only-clipped-overflow-content.html
+
+        * page/FocusController.cpp:
+        (WebCore::FocusController::advanceFocusDirectionally):
+        * page/SpatialNavigation.cpp:
+        (WebCore::scrollInDirection):
+        * page/SpatialNavigation.h:
+
+2010-05-28  Viatcheslav Ostapenko  <ostapenko.viatcheslav@nokia.com>
+
+        Reviewed by Simon Hausmann, Antti Koivisto
+
+        Make repaint throttling parameters runtime configurable.
+        https://bugs.webkit.org/show_bug.cgi?id=38401
+
+        REPAINT_THROTTLING now chooses default values for throttling parameters.
+        Should be removed when applications start using runtime configuration.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::reset):
+        (WebCore::FrameView::updateDeferredRepaintDelay):
+        (WebCore::FrameView::setRepaintThrottlingDeferredRepaintDelay):
+        (WebCore::FrameView::setRepaintThrottlingnInitialDeferredRepaintDelayDuringLoading):
+        (WebCore::FrameView::setRepaintThrottlingMaxDeferredRepaintDelayDuringLoading):
+        (WebCore::FrameView::setRepaintThrottlingDeferredRepaintDelayIncrementDuringLoading):
+        * page/FrameView.h:
+
+2010-06-16  Dawit Alemayehu  <adawit@kde.org>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] QtWebKit crashes while initializing flash plugin 10.1.53.64.
+        https://bugs.webkit.org/show_bug.cgi?id=40567
+
+        Avoid preventable crashes by ensuring gtk_init() is called in the
+        flash viewer plugins before calling NP_Initialize.
+
+        * plugins/qt/PluginPackageQt.cpp:
+        (WebCore::PluginPackage::load):
+
+2010-04-21  Zoltan Herczeg  <zherczeg@webkit.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] startAnimation() is not needed to preceede nativeImageForCurrentFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=37844
+
+        nativeImageForCurrentFrame() resets the m_decoder parameter under Qt,
+        which is required by startAnimation() to detect frame and repetition counts.
+        Hence, Image::drawTiled cannot start animations under Qt:
+        <html><body background="animated.gif"></body></html> does not work
+
+        * platform/graphics/qt/ImageDecoderQt.cpp:
+        (WebCore::ImageDecoderQt::internalHandleCurrentImage):
+
+2010-05-28  Peter Kasting  <pkasting@google.com>
+
+        Reviewed by Darin Adler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=39857
+        Make GIFs loop the correct number of times.  Previously, everyone looped
+        one time too few for non-infinitely-looping GIFs.
+
+        Modified a Qt manual test to be correct and moved it to the general
+        manual test directory.
+
+        * manual-tests/animated-gif-looping.html: Copied from WebCore/manual-tests/qt/qt-gif-test.html.
+        * manual-tests/qt/qt-10loop-anim.gif: Removed.
+        * manual-tests/qt/qt-anim.gif: Removed.
+        * manual-tests/qt/qt-gif-test.html: Removed.
+        * manual-tests/qt/qt-noanim.gif: Removed.
+        * manual-tests/resources/animated-10x.gif: Copied from WebCore/manual-tests/qt/qt-10loop-anim.gif and modified.
+        * manual-tests/resources/animated-infinite.gif: Copied from WebCore/manual-tests/qt/qt-anim.gif.
+        * manual-tests/resources/non-animated.gif: Copied from WebCore/manual-tests/qt/qt-noanim.gif.
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::internalAdvanceAnimation): For a loop count of n, show a total of n + 1 animation cycles.
+        * platform/graphics/ImageSource.h:
+        * platform/graphics/cg/ImageSourceCG.cpp:
+        (WebCore::ImageSource::repetitionCount):
+        * platform/graphics/qt/ImageDecoderQt.cpp:
+        (WebCore::ImageDecoderQt::repetitionCount): Remove translation code now that WebCore matches Qt's internal handling of the loop count.  Qt itself may still have a bug here.
+        * platform/image-decoders/gif/GIFImageDecoder.cpp:
+        (WebCore::GIFImageDecoder::repetitionCount):
+        * platform/image-decoders/gif/GIFImageReader.cpp:
+        (GIFImageReader::read): Translate loop count 0 to "loop infinitely" (by restoring one piece of the Mozilla code we'd removed).
+
+2010-05-04  Tucker Jay  <jay.tucker@nokia.com>
+
+        Reviewed by Holger Freyther.
+
+        Animated GIF images does not animate 10x as expected by default.
+        https://bugs.webkit.org/show_bug.cgi?id=36818
+
+        Added test case to existing manual test to test the
+        fixed functionality.
+
+        * manual-tests/qt/qt-10loop-anim.gif: Added.
+        * manual-tests/qt/qt-gif-test.html:
+        * platform/graphics/qt/ImageDecoderQt.cpp:
+        (WebCore::ImageDecoderQt::repetitionCount):
+
+2010-05-16  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Unreviewed naming fixes of local variables used in Spatial Navigation methods.
+
+        Summary:
+            * "candidate" renamed to "node";
+            * "currentFocusCandidate" renamed to "candidate"
+            * "closestFocusCandidate" renamed to "closest"
+
+        That way naming is more consistent in the various Spatial Navigation methods.
+
+        * page/FocusController.cpp:
+        (WebCore::FocusController::findFocusableNodeInDirection):
+        (WebCore::FocusController::deepFindFocusableNodeInDirection):
+
+2010-06-14  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser and Kenneth Christiansen.
+
+        Spatial Navigation: make it work with focusable elements in overflow content
+        https://bugs.webkit.org/show_bug.cgi?id=36463
+
+        This patch addresses the problem with Spatial Navigation. It currently does not
+        properly traverse scrollable contents, including scrollable div's. For this to work,
+        a new class member called scrollableEnclosingBox was introduced to FocusCandidate class which
+        keeps track of the current scrollable box Node wrapping a FocusCandidate.
+
+        To make use of enclosingScrollableBox of FocusCandidate, the DOM traversal routine
+        (FocusController::findNextFocusableInDirection) was changed as follows: when it
+        encounters a scrollable Node, each focusable node which is 'inner' keeps track of
+        the container reference. By the time a sibling of the scrollable Node is encountered,
+        there is no need to track this reference any more and the traversal algorithm continues
+        normally.
+
+        The common case is obviously that there is no scrollable container wrapping it.
+
+        updateFocusCandiditeIfCloser logic was also adapted to fit the need of the
+        newly introduced enclosingScrollableBox class member, getting simpler and more
+        easily maintainable.
+
+        Tests: fast/events/spatial-navigation/snav-div-scrollable-but-without-focusable-content.html
+               fast/events/spatial-navigation/snav-clipped-overflow-content.html
+
+        * page/FocusController.cpp:
+        (WebCore::updateFocusCandidateInSameContainer):
+        (WebCore::updateFocusCandidateIfCloser):
+        (WebCore::FocusController::findFocusableNodeInDirection):
+        (WebCore::FocusController::deepFindFocusableNodeInDirection):
+        * page/SpatialNavigation.cpp:
+        (WebCore::isScrollableContainerNode):
+        * page/SpatialNavigation.h:
+        (WebCore::FocusCandidate::FocusCandidate):
+        (WebCore::FocusCandidate::isInScrollableContainer):
+
+2010-06-15  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] The qt_webkit_version.pri file gets overwritten on install
+        https://bugs.webkit.org/show_bug.cgi?id=40487
+
+        Don't install qt_webkit_version.pri when building WebKit inside of Qt.
+        The import of WebKit into Qt will take care of providing the file
+        in mkspecs/modules and it'll be installed through projects.pro.
+
+        * WebCore.pro:
+
+2010-06-13  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Eric Seidel.
+
+        [Qt] GraphicsLayer: recaching images creates an unnecessary deep copy
+        https://bugs.webkit.org/show_bug.cgi?id=40535
+
+        Made sure the painter ends its operation before copying the pixmap.
+
+        No new tests: this is an optimization.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::recache):
+
+2010-03-24  Dumitru Daniliuc  <dumi@chromium.org>
+
+        Reviewed by Dimitri Glazkov.
+
+        Changing the V8 and JSC implementations of
+        SQLStatementErrorCallback to interpret as false all results that
+        could be converted to a false boolean. Pretty much a revert of
+        r54981.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36569
+
+        * bindings/js/JSCustomSQLStatementErrorCallback.cpp:
+        (WebCore::JSCustomSQLStatementErrorCallback::handleEvent):
+        * bindings/v8/custom/V8CustomSQLStatementErrorCallback.cpp:
+        (WebCore::V8CustomSQLStatementErrorCallback::handleEvent):
+        * bindings/v8/custom/V8CustomVoidCallback.cpp:
+        (WebCore::invokeCallback):
+        * bindings/v8/custom/V8CustomVoidCallback.h:
+
+2010-06-13  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] tests/hybridPixmap fails
+        https://bugs.webkit.org/show_bug.cgi?id=37316
+
+        The problem was that JSC::Instance::createRuntimeObject was never called.
+        This is fixed by overloading newRuntimeObject and calling Instance::createRuntimeObject
+        in between, instead of creating the runtime object directly inside the static function
+        QtPixmapInstance::createRuntimeObject, which had to be renamed as to not overshadow the virtual function.
+
+        This fixes an existing test, tests/hybridPixmap
+
+        * bridge/qt/qt_pixmapruntime.cpp:
+        (JSC::Bindings::QtPixmapInstance::newRuntimeObject):
+        (JSC::Bindings::QtPixmapInstance::createPixmapRuntimeObject):
+        * bridge/qt/qt_pixmapruntime.h:
+        * bridge/qt/qt_runtime.cpp:
+        (JSC::Bindings::convertQVariantToValue):
+
+2010-06-07  Mahesh Kulakrni  <mahesh.kulkarni@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [QT] QT_BEARER flag is not enabled on S60 properly
+        https://bugs.webkit.org/show_bug.cgi?id=39357
+
+        enable QT_BEARER for all platform based on qtmobility + 
+        bearer module availability or for qt 4.7+
+
+        * WebCore.pri: 
+
+2010-06-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Reviewed by Dirk Schulze.
+
+        [Qt] Imperfect dependency for generated SVGNames.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=40359
+
+        * WebCore.pri: Missing dependency added.
+
+2010-06-08  Kenneth Rohde Christiansen  <kenneth.christiansen@openbossa.org>
+
+        Unreviewed Buildbot fix.
+
+        Reset the Qt TextBreakIterator when reusing it.
+
+        * platform/text/qt/TextBreakIteratorQt.cpp:
+        (WebCore::setUpIterator):
+
+2010-06-08  Kenneth Rohde Christiansen  <kenneth.christiansen@openbossa.org>
+
+        Reviewed by Antti Koivisto.
+
+        [Qt] TextBreakIterator Qt performance
+        https://bugs.webkit.org/show_bug.cgi?id=39958
+
+        Rework TextBreakIteratorQt to be more in line with the ICU version.
+
+        We now reuse iterators where ever possible. The string data is compared
+        with memcmp, which should be faster than using a hash, as you need
+        to traverse the full buffer in the case the strings don't match,
+        where as the compare would fail quickly.
+
+        * platform/text/qt/TextBreakIteratorQt.cpp:
+        (WebCore::TextBreakIterator::TextBreakIterator):
+        (WebCore::setUpIterator):
+        (WebCore::wordBreakIterator):
+        (WebCore::characterBreakIterator):
+        (WebCore::lineBreakIterator):
+        (WebCore::sentenceBreakIterator):
+
+2010-06-07  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix text selection drawing.
+        https://bugs.webkit.org/show_bug.cgi?id=40221
+
+        The regression was introduced in r60169.
+
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::drawTextCommon):
+
+2010-06-04  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Fix compilation with QT_NO_FEATURE
+        https://bugs.webkit.org/show_bug.cgi?id=38324
+
+        The #ifdef QT_NO_GRAPHICSEFFECT was in the wrong place, would have
+        made AC not work at all.
+
+        No new tests.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+
+2010-05-24  Tasuku Suzuki  <tasuku.suzuki@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Fix compilation with QT_NO_TEMPORARYFILE
+        https://bugs.webkit.org/show_bug.cgi?id=38324
+
+        * platform/qt/FileSystemQt.cpp:
+        (WebCore::openTemporaryFile):
+
+2010-05-21  Tasuku Suzuki  <tasuku.suzuki@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix compilation with QT_NO_GRAPHICSEFFECT
+        https://bugs.webkit.org/show_bug.cgi?id=38324
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+
+2010-05-02  Tasuku Suzuki  <tasuku.suzuki@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix compilation with QT_NO_BEARERMANAGEMENT
+        https://bugs.webkit.org/show_bug.cgi?id=38324
+
+        * platform/network/NetworkStateNotifier.h:
+        * platform/network/qt/NetworkStateNotifierQt.cpp:
+
+2010-05-02  Tasuku Suzuki  <tasuku.suzuki@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix compilation with QT_NO_LINEEDIT
+        https://bugs.webkit.org/show_bug.cgi?id=38324
+
+        * platform/qt/RenderThemeQt.cpp:
+        (WebCore::RenderThemeQt::~RenderThemeQt):
+        (WebCore::RenderThemeQt::findFrameLineWidth):
+
+2010-06-04  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Compilation fails when compiling against Qt 4.7 and Qt Mobility is installed
+        https://bugs.webkit.org/show_bug.cgi?id=40116
+
+        CONFIG += mobility has the side-effect of pulling in mobility includes, which conflict
+        with Qt 4.7's bearer managenent includes and break the build.
+
+        * WebCore.pro:
+
+2010-06-03  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix NPAPI support on Mac OS X/Cocoa-32
+
+        qt_mac_window_for() returns a NSWindow on Cocoa, so we were
+        passing in a NSWindow instead of a WindowRef as part of the
+        NP_CGContext.
+
+        https://bugs.webkit.org/show_bug.cgi?id=38762
+
+        * WebCore.gypi: Reflect rename
+        * WebCore.pro: Reflect rename
+        * plugins/mac/PluginViewMac.cpp: Renamed to PluginViewMac.mm
+        and fix bug by getting the Carbon windowRef from the NSWindow.
+        * wscript: Reflect rename
+
+2010-06-02  Nico Weber  <thakis@chromium.org>
+
+        Reviewed by Simon Fraser.
+
+        Scroll events are sent twice per keypress for ports that don't have a platformWidget scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=39918
+
+        This was regressed by http://trac.webkit.org/changeset/58615 . Fix this by slightly tweaking
+        that patch.
+
+        Test: editing/input/page-up-down-scrolls.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollPositionChanged):
+        * page/FrameView.h:
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::valueChanged):
+        * platform/ScrollView.h:
+        (WebCore::ScrollView::repaintFixedElementsAfterScrolling):
+
+2010-06-02  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix make install on Symbian for headers in package builds when INSTALL_HEADERS is not defined
+
+        First we wrote inst_headers.output with $$[QT_INSTALL_HEADERS] and then
+        overwrote it with the $$INSTALL_HEADERS variant without checking if the
+        variable was set.
+
+        Fixed and cleaned up the logic of falling back to $$[QT_INSTALL_HEADERS].
+
+        * WebCore.pro:
+
+2010-06-01  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] GraphicsLayer: warnings when reloading page
+        https://bugs.webkit.org/show_bug.cgi?id=39694
+
+        Made sure recaching and masks aren't attempted on zero-size layers.
+
+        No new tests. Old tests (e.g. LayoutTests/compositing/masks) show the problem.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::MaskEffectQt::draw):
+        (WebCore::GraphicsLayerQtImpl::recache):
+
+2010-05-10  Rodrigo Belem  <rodrigo.belem@openbossa.org>
+
+        Reviewed by Kenneth Christiansen , Simon Hausmann and Gustavo Noronha.
+
+        [Qt, Gtk] Allows build-webkit script to receive an install prefix as parameter
+        https://bugs.webkit.org/show_bug.cgi?id=26224
+
+        This patch adds the ability, in the QtWebkit build system, to change
+        the installation path.
+
+        * WebCore.pro:
+
+2010-06-01  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] Fix installation of the QtWebKit module .pri file when building inside of Qt
+
+        * WebCore.pro:
+
+2010-06-01  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix a QtWebKit.pc corruption problem.
+        https://bugs.webkit.org/show_bug.cgi?id=36826
+
+        The problem occurs while installing QtWebKit from trunk
+        or a source package.
+
+        * WebCore.pro:
+
+2010-06-01  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] Fix Symbian package dependencies of apps against QtWebKit when installing into Qt
+
+        Install the versioning qt_webkit_version.pri into $$[QMAKE_MKSPECS]/modules, which is
+        where mkspecs/features/qt.prf expects it.
+
+        * WebCore.pro:
+
+2010-05-17  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Bring CanvasRenderingContext2D's createImageData() in line with HTML5 spec
+        Added createImageData(ImageData) which returns a new ImageData with the same size as the one passed.
+        Changed createImageData(width, height) to use the absolute values of width and height.
+
+        https://bugs.webkit.org/show_bug.cgi?id=39189
+
+        Spec link:
+        http://www.whatwg.org/specs/web-apps/current-work/#dom-context-2d-createimagedata
+
+        Test: fast/canvas/canvas-createImageData.html
+
+        * bindings/js/JSCanvasRenderingContext2DCustom.cpp:
+        (WebCore::JSCanvasRenderingContext2D::createImageData):
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::createImageData):
+        * html/canvas/CanvasRenderingContext2D.h:
+        * html/canvas/CanvasRenderingContext2D.idl:
+
+2010-05-16  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Properly handle invalid arguments to CanvasRenderingContext2D's getImageData() and putImageData().
+        Both should throw NOT_SUPPORTED_ERR when called with nonfinite arguments.
+        getImageData() should throw INDEX_SIZE_ERR if either width or height is 0.
+
+        https://bugs.webkit.org/show_bug.cgi?id=39175
+
+        Spec link:
+        http://www.whatwg.org/specs/web-apps/current-work/#pixel-manipulation
+
+        Test: fast/canvas/canvas-getImageData-invalid.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::createImageData):
+        (WebCore::CanvasRenderingContext2D::getImageData):
+        (WebCore::CanvasRenderingContext2D::putImageData):
+
+2010-05-31  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Escape backslashes in the .pro files
+
+        qmake in Qt 4.7 warns about unescaped backspaces and deprecates them.
+
+        * WebCore.pro:
+
+2010-05-28  Antti Koivisto  <koivisto@iki.fi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        https://bugs.webkit.org/show_bug.cgi?id=39874
+        [Qt] Make tiled backing store more configurable
+    
+        Make tile size, tile creation delay and tiling area dynamically configurable.
+
+        * platform/graphics/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::TiledBackingStore):
+        (WebCore::TiledBackingStore::setTileSize):
+        (WebCore::TiledBackingStore::setTileCreationDelay):
+        (WebCore::TiledBackingStore::setKeepAndCoverAreaMultipliers):
+        (WebCore::TiledBackingStore::createTiles):
+        * platform/graphics/TiledBackingStore.h:
+        (WebCore::TiledBackingStore::tileSize):
+        (WebCore::TiledBackingStore::tileCreationDelay):
+        (WebCore::TiledBackingStore::getKeepAndCoverAreaMultipliers):
+
+2010-05-28  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] REGRESSION(r59837): Incorrect clipping of TransparencyLayers
+        https://bugs.webkit.org/show_bug.cgi?id=39784
+
+        Move coordinate transformation from TransparencyLayer to clipToImageBuffer()
+
+        * platform/graphics/qt/GraphicsContextQt.cpp:
+        (WebCore::TransparencyLayer::TransparencyLayer):
+        (WebCore::GraphicsContext::clipToImageBuffer):
+
+2010-05-13  Antti Koivisto  <koivisto@iki.fi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        https://bugs.webkit.org/show_bug.cgi?id=39063
+        [Qt] Tiled backing store checker pattern does not paint correctly when scaling factor is not 1
+
+        Use the dirty rect that has been adjusted for scaling instead of the original one.
+
+        * platform/graphics/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::paint):
+
+2010-05-24  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Make text filling work together with text stroke.
+
+        When the text has stroke a new QPen was set, overriding the pen
+        set for text filling. This patch fixes that by storing the two
+        pens and using where appropriate.
+
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::Font::drawComplexText):
+
+2010-05-17  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Darin Adler.
+
+        Add an optional "starting node' parameter to scrollRecursively and scrollOverflow of EventHandler
+        https://bugs.webkit.org/show_bug.cgi?id=39217
+
+        It would be usefull if scrollOverflow and scrollRecursively methods of EventHandler
+        could receive a parameter to specify where to start scrolling from. Currently they
+        start scrolling from either the current focused node or the node where mouse last
+        pressed on. Patch proposes an aditional starting point as an optional parameter.
+        Since it is optional, all call sites can remain as are, and if a Null node is passed
+        in, both methods work as previously.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::scrollOverflow):
+        (WebCore::EventHandler::scrollRecursively):
+        * page/EventHandler.h:
+
+2010-05-23  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Using Accelerated Composing the rocket back animation on http://www.the-art-of-web.com/css/css-animation/ works differently as when not using AC.
+        https://bugs.webkit.org/show_bug.cgi?id=39513
+
+        The value of GraphicsLayer->transform() needs to be changed during the animation, regardless of m_fillsForward.
+        m_fillsForward should only apply at the end of the animation. Based on previous patch by Kenneth Christiansen.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::TransformAnimationQt::applyFrame):
+        (WebCore::OpacityAnimationQt::applyFrame):
+
+2010-05-25  Kenneth Rohde Christiansen  <kenneth.christiansen@openbossa.org>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] Running with accelerated compositing enabled sometimes result in a crash
+        https://bugs.webkit.org/show_bug.cgi?id=39609
+
+        Check if we have a scene before applying the workaround for
+        the QGraphicsScene bug where opacity change doesn't always have
+        immediate effect.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::OpacityAnimationQt::applyFrame):
+
+2010-05-19  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Reviewed by Simon Hausmann.
+
+        Fix painting when using clipToImageBuffer()
+
+        When we apply the transform of the parent painter to the painter of
+        the transparency layer, we adopt its coordinate system, thus offset
+        should not be in page coordinates, but in the coordinate system of
+        the parent painter.
+
+        * platform/graphics/qt/GraphicsContextQt.cpp:
+        (WebCore::TransparencyLayer::TransparencyLayer):
+
+2010-05-19  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] REGRESSION: CoolClock isn't rendered properly
+
+        https://bugs.webkit.org/show_bug.cgi?id=38526
+
+        CanvasRenderingContext2D's arc() should connect to the previous point
+        with a straight line (HTML5 spec 4.8.11.1.8), but if the path is empty
+        to begin with, we don't want a line back to (0,0)
+        This also fixes the rendering artifact discussed in bug 36226.
+
+        Spec link:
+        http://www.whatwg.org/specs/web-apps/current-work/#dom-context-2d-arc
+
+        Test: fast/canvas/canvas-arc-connecting-line.html
+
+        * platform/graphics/qt/PathQt.cpp:
+        (WebCore::Path::addArc):
+
+2010-05-18  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Rubberstamped by Simon Hausmann.
+
+        Return null when creating an ImageBuffer failed, due to for
+        instance a nulled pixmap.
+
+        * platform/graphics/qt/ImageBufferQt.cpp:
+        (WebCore::ImageBufferData::ImageBufferData):
+        (WebCore::ImageBuffer::ImageBuffer):
+
+2010-05-17  Antti Koivisto  <koivisto@iki.fi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        https://bugs.webkit.org/show_bug.cgi?id=39218
+        [Qt] Tiled backing store tiles sometimes flicker when exiting a zoom animation
+        
+        Tiles sometimes flicker when exiting a zoom animation. This happens as a result
+        of the visible rectangle being momentarily out of sync.
+        
+        Instead of updating the visible rect by explicitly setting it, pull it through
+        the client and recompute in the WebKit level.
+
+        * page/ChromeClient.h:
+        (WebCore::ChromeClient::visibleRectForTiledBackingStore):
+        * page/Frame.cpp:
+        (WebCore::Frame::tiledBackingStoreVisibleRect):
+        * page/Frame.h:
+        * platform/graphics/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::checkVisibleRectChanged):
+        (WebCore::TiledBackingStore::createTiles):
+        * platform/graphics/TiledBackingStore.h:
+        * platform/graphics/TiledBackingStoreClient.h:
+
+2010-05-18  Zoltan Herczeg  <zherczeg@webkit.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Implementing clipToImageBuffer for Qt port.
+        https://bugs.webkit.org/show_bug.cgi?id=24289
+
+        The implementation combines pixmap layers and destinationIn
+        composition mode.
+
+        * platform/graphics/qt/GraphicsContextQt.cpp:
+        (WebCore::TransparencyLayer::TransparencyLayer):
+        (WebCore::GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate):
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::inTransparencyLayer):
+        (WebCore::GraphicsContext::beginTransparencyLayer):
+        (WebCore::GraphicsContext::endTransparencyLayer):
+        (WebCore::GraphicsContext::clipToImageBuffer):
+
+2010-05-16  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Canvas's toDataURL() should be case insensitive wrt the mimeType argument.
+        https://bugs.webkit.org/show_bug.cgi?id=39153
+
+        Spec link:
+        http://www.whatwg.org/specs/web-apps/current-work/#dom-canvas-todataurl
+
+        Test: fast/canvas/canvas-toDataURL-case-insensitive-mimetype.html
+
+        * dom/CanvasSurface.cpp:
+        (WebCore::CanvasSurface::toDataURL):
+
+2010-05-16  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Canvas's getContext() must return null when called with an invalid/unsupported parameter.
+        (HTML5 spec 4.8.11): http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#dom-canvas-getcontext
+
+        https://bugs.webkit.org/show_bug.cgi?id=39150
+
+        Test: fast/canvas/canvas-getContext-invalid.html
+
+        * bindings/js/JSHTMLCanvasElementCustom.cpp:
+        (WebCore::JSHTMLCanvasElement::getContext):
+        * bindings/v8/custom/V8HTMLCanvasElementCustom.cpp:
+        (WebCore::V8HTMLCanvasElement::getContextCallback):
+
+2010-05-17  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Reviewed by Laszlo Gombos.
+
+        REGRESSION(59563): [Qt] JSValue QtClass::fallbackObject can be optimized
+
+        Patch declared a variable index, which shadowed an earlier declared
+        variable.
+
+        * bridge/qt/qt_class.cpp:
+        (JSC::Bindings::QtClass::fallbackObject):
+
+2010-05-14  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] GraphicsLayer caches directly composited images
+        https://bugs.webkit.org/show_bug.cgi?id=38444
+
+        Directly-composited images and solid fills shouldn't be cached, as that cache
+        is never used (see GraphicsLayerQtImpl::paint). Cache is only relevant for HTML content,
+        but we were missing that test.
+        The fix makes sure we only cache HTML content.
+
+        No new tests: this is a minor optimization.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+
+2010-05-15  Anders Bakken  <agbakken@gmail.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Don't unnecessarily copy data when searching for methods in QtClass.
+
+        [Qt] JSValue QtClass::fallbackObject can be optimized
+        https://bugs.webkit.org/show_bug.cgi?id=37684
+
+        * bridge/qt/qt_class.cpp:
+        (JSC::Bindings::QtClass::fallbackObject):
+
+2010-05-06  Luiz Agostini  <luiz.agostini@openbossa.org>
+
+        Rubber-stamped by Simon Hausmann.
+
+        [Qt] use QT_MOBILE_THEME in Symbian
+        https://bugs.webkit.org/show_bug.cgi?id=38440
+
+        Putting QT_MOBILE_THEME into use for Symbian.
+
+        * WebCore.pro:
+
+2010-05-14  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Darin Adler.
+
+        CSSParser::parseColor() shouldn't alter 'color' unless passed a valid color string.
+        https://bugs.webkit.org/show_bug.cgi?id=39031
+
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::parseColor):
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::StyleChange::extractTextStyles): Don't depend on old behavior.
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::setShadow): Remove dead code.
+
+2010-05-14  Aaron Kennedy  <tffeeb@gmail.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] JavaScript unable to invoke methods declared in QML
+        https://bugs.webkit.org/show_bug.cgi?id=38949
+
+        JavaScript code executed by webkit cannot call into QML declared
+        methods, as it does not check for dynamic meta objects.
+
+        * bridge/qt/qt_instance.cpp:
+        (JSC::Bindings::QtInstance::stringValue): Use QMetaObject::metacall.
+        * bridge/qt/qt_runtime.cpp:
+        (JSC::Bindings::QtRuntimeMetaMethod::call): Ditto.
+
+2010-05-12  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Detect debug mode consistently
+        https://bugs.webkit.org/show_bug.cgi?id=38863
+
+        No new tests as there is no new functionality.
+
+        * WebCore.pro:
+
+2010-05-14  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Darin Adler.
+
+        Ignore invalid values for various CanvasRenderingContext2D properties
+        (lineWidth, miterLimit, shadowOffsetX, shadowOffsetY and shadowBlur)
+
+        https://bugs.webkit.org/show_bug.cgi?id=38841
+
+        Test: fast/canvas/canvas-invalid-values.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::setLineWidth):
+        (WebCore::CanvasRenderingContext2D::setMiterLimit):
+        (WebCore::CanvasRenderingContext2D::setShadowOffsetX):
+        (WebCore::CanvasRenderingContext2D::setShadowOffsetY):
+        (WebCore::CanvasRenderingContext2D::setShadowBlur):
+
+2010-05-12  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] GraphicsLayer: depth-test causes flicker in certain situations
+
+        This patch removes the simplistic 2D depth test as it leads to flickering side effects.
+        https://bugs.webkit.org/show_bug.cgi?id=38370
+
+        Tested by http://webkit.org/blog-files/3d-transforms/morphing-cubes.html
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::updateTransform):
+
+2010-04-29  James Robinson  <jamesr@chromium.org>
+
+        Reviewed by Simon Fraser.
+
+        Calls FrameView::scrollPositionChanged whenever a ScrollView is scrolled
+        https://bugs.webkit.org/show_bug.cgi?id=38286
+
+        When a ScrollView's  scroll position is changed, we have to call
+        FrameView::scrollPositionChanged to generate repaint invalidation for
+        fixed position elements.  This ends up getting called indirectly when
+        the ScrollView has a platformWidget through the port layer
+        (see WebHTMLView.mm's _frameOrBoundsChanged method for how the mac
+        port does it) but not when there is no platformWidget.
+
+        This is tested by the fast/repaint/fixed-* tests when run in pixel
+        mode.
+
+        Test: fast/repaint/fixed-move-after-keyboard-scroll.html
+
+        * page/FrameView.h:
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::valueChanged):
+        * platform/ScrollView.h:
+        (WebCore::ScrollView::scrollPositionChanged):
+
+2010-04-23  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Unreviewed build fix.
+
+        Change Media to StyleMedia
+
+        * DerivedSources.make:
+
+2010-04-22  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Reviewed by Laszlo Gombos.
+
+        Rename window.media to window.styleMedia
+        https://bugs.webkit.org/show_bug.cgi?id=36187
+
+        Rename the interface Media to StyleMedia as required by the
+        new CSSOM View spec.
+
+        * Android.derived.jscbindings.mk:
+        * Android.derived.v8bindings.mk:
+        * GNUmakefile.am:
+        * WebCore.gypi:
+        * WebCore.pri:
+        * WebCore.pro:
+        * WebCore.vcproj/WebCore.vcproj:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/Media.cpp: Removed.
+        * css/Media.h: Removed.
+        * css/Media.idl: Removed.
+        * css/StyleMedia.cpp: Added.
+        (WebCore::StyleMedia::StyleMedia):
+        (WebCore::StyleMedia::type):
+        (WebCore::StyleMedia::matchMedium):
+        * css/StyleMedia.h: Added.
+        (WebCore::StyleMedia::create):
+        (WebCore::StyleMedia::disconnectFrame):
+        * css/StyleMedia.idl: Added.
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::styleMedia):
+        * page/DOMWindow.h:
+        (WebCore::DOMWindow::optionalMedia):
+        * page/DOMWindow.idl:
+
+2010-04-22  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Rename window.media to window.styleMedia
+        https://bugs.webkit.org/show_bug.cgi?id=36187
+
+        It has been defined that the AbstractView media extension
+        defined in the CSSOM View spec should be renamed to styleMedia.
+        This patch does that and updates the current layout tests
+        making use of it.
+
+        * page/AbstractView.idl:
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::styleMedia):
+        * page/DOMWindow.h:
+        * page/DOMWindow.idl:
+
+2010-05-11  Benjamin Poulain  <benjamin.poulain@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] fast/text/find-hidden-text.html
+        https://bugs.webkit.org/show_bug.cgi?id=32922
+
+        Use the real page step for populating the QStyleOption otherwhise
+        the size can be negative, which can break the QStyle used.
+
+        * platform/qt/ScrollbarThemeQt.cpp:
+        (WebCore::styleOptionSlider):
+
+2010-05-03  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Kenneth Christiansen.
+
+        Spatial Navigation: create a getter for the "fudgeFactor"
+        https://bugs.webkit.org/show_bug.cgi?id=38488
+
+        A couple of places in the Spatial Navigation code make use of a "fudge factor"
+        to improve precision by working around outline focus metrics and such. Patch adds
+        a helper method for unify getter operations of this value, instead of having it
+        declared locally in the various methods it is used.
+
+        No behaviour change.
+
+        * page/SpatialNavigation.cpp:
+        (WebCore::scrollIntoView):
+        (WebCore::deflateIfOverlapped):
+        * page/SpatialNavigation.h:
+        (WebCore::fudgeFactor):
+
+2010-05-10  Markus Goetz  <Markus.Goetz@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        Qt after 4.6.3 has its integrated DNS cache. Therefore some
+        code is not necessary anymore.
+
+        https://bugs.webkit.org/show_bug.cgi?id=38834
+
+        * platform/network/qt/DnsPrefetchHelper.h:
+        (WebCore::DnsPrefetchHelper::lookup):
+        (WebCore::DnsPrefetchHelper::lookedUp):
+
+2010-05-06  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Unreviewed, build fix WinCE for QtWebKit.
+
+        [Qt] Compilation with Plugins disabled is broken
+        https://bugs.webkit.org/show_bug.cgi?id=31407
+
+        Rename platform/qt/TemporaryLinkStubs.cpp to avoid name collition on
+        Windows.
+
+        Thanks for Ismail "cartman" Donmez for help.
+
+        No new tests, as there is no new functionality.
+
+        * WebCore.gypi:
+        * WebCore.pro:
+        * platform/qt/TemporaryLinkStubs.cpp: Removed.
+        * platform/qt/TemporaryLinkStubsQt.cpp: Copied from WebCore/platform/qt/TemporaryLinkStubs.cpp.
+
+2010-04-23  Qi Zhang  <qi.2.zhang@nokia.com>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] LayoutTests/fast/canvas/pointInPath.html passed, actually it failed
+        https://bugs.webkit.org/show_bug.cgi?id=37276
+
+        QPainterPath::contains doesn't count the point on the bound.
+
+        * platform/graphics/qt/PathQt.cpp:
+        (WebCore::isPointOnPathBorder):
+        (WebCore::Path::contains):
+
+2010-05-07  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix rendering of -webkit-user-select: none
+
+        -webkit-user-select: none is implemented by filling
+        the area with an invalid default-constructed Color.
+        In most ports passing an invalid color down to the
+        graphics backend seems to produce transparent fills.
+
+        In Qt the behavior of painting with an invalid QColor
+        is undefined, and in practice it results in painting
+        black opaque areas.
+
+        One way to fix this would be to use Qt::transparent
+        when converting an undefined Color to a QColor, but
+        Qt does not have short circuits for fully transparent
+        painting, and we actually end up in slow code paths
+        due to the transparency. So, we're better of doing the
+        short circuit in WebKit.
+
+        https://bugs.webkit.org/show_bug.cgi?id=38523
+
+        * platform/graphics/qt/GraphicsContextQt.cpp:
+
+2010-04-05  Robert Hogan  <robert@webkit.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Fix infinite redirection loop in QNetworkReplyHandler
+
+        Put a maximum on consecutive redirections so we don't have to
+        worry about whether it's the same url or not.
+
+        Tolerate up to 10 consecutive redirections, anything beyond
+        that is considered a potentially infinite recursion in the
+        redirection requests. This is the same behaviour as Firefox.
+
+        https://bugs.webkit.org/show_bug.cgi?id=37097
+
+        * platform/network/qt/QNetworkReplyHandler.cpp:
+        (WebCore::QNetworkReplyHandler::QNetworkReplyHandler):
+        (WebCore::QNetworkReplyHandler::sendResponseIfNeeded):
+        * platform/network/qt/QNetworkReplyHandler.h:
+
+2010-04-05  Robert Hogan  <robert@webkit.org>
+
+        Reviewed by Kenneth Rohde-Christiansen.
+
+        [Qt] Fix infinite redirection loop in QNetworkReplyHandler
+
+        Qt enters an infinite loop if a redirect response redirects to itself.
+
+        Fixes http/tests/xmlhttprequest/connection-error-sync.html
+
+        https://bugs.webkit.org/show_bug.cgi?id=37097
+
+        * platform/network/qt/QNetworkReplyHandler.cpp:
+        (WebCore::QNetworkReplyHandler::sendResponseIfNeeded):
+
+2010-05-07  Ben Murdoch  <benm@google.com>
+
+        Reviewed by Darin Adler.
+
+        Potential crash in EventHandler::handleTouchEvent
+        https://bugs.webkit.org/show_bug.cgi?id=38646
+
+        Fix a ref counting bug that can cause a crash if the m_originatingouchPointTargets
+        hashmap holds the last ref to an EventTarget when the user lifts their finger.
+
+        This is very hard to reproduce in a consistent way and clearly a
+        simple logic error in the code, therefore no new tests.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleTouchEvent): Don't let the RefPtr we get back from
+            the hasmap go out of scope so soon as it could delete the wrapped ptr if the
+            hashmap held the last ref (and we use the raw ptr that the RefPtr
+            wraps later in the WebCore::Touch constructor).
+
+2010-05-04  Ben Murdoch  <benm@google.com>
+
+        Reviewed by Simon Hausmann.
+
+        Crash in handleTouchEvent: using dangling node ptrs in hashmap
+        https://bugs.webkit.org/show_bug.cgi?id=38514
+
+        When navigating away from a page, if you have your finger still
+        pressed and then lift it on the new page we see a crash if the
+        node got deleted as we still have a dangling pointer in the
+        m_originatingTouchPointTargets hashmap and try to use it as the
+        receiver to dispatch a touchend event.
+
+        Test: fast/events/touch/touch-stale-node-crash.html
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::clear): Clear the hashmap of touch targets.
+
+2010-05-04  Luiz Agostini  <luiz.agostini@openbossa.org>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] QT_MOBILE_THEME compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=38439
+
+        Replacing preprocessor conditional used in RenderThemeQt from Q_WS_MAEMO_5 to
+        USE(QT_MOBILE_THEME).
+
+        * WebCore.pro:
+        * platform/qt/RenderThemeQt.cpp:
+        (WebCore::RenderThemeQt::RenderThemeQt):
+        (WebCore::RenderThemeQt::qStyle):
+        (WebCore::RenderThemeQt::extraDefaultStyleSheet):
+        (WebCore::RenderThemeQt::adjustMenuListButtonStyle):
+        (WebCore::RenderThemeQt::setPaletteFromPageClientIfExists):
+        * platform/qt/RenderThemeQt.h:
+
+2010-03-25  Tasuku Suzuki  <tasuku.suzuki@nokia.com>
+
+        Reviewed by Eric Seidel.
+
+        [Qt]Fix compile error with QT_NO_LIBRARY
+        https://bugs.webkit.org/show_bug.cgi?id=36533
+
+        * platform/FileSystem.h:
+        * platform/qt/FileSystemQt.cpp:
+        (WebCore::unloadModule):
+
+2010-05-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed WinCE buildfix after r58842.
+        Preprocessor doesn't understand "true", changed to "1"
+
+        * platform/graphics/MediaPlayer.cpp:
+
+2010-05-06  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Kenneth Christiansen.
+
+        Spatial Navigation: adapt the logic of {deep}findFocusableNodeInDirection to do traversal starting from Node* not Document*
+        https://bugs.webkit.org/show_bug.cgi?id=37803
+
+        Instead of receiving a Document pointer as incoming parameter, patch modifies
+        findFocusableNodeInDirection and deepFindFocusableNodeInDirection methods to
+        receive a Node pointer as start for content traversal.
+        This way we can make good use of deepFindFocusableNodeInDirection to traverse
+        other scrollable container like scrollable div's, and not only frames or iframes.
+
+        Patch also makes use of 'while' instead of 'for' to loop control, that gives move
+        flexibility to the incremental step: e.g. if a scrollable div was processed, the incremental
+        step in the loop does not have to do node->traverseNextNode() but node->traverseNextSibling().
+
+        No behavior change. It is a preparation for supporting scrollable containers in Spatial
+        Navigation.
+
+        * page/FocusController.cpp:
+        (WebCore::FocusController::advanceFocusDirectionally):
+        (WebCore::FocusController::findFocusableNodeInDirection):
+        (WebCore::FocusController::deepFindFocusableNodeInDirection):
+        * page/FocusController.h:
+
+2010-05-06  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] REGRESSION: Loading of external CSS and JS files over network fails in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=36755
+
+        Enable the direct connection between QtNetwork and QtWebKit only for Qt versions
+        greater than 4.6.2, due to a bug in Qt that's been fixed after 4.6.2.
+
+        * platform/network/qt/QNetworkReplyHandler.cpp:
+
+2010-05-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt]Disable Qt Multimedia backend for HTML 5 Audio and Video elements
+        Fall back to the Phonon backend until the release situation has been cleared up.
+
+        https://bugs.webkit.org/show_bug.cgi?id=38612
+
+        Buildfix for QT_VERSION >= 0x040700 after r58810.
+
+        * platform/graphics/MediaPlayer.cpp:
+
+2010-05-03  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix rendering of <button> elements on Mac OS X
+
+        The <button> element has ButtonPart appearance, not PushButton part,
+        so we have to include ButtonPart when we decide if we should draw the
+        button as raised on Mac OS X.
+
+        https://bugs.webkit.org/show_bug.cgi?id=38458
+
+        * platform/qt/RenderThemeQt.cpp:
+        (WebCore::RenderThemeQt::initializeCommonQStyleOptions):
+
+2010-04-26  Luiz Agostini  <luiz.agostini@openbossa.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        View modes names in CSSValueKeywords.in
+        https://bugs.webkit.org/show_bug.cgi?id=38125
+
+        View mode names has changed in previous patch but CSSValueKeywords.in file was
+        not updated.
+
+        * css/CSSValueKeywords.in:
+
+2010-04-28  Luiz Agostini  <luiz.agostini@openbossa.org>
+
+        Reviewed by Simon Fraser.
+
+        Media queries empty values
+        https://bugs.webkit.org/show_bug.cgi?id=38116
+
+        Adding isValid() method to MediaQueryExp to make it possible to differentiate
+        between queries with empty values and queries with invalid values.
+
+        Test: fast/media/media-query-invalid-value.html
+
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::MediaQueryEvaluator::eval):
+        * css/MediaQueryExp.cpp:
+        (WebCore::MediaQueryExp::MediaQueryExp):
+        * css/MediaQueryExp.h:
+        (WebCore::MediaQueryExp::isValid):
+
+2010-05-05  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Disable Qt Multimedia backend for HTML 5 Audio and Video elements
+
+        Fall back to the Phonon backend until the release situation has been cleared up.
+
+        * WebCore.pro:
+
+2010-05-03  Janne Koskinen  <janne.p.koskinen@digia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix qtlibraryinfix not to contain space
+
+        List catenation with += adds whitespace cutting the infix
+        from the final target.
+
+        * WebCore.pro:
+
+2010-05-03  Thomas Zander <t.zander@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix library infix usage when compiling inside of Qt
+
+        Don't apply the infix when building inside Qt, as that's done through the
+        inclusion of qbase.pri.
+
+        * WebCore.pro:
+
+2010-04-29  Janne Koskinen  <janne.p.koskinen@digia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] QtWebKit versioning added
+        https://bugs.webkit.org/show_bug.cgi?id=37207
+
+        QtWebkit releases separated from Qt release cycle.
+
+        * WebCore.pro:
+
+2010-03-27  Robert Hogan  <robert@webkit.org>
+
+        Reviewed by nobody, fix typo in previous commit.
+
+        Allow plugins implemented by the application, such as mimetype 'x-qt-plugin',
+         when pluginsEnabled is false
+
+        Fix parentheses typo in r56661. This happened while rebasing and was not present
+        in the reviewed patch, so committing unreviewed.
+
+        https://bugs.webkit.org/attachment.cgi?id=49515
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::requestObject):
+
+2010-03-26  Robert Hogan  <robert@roberthogan.net>
+
+        Reviewed by Simon Hausmann.
+
+        Allow plugins implemented by the application, such as mimetype 'x-qt-plugin',
+         when pluginsEnabled is false.
+
+        The purpose of disabling plugins is to prevent the execution of third-party code
+        that may be untrustworthy. Qt plugins are implemented by the client rather than
+        loaded from an external source, so the client should have the opportunity to
+        consider them separately from other plugins.
+
+        Add a function MimeTypeRegistry::isApplicationPluginMIMEType() that WebKit
+        uses in conjunction with arePluginsEnabled() to determine if it should attempt
+        to load a plugin. If isApplicationPluginMIMEType() returns true, WebKit will load
+        the plugin even if arePluginsEnabled() is false.
+
+        Currently, only Qt has application-implemented plugins: these use the mimetype
+        'x-qt-plugin' and 'x-qt-styled-widget'. This patch permits Qt clients'
+        reimplementation of QWebPage::createPlugin() to decide whether or not
+        to create a Qt plugin, even when arePluginsEnabled is false.
+
+        For all platforms apart from Qt, isApplicationPluginMIMEType() returns false.
+
+        https://bugs.webkit.org/show_bug.cgi?id=32196
+
+        Test: plugins/application-plugin-plugins-disabled.html
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::requestObject):
+        * platform/MIMETypeRegistry.h:
+        * platform/brew/MIMETypeRegistryBrew.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/chromium/MIMETypeRegistryChromium.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/gtk/MIMETypeRegistryGtk.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/haiku/MIMETypeRegistryHaiku.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/mac/MIMETypeRegistryMac.mm:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/qt/MIMETypeRegistryQt.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/win/MIMETypeRegistryWin.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/wince/MIMETypeRegistryWince.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+        * platform/wx/MimeTypeRegistryWx.cpp:
+        (WebCore::MIMETypeRegistry::isApplicationPluginMIMEType):
+
+2010-04-29  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] GraphicsLayer: flicker when starting an animation before the previous one ended.
+        https://bugs.webkit.org/show_bug.cgi?id=38076
+
+        This was due to the cude in the removeAnimations functions, which called deleteLater() without stopping the
+        animation synchronously. The delay between the call to that function and the actual call to the animation's destructor
+        is when the flicker occured. We fix this by calling stop() synchronously, and making sure that the value is reverted
+        upon stop (updateState) and not upon the object's destruction.
+
+        http://staff.washington.edu/fmf/2009/03/25/iphone-3d-css-transformations/ now doesn't flicker when
+        the animation is toggled frequently.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::TransformAnimationQt::~TransformAnimationQt):
+        (WebCore::TransformAnimationQt::applyFrame):
+        (WebCore::TransformAnimationQt::updateState):
+        (WebCore::OpacityAnimationQt::~OpacityAnimationQt):
+        (WebCore::OpacityAnimationQt::updateState):
+        (WebCore::GraphicsLayerQt::removeAnimationsForProperty):
+        (WebCore::GraphicsLayerQt::removeAnimationsForKeyframes):
+
+2010-04-29  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        Reverse animations don't work in some use cases        
+        https://bugs.webkit.org/show_bug.cgi?id=38075
+
+        This was due to a code path special-casing reverse animations, that became obselete when we aligned our animation code
+        with the CA implementation. That special case code path is now a bug - and this patch removes it.
+
+        http://staff.washington.edu/fmf/2009/03/25/iphone-3d-css-transformations/ now runs the reverse
+        animation correctly.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::TransformAnimationQt::applyFrame):
+
+2010-04-29  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Speed up text layouting
+        https://bugs.webkit.org/show_bug.cgi?id=31719
+
+        Use QFontMetrics::width() for the text width calculation instead
+        of QTextLayout. This avoids expensive bearing calculations and the
+        line breaking code.
+
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::Font::floatWidthForComplexText):
+
+2010-04-29  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] REGRESSION(r57638): tst_qwebframe::objectDeleted() fails
+        https://bugs.webkit.org/show_bug.cgi?id=38316
+
+        Accessing properties of a deleted objects doesn't throw an exception
+        anymore.
+
+        Continue to expose the QObject class wrapper for objects that
+        previously existed but don't exist anymore. QtClass is safe to
+        use with a deleted QObject.
+
+        * bridge/qt/qt_instance.cpp:
+        (JSC::Bindings::QtInstance::getClass): Return null only if m_class
+        doesn't exist yet and there's no m_object.
+
+2010-04-28  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] GraphicsLayer: preserves-3d and backface visibility
+        https://bugs.webkit.org/show_bug.cgi?id=35312
+
+        Implement preserves-3d by maintaining the 3D transformation heirarchy inside GraphicsLayerQt, and extrapolating
+        the relative QTransform. When the extrapolation fails (un-invertible matrix) we ignore the transformation change.
+
+        WebKitSite/blog-files/3d-transforms test now work with Qt.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::updateTransform):
+        (WebCore::GraphicsLayerQtImpl::opaqueArea):
+        (WebCore::GraphicsLayerQtImpl::boundingRect):
+        (WebCore::GraphicsLayerQtImpl::paint):
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+
+2010-04-28  Justin McPherson <justin.mcpherson@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix detection of Qt 4.7's multimedia libraries
+
+        QtMultimedia has been split into an additional media services library, which
+        we're using. mediaservices depends on multimedia.
+
+        * WebCore.pro:
+
+2010-04-26  Andreas Kling  <andreas.kling@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Fix compilation against Qt 4.7
+
+        Some QtMultimedia things have been moved into QtMediaServices
+        https://bugs.webkit.org/show_bug.cgi?id=38111
+
+        * WebCore.pro:
+        * platform/graphics/qt/MediaPlayerPrivateQt.cpp:
+        (WebCore::MediaPlayerPrivate::supportsType):
+        (WebCore::MediaPlayerPrivate::totalBytes):
+
+2010-04-21  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Make sure WebKit is not compiled using C++0x.
+        https://bugs.webkit.org/show_bug.cgi?id=37867
+
+        As the rest of Qt compiles in the C++0x mode, people might start
+        compiling it in this mode. WebKit don't support this yet.
+
+        Patch by Thiago Macieira <thiago.macieira@nokia.com>
+
+        * WebCore.pro:
+
+2010-04-22  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Hide the OpenGL and QtMultimedia dependencies from syncqt.
+
+        This prevents the dependent headers from being included by
+        qt/include/QtWebKit/QtWebKit
+
+        * WebCore.pro:
+
+2010-04-27  Thomas Zander <t.zander@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix linking on Symbian on Linux using the Makefile based mkspec.
+
+        Disable thumb mode due to library size limitations, just like it's done
+        for the sbs/sbsv2 based build system.
+
+        * WebCore.pro:
+
+2010-04-26  Ruben Van Boxem  <vanboxem.ruben@gmail.com>
+
+        Reviewed by Adam Roben.
+
+        Fixes for Win64 compilation under gcc (mingw-w64)
+
+        *  WebCore/bridge/npapi.h: for win64 compatibility, mirroring mozilla-central, see Mozilla bug 560298
+        *  WebCore/platform/Arena.h: uword is used to cast from pointers here. unsigned long is 32-bit on Windows (but 64-bit on mac), and too small to hold a pointer. uintptr_t is 32-bit on 32-bit systems (mac, linux and windows) and 64-bit on all 64-bit systems
+        *  WebCore/platform/graphics/transforms/TransformationMatrix.h: let mingw-w64/w32 use MSVC codepath
+        *  WebCore/platform/text/TextStream.cpp: let mingw-w64 use MSVC codepath
+        *  WebCore/platform/text/TextStream.h: let mingw-w64 use MSVC codepath
+        *  WebCore/plugins/PluginView.cpp: fix pointer casts on WIN64 and let mingw-w64 use MSVC codepath
+        *  WebCore/plugins/win/PluginViewWin.cpp: fix pointer casts on WIN64
+
+2010-01-07  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Reviewed by NOBODY (OOPS!).
+
+        [RVCT] ACID3 test crash
+        https://bugs.webkit.org/show_bug.cgi?id=33280
+
+        Workaround developed by Yongjun Zhang.
+
+        * dom/Element.cpp:
+        (WebCore::Element::setAttribute):
+
+2010-04-26  Markus Goetz  <Markus.Goetz@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] HTTP pipelining efficiency increase
+        https://bugs.webkit.org/show_bug.cgi?id=38062
+
+        Increase number of network requests that are fed into
+        QNetworkAccessManager.
+
+        * platform/network/qt/ResourceRequestQt.cpp:
+        (WebCore::initializeMaximumHTTPConnectionCountPerHost):
+
+2010-04-26  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Fix compilation with RVCT 4
+        https://bugs.webkit.org/show_bug.cgi?id=37727
+
+        Swap extern and declspec to fix visibility of symbol imported from QtGui.
+
+        * page/qt/EventHandlerQt.cpp:
+
+2010-04-26  Bruno Schmidt  <bruno.schmidt@gmail.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Exposing an QVariantMap containing QObjectStar to Javascript
+        causes Segmentation Fault
+        https://bugs.webkit.org/show_bug.cgi?id=34729
+
+        If an QVariantMap containing QObjectStar is added to the to QtWebkit
+        Javascript, it's use causes Segmentation Fault.
+        It happens because, in the case QMetaType::QVariantMap, the "root"
+        object that is inside of a PassRefPtr is passed recursively inside a
+        loop to recover the content of the map, but the PassRefPtr semantics
+        prohibit its use inside a loop, so the "root" object mus be passed
+        using the method "PassRefPtr::get" in order to keep the current
+        reference.
+
+        * bridge/qt/qt_runtime.cpp:
+        (JSC::Bindings::convertValueToQVariant):
+        (JSC::Bindings::convertQVariantToValue): change to root.get()
+
+2010-04-22  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Darin Adler.
+
+        Fix the MSVC 64bit build.
+        https://bugs.webkit.org/show_bug.cgi?id=37980
+
+        * platform/text/TextStream.cpp:
+        * platform/text/TextStream.h:
+        * plugins/win/PluginViewWin.cpp:
+        (WebCore::PluginView::platformStart):
+
+2010-04-22  Ray Rischpater  <Raymond.Rischpater@Nokia.com>
+
+        Reviewed by Darin Adler.
+
+        In HTMLInputElement.cpp, shouldUseInputMethod does not return true for
+        some text input types (TELEPHONE, NUMBER, URL, and EMAIL). Addressed
+        this by changing shouldUseInputMethod to use internal methods to 
+        check that the field is a text field that isn't a password field. 
+
+        No new tests.
+
+        Fixes <https://bugs.webkit.org/show_bug.cgi?id=37719>
+
+        * html/HTMLInputElement.cpp:
+        (WebCore::HTMLInputElement::shouldUseInputMethod):
+
+2010-04-22  Gustavo Sverzut Barbieri  <barbieri@profusion.mobi>
+
+        Reviewed by Eric Seidel.
+
+        Fix build if NPAPI support is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=36621
+
+        No new tests, this is a build fix.
+        Re-submit r58043 with fix for EFL.
+
+        * plugins/PluginViewNone.cpp:
+
+2010-03-25  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Reviewed by Darin Adler.
+
+        Fix build if NPAPI support is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=36621
+
+        No new tests, this is a build fix.
+
+        * plugins/PluginView.cpp: Guard getValueStatic() with
+        NETSCAPE_PLUGIN_API
+        (WebCore::PluginView::getValue):
+        * plugins/PluginView.h: Guard getValue() with NETSCAPE_PLUGIN_API
+        * plugins/PluginViewNone.cpp: Guard platformGetValue() and
+        platformGetValueStatic with NETSCAPE_PLUGIN_API;
+        Guard privateBrowsingStateChanged() and setJavaScriptPaused() with
+        PLATFORM(MAC)
+
+2010-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Reviewed by Dan Bernstein.
+
+        Repaint of fixed, transformed element is broken
+        https://bugs.webkit.org/show_bug.cgi?id=37637
+
+        RenderBox::computeRectForRepaint() failed to set the 'fixed' flag correctly
+        for elements that had both fixed position and a transform. If the element has
+        a transform, 'fixed' should only remain true if the element itself is fixed
+        position.
+        
+        Also cache style()->position() in a local variable for performance.
+        
+        Test: fast/repaint/fixed-tranformed.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::computeRectForRepaint):
+
+2010-04-19  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Spatial Navigation: at @updateFocusCandidateIfCloser make an assignment shortcut when FocusCandidate is null
+        https://bugs.webkit.org/show_bug.cgi?id=37802
+
+        In updateFocusCandidateIfCloser method, we do all bail out checks in the begining of
+        the method body. If after those bail out checks, no "best FocusCandidate" has been taken
+        yet (i.e. focusCandidate.isNull() == true), we can safely take the current candidate,
+        and exit earlier.
+
+        No behavior change, it is just a safe assignment shortcut.
+
+        * page/FocusController.cpp:
+        (WebCore::updateFocusCandidateIfCloser):
+
+2010-04-21  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Simon Fraser.
+
+        [Qt] Fix or remove the runtime flag for accelerated compositing.
+
+        This adds a way for a chrome client to disallow layers from becoming composited,
+        even if the settings enable accelerated compositing. This is necessary for platforms
+        where different views can be applied with the same settings to the same page.
+
+        We enable an API through ChromeClient to ask the chrome-client whether or not
+        it can render composited layers, which is taken into account when the compositor
+        decides whether or not to start compositing.
+
+        https://bugs.webkit.org/show_bug.cgi?id=37313
+
+        Pages under LayoutTests/compositing now work under QWebView, even when
+        QWebSettings::AcceleratedCompositingEnabled is on.
+
+        * page/ChromeClient.h:
+        (WebCore::ChromeClient::allowsAcceleratedCompositing):
+        * platform/qt/QWebPageClient.h:
+        (QWebPageClient::allowsAcceleratedCompositing):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::canBeComposited):
+
+2010-04-23  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] [Performance] GraphicsLayer: constructing the layers takes too long
+        https://bugs.webkit.org/show_bug.cgi?id=36365
+
+        The issue came from using QGraphicsView's cache as is. The problem is that
+        several code-paths require re-rendering of the item, but not re-rendering
+        of the web content into the cache.
+
+        The way to solve it is by having GraphicsLayerQt manage the cache directly
+        via QPixmapCache, instead of using QGraphicsItem cache modes.
+
+        FPS measurement shows significant improvement (20FPS before, 40FPS after)
+        on several use-cases, including blog-files/leaves on a desktop environment.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::GraphicsLayerQtImpl):
+        (WebCore::GraphicsLayerQtImpl::recache):
+        (WebCore::GraphicsLayerQtImpl::paint):
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+
+2010-04-21  Benjamin Poulain  <ikipou@gmail.com>
+
+        Reviewed by Simon Fraser.
+
+        Update of fixed elements is not made correctly when the page has been scrolled
+        https://bugs.webkit.org/show_bug.cgi?id=36783
+
+        When a fixed element was updated, the old geometry was not repainted correctly
+        because the repaint rect was cached during the layout and not updated when 
+        scrolling.
+
+        The rect is now updated while scrolling so the region updated correspond to the
+        region of the element on the screen.
+
+        The method RenderLayer::updateRepaintRectsAfterScroll() updates
+        the repaint rect of all fixed tree after scroll.
+
+        Tests: fast/repaint/fixed-child-move-after-scroll.html
+               fast/repaint/fixed-child-of-fixed-move-after-scroll.html
+               fast/repaint/fixed-child-of-transformed-move-after-scroll.html
+               fast/repaint/fixed-move-after-scroll.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollPositionChanged):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::updateRepaintRectsAfterScroll):
+        * rendering/RenderLayer.h:
+
+2010-04-21  David Leong  <david.leong@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Symbian apps crash on exit due to a bad qObject_cast.
+
+        https://bugs.webkit.org/show_bug.cgi?id=37303
+
+        Added check for NULL to avoid the crash. Reworked to fix memory leak
+           
+        * plugins/symbian/PluginViewSymbian.cpp:
+        (WebCore::PluginView::platformDestroy):
+
+2010-04-14  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Spatial Navigation: make hasOffscreenRect() to earlier return 'true' if absoluteClippedOverflowRect() gives an empty rect
+        https://bugs.webkit.org/show_bug.cgi?id=37635
+
+        absoluteClippedOverflowRect method of RenderObject does return an empty IntRect for offscreen nodes.
+        So hasOffscreenRect method (SpatialNavigation.cpp) can safily bail out earlier in such cases.
+
+        * page/SpatialNavigation.cpp:
+        (WebCore::hasOffscreenRect):
+
+2010-04-12  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Spatial Navigation: make renderRectRelativeToRootDocument method to fallback to getRect() of Element when needed
+        https://bugs.webkit.org/show_bug.cgi?id=37461
+
+        getRect() of Element can be used instead of absoluteClippedOverflowRect of RenderObject when
+        the node is currently offscreen in an scroll overflowed content.
+
+        Test: fast/events/spatial-navigation/snav-simple-content-overflow.html
+
+        * page/SpatialNavigation.cpp:
+        (WebCore::renderRectRelativeToRootDocument):
+
+2010-03-29  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+
+        Spatial Navigation: proper handle negative x or y coordinates
+        https://bugs.webkit.org/show_bug.cgi?id=36773
+
+        In Spatial Navigation logic, during rect acquisition in renderRectRelativeToRootDocument,
+        sometimes negative x() or y() values are got, and the current algorithm bails out in
+        any of such cases.
+
+        However, when a node is in a scrollable content (content overflow <div>) and
+        this scrollable container scrolled up, element gets offscreen, and gets negative values
+        for y(), for example. In such cases, they are still valid to be used in Spatial Navigation
+        logic.
+
+        Test: fast/events/spatial-navigation/snav-offscreen-content.html
+
+        * page/SpatialNavigation.cpp:
+        (WebCore::distanceDataForNode):
+        (WebCore::checkNegativeCoordsForNode):
+
+2010-04-05  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Kenneth Christiansen.
+
+        Spatial Navigation: bail out as soon as algorithm finds a focus candidate is not applicable
+        https://bugs.webkit.org/show_bug.cgi?id=37135
+
+        It happens, for example, when distanceDataForNode assigns numeric_limits<long long> to
+        current focus candidate's. It means that current candidate is not in direction, or not
+        a valid target node.
+
+        * page/FocusController.cpp:
+        (WebCore::FocusController::findFocusableNodeInDirection):
+
+2010-03-29  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Reviewed by Simon Fraser.
+        Patch by Antonio Gomes <tonikitoo@webkit.org>
+
+        Spatial Navigation: Initial code simplification in FocusController.cpp and SpatialNavigation.cpp
+
+        WebCore::distanceInDirection method was handling much of the logic not
+        strictly only related to the distance between nodes acquisition. This
+        method was simplified and renamed to 'WebCore::distanceDataForNode'.
+        The latter is now responsible for only getting the distance and alignment
+        data, while all assignement logic previously in distanceInDirection method
+        was moved place to updateFocusCandidateIfCloser.
+
+        Parent document distance and alignment acquisitions, in turn, have also
+        changed location: they are both got from deepFindFocusableNodeInDirection,
+        and passed in a recursive call to findFocusableNodeInDirection via the
+        candidateParent variable (optional parameter). In addition, the need for
+        the 'focusCandidateCopy' variable in deepFindFocusableNodeInDirection method
+        was removed, making the code much cleaner.
+
+        No behaviour change at this point. Mostly moving code around to the place
+        where it should live in.
+
+        * page/FocusController.cpp:
+        (WebCore::FocusController::advanceFocusDirectionally):
+        (WebCore::updateFocusCandidateIfCloser):
+        (WebCore::FocusController::findFocusableNodeInDirection):
+        (WebCore::FocusController::deepFindFocusableNodeInDirection):
+        * page/FocusController.h:
+        * page/SpatialNavigation.cpp:
+        (WebCore::distanceDataForNode):
+        (WebCore::renderRectRelativeToRootDocument):
+        * page/SpatialNavigation.h:
+
+2010-04-20  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Antti Koivisto.
+
+        [Qt] GraphicsLayer: support fill-modes
+        https://bugs.webkit.org/show_bug.cgi?id=36216
+        Implement the CSS-animation "fill mode" concept in GraphicsLayerQt. The concept
+        enables a key-frame animation to go to the animation's starting point before the delay,
+        and/or to stay at the animation's ending point after its ended, without reverting to the default
+        value.
+        We do that by manually setting the value to keyframe-0 before the delay if fill-mode is backwards/both,
+        and manually modifying the default value to the animated value as we animate, with fill-mode forwards/both.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::AnimationQtBase::AnimationQtBase):
+        (WebCore::TransformAnimationQt::~TransformAnimationQt):
+        (WebCore::TransformAnimationQt::applyFrame):
+        (WebCore::GraphicsLayerQt::addAnimation):
+
+2010-04-13  Eskil Blomfeldt <eblomfel@trolltech.com>, Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Use integer pixel metric QFont API to fix rounding errors in text rendering on the Mac
+        https://bugs.webkit.org/show_bug.cgi?id=36532
+
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::Font::floatWidthForComplexText):
+        (WebCore::Font::font):
+
+2010-04-16  Daniel Bates  <dbates@rim.com>
+
+        Reviewed by Adam Treat.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36312
+
+        Adds support for the viewport meta tag. The code is largely derived in whole
+        or in part from the WebCore-528.15 source published as part of the iPhone 3.1.3
+        source code <http://www.opensource.apple.com/source/WebCore/WebCore-528.15/>.
+
+        * Android.mk: Added file ViewportArguments.cpp.
+        * GNUmakefile.am: Added files ViewportArguments.cpp and ViewportArguments.h.
+        * WebCore.gypi: Ditto.
+        * WebCore.pro: Ditto.
+        * WebCore.vcproj/WebCore.vcproj: Ditto.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+        * dom/Document.cpp:
+        (WebCore::isSeparator): Added.
+        (WebCore::Document::processArguments): Added.
+        (WebCore::Document::processViewport): Added.
+        * dom/Document.h:
+        * dom/ViewportArguments.cpp: Added.
+        (WebCore::setViewportFeature):
+        (WebCore::viewportErrorMessageTemplate):
+        (WebCore::viewportErrorMessageLevel):
+        (WebCore::reportViewportWarning):
+        * dom/ViewportArguments.h: Added.
+        (WebCore::):
+        (WebCore::ViewportArguments::):
+        (WebCore::ViewportArguments::ViewportArguments):
+        (WebCore::ViewportArguments::hasCustomArgument):
+        * html/HTMLMetaElement.cpp:
+        (WebCore::HTMLMetaElement::process): Modified to call Document::processViewport.
+        * page/ChromeClient.h:
+        (WebCore::ChromeClient::didReceiveViewportArguments): Added.
+
+2010-04-15  Luiz Agostini  <luiz.agostini@openbossa.org>
+
+        Reviewed by Antti Koivisto.
+
+        No default selection for <select multiple> menu lists.
+        https://bugs.webkit.org/show_bug.cgi?id=37530
+
+        Manual test: manual-tests/no-listbox-rendering.html
+
+        For menu lists, if the selection is not indicated by the html file, the first <option> will be
+        selected after loading the page or reseting the form. On the other hand listboxes may have no
+        element selected after loading the page or reseting the form.
+
+        When NO_LISTBOX_RENDERING is enabled listboxes becomes menu lists. Those <select multiple>
+        that did not have selected elements, now being menu lists, will have the first <option>
+        selected. That is the behavior difference that this patch corrects.
+
+        When NO_LISTBOX_RENDERING is enabled usesMenuList() always returns true then usesMenuList() cannot
+        be used to decide about initial selection of the elements. This patch replaces (usesMenuLists())
+        by (!multiple && size <= 1) where initial selection is considered.
+
+        * dom/SelectElement.cpp:
+        (WebCore::SelectElement::recalcListItems):
+        (WebCore::SelectElement::reset):
+        * manual-tests/no-listbox-rendering.html: Added.
+
+2010-04-19  Balazs Kelemen  <kb@inf.u-szeged.hu>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Destroy SharedTimerQt before destruction of QCoreApplication.
+
+        To avoid unsafe situations caused by running WebCore code (through firing timers) when destruction of QCoreApplication
+        has been started, we should explicitly destroy the SharedTimerQt instance on application exit.
+        We can achieve that through installing a self-destroying slot for the QCoreApplication::aboutToQuit() signal
+        into the SharedTimerQt instance.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36832
+
+        No functional change so no new tests.
+
+        * platform/qt/SharedTimerQt.cpp:
+        (WebCore::SharedTimerQt::SharedTimerQt):
+        (WebCore::SharedTimerQt::destroy):
+        (WebCore::SharedTimerQt::inst):
+
+2010-04-16  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Make GraphicsLayerQt always use ItemCoordinateCache, and remove ItemUsesExtendedStyleOption.
+        This aligns our implementation with the Safari implementation - layers are always uploaded
+        to textures in item units, and WebCore is responsible for the heuristics.
+
+        [Qt] GraphicsLayer: performance optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=35393
+
+        No new tests. Still no FPS benchmarks available (on any platform)
+        but animations are noticably better.
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::GraphicsLayerQtImpl):
+        (WebCore::GraphicsLayerQtImpl::paint):
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+        (WebCore::TransformAnimationQt::updateState):
+
+2010-04-16  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Unreviewed QtWebKit (with Qt 4.7) build fix.
+
+        Bug 37683 moved code from FontQt.cpp to FontPlatformDataQt.cpp but did not
+        renamed the variable used.
+
+        * platform/graphics/qt/FontPlatformDataQt.cpp:
+        (WebCore::FontPlatformData::FontPlatformData):
+
+2010-04-16  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] WebCore::Font::font() causes a QFont detach
+        https://bugs.webkit.org/show_bug.cgi?id=37683
+
+        Moved the setStyleStrategy call to FontPlatformData
+        to avoid the detach.
+
+        Thanks to Holger for spotting this.
+
+        * platform/graphics/qt/FontPlatformDataQt.cpp:
+        (WebCore::FontPlatformData::FontPlatformData):
+        * platform/graphics/qt/FontQt.cpp:
+        (WebCore::Font::font):
+
+2010-04-16  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Antti Koivisto.
+
+        [Qt]QtLauncher crash on page with CSS 3D transform
+        https://bugs.webkit.org/show_bug.cgi?id=36859
+
+        Added a neccessary null-pointer check, lack of which created the crash circumstances.
+
+        Tested by http://css-vfx.googlecode.com/svn/trunk/snowstack/snowstack.html
+
+        * platform/graphics/qt/GraphicsLayerQt.cpp:
+        (WebCore::GraphicsLayerQtImpl::flushChanges):
+
+2010-04-18  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] Fix JavaScriptCore's include path for WinCE builds
+
+        https://bugs.webkit.org/show_bug.cgi?id=36751
+
+        * WebCore.pro:
+
+2010-04-19  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix compilation against namespaced Qt.
+
+        * platform/graphics/GraphicsLayer.h:
+        * platform/graphics/Tile.h:
+        * platform/graphics/qt/MediaPlayerPrivateQt.h:
+        * platform/network/qt/NetworkStateNotifierPrivate.h:
+
+2010-04-14  Luiz Agostini  <luiz.agostini@openbossa.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Changing view mode names due to specification changes
+        https://bugs.webkit.org/show_bug.cgi?id=37615
+
+        test: fast/media/media-feature-wgt-view-mode.html
+
+        specification: http://dev.w3.org/2006/waf/widgets-vmmf/
+
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::view_modeMediaFeatureEval):
+        * page/ChromeClient.h:
+        (WebCore::ChromeClient::isWindowed):
+        (WebCore::ChromeClient::isMaximized):
+        (WebCore::ChromeClient::isMinimized):
+
+2010-04-15  Bruno Schmidt  <bruno.schmidt@gmail.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Null QObjects properties cause Segmentation Fault
+        https://bugs.webkit.org/show_bug.cgi?id=34730
+
+        QObjects exported to the QWebkit javascript with properties that are
+        a null "QObject*" cause Segmentation Fault.
+
+        If an QObject is added to the javascript context and it contains
+        properties of the type QObject* with NULL value, calling the property
+        causes Segmentation Fault.
+        So now the code below properly checks for null pointers:
+
+        * bridge/qt/qt_instance.cpp:
+        (JSC::Bindings::QtInstance::getClass): may return NULL
+        (JSC::Bindings::QtInstance::getMethod): may return jsNull()
+        (JSC::Bindings::QtInstance::stringValue): may return jsNull()
+        (JSC::Bindings::QtInstance::booleanValue): may return false
+        * bridge/qt/qt_runtime.cpp:
+        (JSC::Bindings::convertValueToQVariant): 
+        (JSC::Bindings::convertQVariantToValue): May return jsNull on QObjectStar
+
 2010-04-09  Kenneth Rohde Christiansen  <kenneth@webkit.org>
 
         Reviewed by Simon Fraser.

@@ -285,6 +285,13 @@ const QRect QDesktopWidget::availableGeometry(int screen) const
     if (d->workareas[screen].isValid())
         return d->workareas[screen];
 
+#ifdef Q_WS_MAEMO_5
+    { // _NET_WORKAREA is broken on Maemo5 and reports different (bogus) geometries everytime the propery is read
+        QRect maemo5Rect = screenGeometry(screen);
+        maemo5Rect.setTop(maemo5Rect.top() + 56 /* title bar height */);
+        d->workareas[screen] = maemo5Rect;
+    }
+#else
     if (X11->isSupportedByWM(ATOM(_NET_WORKAREA))) {
         int x11Screen = isVirtualDesktop() ? DefaultScreen(X11->display) : screen;
 
@@ -320,6 +327,7 @@ const QRect QDesktopWidget::availableGeometry(int screen) const
     } else {
         d->workareas[screen] = screenGeometry(screen);
     }
+#endif
 
     return d->workareas[screen];
 }

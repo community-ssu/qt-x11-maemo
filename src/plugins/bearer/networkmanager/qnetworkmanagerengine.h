@@ -73,18 +73,15 @@ public:
     QNetworkManagerEngine(QObject *parent = 0);
     ~QNetworkManagerEngine();
 
-    Q_INVOKABLE void init();
-
     bool networkManagerAvailable() const;
 
     QString getInterfaceFromId(const QString &id);
     bool hasIdentifier(const QString &id);
 
-    QString bearerName(const QString &id);
-
     void connectToId(const QString &id);
     void disconnectFromId(const QString &id);
 
+    Q_INVOKABLE void initialize();
     Q_INVOKABLE void requestUpdate();
 
     QNetworkSession::State sessionStateForId(const QString &id);
@@ -118,8 +115,6 @@ private Q_SLOTS:
     void newAccessPoint(const QString &path, const QDBusObjectPath &objectPath);
     void removeAccessPoint(const QString &path, const QDBusObjectPath &objectPath);
     void updateAccessPoint(const QMap<QString, QVariant> &map);
-
-    void doRequestUpdate();
 
 private:
     QNetworkConfigurationPrivate *parseConnection(const QString &service,

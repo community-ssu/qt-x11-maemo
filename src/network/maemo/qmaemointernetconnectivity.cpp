@@ -63,6 +63,17 @@ QT_BEGIN_NAMESPACE
 Q_GLOBAL_STATIC(QMaemoICPrivate, maemoICInstance);
 
 static bool MIC_DEBUG = false;
+static bool micIsEnabled = true;
+
+bool QMaemoInternetConnectivity::isAutoConnectEnabled()
+{
+    return micIsEnabled;
+}
+
+void QMaemoInternetConnectivity::setAutoConnectEnabled(bool enabled)
+{
+    micIsEnabled = enabled;
+}
 
 bool QMaemoInternetConnectivity::isConnected()
 {

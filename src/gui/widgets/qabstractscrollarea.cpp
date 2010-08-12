@@ -53,6 +53,8 @@
 #include "qpainter.h"
 #include "qmargins.h"
 
+#include <QDebug>
+
 #include "qabstractscrollarea_p.h"
 #include <qwidget.h>
 
@@ -161,6 +163,7 @@ QT_BEGIN_NAMESPACE
 #include "qabstractitemview.h"
 #include "qgraphicsview.h"
 #include "qgraphicsitem.h"
+#include "qmaemo5style.h"
 
 extern bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
 
@@ -168,74 +171,63 @@ class QAbstractScrollAreaKineticScroller : public QObject, public QAbstractKinet
     Q_OBJECT
 public:
     QAbstractScrollAreaKineticScroller()
-        : QObject(), QAbstractKineticScroller(), area(0), ignoreEvents(false)
+        : QObject(), QAbstractKineticScroller(), area(0), ignoreEvents(false), overShootMove(false)
     { }
 
     void setWidget(QAbstractScrollArea *widget)
     {
         if (area)
-            area->viewport()->removeEventFilter(this);
+            fixEventFilterRecursive(area->viewport(), false);
         reset();
         area = widget;
         setParent(area);
         if (area)
-            area->viewport()->installEventFilter(this);
+            fixEventFilterRecursive(area->viewport(), true);
     }
 
 protected:
     bool eventFilter(QObject *o, QEvent *e)
     {
         bool res = false;
-        bool isMouseEvent = false;
-        bool isMouseDown = false;
 
-        if (area && (o == area->viewport()) && !ignoreEvents && area->isEnabled() && isEnabled()) {
+        if (area && !ignoreEvents && area->isEnabled() && isEnabled()) {
             switch (e->type()) {
             case QEvent::MouseButtonPress:
                 // re-install the event filter so that we get the mouse release before all other filters.
                 // this is an evil hack, but hard to work around without prioritized event filters.
-                area->viewport()->removeEventFilter(this);
-                area->viewport()->installEventFilter(this);
+                fixEventFilterRecursive(area->viewport(), false);
+                fixEventFilterRecursive(area->viewport(), true);
                 // fall through
             case QEvent::MouseButtonDblClick:
-                isMouseDown = true;
-                // fall through
             case QEvent::MouseMove:
             case QEvent::MouseButtonRelease: {
-                isMouseEvent = true;
                 res = handleMouseEvent(static_cast<QMouseEvent *>(e));
+                showScrollBar();
                 break;
             }
             case QEvent::ChildAdded:
             case QEvent::ChildRemoved: {
                 QChildEvent *ce = static_cast<QChildEvent *>(e);
-                if (ce->child()->isWidgetType()) {
-                    static_cast<QWidget *>(ce->child())->setAttribute(Qt::WA_TransparentForMouseEvents, ce->added());
-                    if ((e->type() == QEvent::ChildRemoved) && (ce->child() == childWidget))
-                        childWidget = 0;
+                if (ce->child()->isWidgetType() && !static_cast<QWidget*>(ce->child())->isWindow()) {
+                    fixEventFilterRecursive(ce->child(), ce->added());
                 }
                 break;
             }
-            default:
+
+            case QEvent::Move: {
+                if(o == area->viewport() && !overShootMove && !lastOverShoot.isNull()) {
+                    overShootMove = true;
+                    area->viewport()->move(area->viewport()->pos() + lastOverShoot);
+                    overShootMove = false;
+                }
                 break;
             }
-        }
+            case QEvent::Show:
+                showScrollBar();
+                break;
 
-        res |= QObject::eventFilter(o, e);
-
-        // all child widgets get the WA_TransparentForMouseEvents attribute, so
-        // we have to find the "real" widget to forward this event to...
-        if (!res && isMouseEvent) {
-            QMouseEvent *me = static_cast<QMouseEvent *>(e);
-
-            if (isMouseDown)
-                childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), me->globalPos());
-
-            if (childWidget) {
-                QMouseEvent cme(me->type(), childWidget->mapFromGlobal(me->globalPos()),
-                                me->globalPos(), me->button(), me->buttons(), me->modifiers());
-                sendEvent(childWidget, &cme);
-                res = cme.isAccepted();
+            default:
+                break;
             }
         }
         return res;
@@ -243,7 +235,7 @@ protected:
 
     void cancelLeftMouseButtonPress(const QPoint &globalPressPos)
     {
-        if (QWidget *childWidget = mouseTransparentChildAtGlobalPos(area->viewport(), globalPressPos)) {
+        if (QWidget *childWidget = area->viewport()->childAt(area->viewport()->mapFromGlobal(globalPressPos))) {
             // simulate a mouse-move and mouse-release far, far away
             QPoint faraway(-1000, -1000);
             QMouseEvent cmem(QEvent::MouseMove, faraway, childWidget->mapToGlobal(faraway),
@@ -285,7 +277,7 @@ protected:
                 return false;
         }
         // don't start scrolling on a QSlider
-        if (qobject_cast<QSlider *>(mouseTransparentChildAtGlobalPos(area->viewport(), globalPos))) {
+        if (qobject_cast<QSlider *>(area->viewport()->childAt(area->viewport()->mapFromGlobal(globalPos)))) {
             return false;
         }
 
@@ -330,24 +322,30 @@ protected:
                 s->setValue(p.y());
 
             QPoint delta = overShoot - lastOverShoot;
-            if (!delta.isNull())
+            if (!delta.isNull()) {
+                overShootMove = true;
                 area->viewport()->move(area->viewport()->pos() + delta);
+                overShootMove = false;
+            }
             lastOverShoot = overShoot;
         }
     }
 
 private:
-    static QWidget *mouseTransparentChildAtGlobalPos(QWidget *parent, const QPoint &gp)
+    void fixEventFilterRecursive(QObject *widget, bool install)
     {
-        foreach (QWidget *w, parent->findChildren<QWidget *>()) {
-            if (w && !w->isWindow() && w->isVisible() && (w->rect().contains(w->mapFromGlobal(gp)))) {
-                if (QWidget *t = mouseTransparentChildAtGlobalPos(w, gp))
-                    return t;
-                else
-                    return w;
-            }
+        if (!widget)
+            return;
+
+        foreach (QObject* child, widget->children()) {
+            if (child->isWidgetType() && !static_cast<QWidget*>(child)->isWindow())
+                fixEventFilterRecursive(static_cast<QWidget*>(child), install);
         }
-        return 0;
+
+        if (install)
+            widget->installEventFilter(this);
+        else
+            widget->removeEventFilter(this);
     }
 
     void sendEvent(QWidget *w, QEvent *e)
@@ -357,12 +355,19 @@ private:
         ignoreEvents = false;
     }
 
+    void showScrollBar()
+    {
+        if (QMaemo5Style *mstyle = qobject_cast<QMaemo5Style *>(area->style()))
+            mstyle->showScrollIndicators(area);
+    }
+
 private:
     QAbstractScrollArea *area;
     QItemSelection oldSelection;
     bool ignoreEvents;
     QPoint lastOverShoot;
     QPointer<QWidget> childWidget;
+    bool overShootMove;
 };
 
 #endif // Q_WS_MAEMO_5
@@ -507,7 +512,9 @@ void QAbstractScrollAreaPrivate::init()
     q->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layoutChildren();
 #ifndef Q_WS_MAC
+#ifndef QT_NO_GESTURES
     viewport->grabGesture(Qt::PanGesture);
+#endif
 #endif
 #ifdef Q_WS_MAEMO_5
     QAbstractKineticScroller *ks = new QAbstractScrollAreaKineticScroller();
@@ -770,7 +777,9 @@ void QAbstractScrollArea::setViewport(QWidget *widget)
         d->viewport->setFocusProxy(this);
         d->viewport->installEventFilter(d->viewportFilter.data());
 #ifndef Q_WS_MAC
+#ifndef QT_NO_GESTURES
         d->viewport->grabGesture(Qt::PanGesture);
+#endif
 #endif
         d->layoutChildren();
         if (isVisible())
@@ -1189,6 +1198,7 @@ bool QAbstractScrollArea::event(QEvent *e)
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
         return false;
+#ifndef QT_NO_GESTURES
     case QEvent::Gesture:
     {
         QGestureEvent *ge = static_cast<QGestureEvent *>(e);
@@ -1209,9 +1219,11 @@ bool QAbstractScrollArea::event(QEvent *e)
         }
         return false;
     }
+#endif // QT_NO_GESTURES
     case QEvent::StyleChange:
     case QEvent::LayoutDirectionChange:
     case QEvent::ApplicationLayoutDirectionChange:
+    case QEvent::LayoutRequest:
         d->layoutChildren();
         // fall through
     default:
@@ -1264,9 +1276,11 @@ bool QAbstractScrollArea::viewportEvent(QEvent *e)
 #endif
         return QFrame::event(e);
     case QEvent::LayoutRequest:
+#ifndef QT_NO_GESTURES
     case QEvent::Gesture:
     case QEvent::GestureOverride:
         return event(e);
+#endif
     default:
         break;
     }

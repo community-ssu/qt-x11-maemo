@@ -1,4 +1,4 @@
-import Qt 4.6
+import Qt 4.7
 
 Rectangle {
     width: 800; height: 450
@@ -58,5 +58,10 @@ Rectangle {
             PathAttribute { name: "scale"; value: 0.5 }
             PathAttribute { name: "angle"; value: 45 }
         }
+    }
+
+    Column {
+        Rectangle { width: 20; height: 20; color: "red"; opacity: photoPathView.moving ? 1 : 0 }
+        Rectangle { width: 20; height: 20; color: "blue"; opacity: photoPathView.flicking ? 1 : 0 }
     }
 }

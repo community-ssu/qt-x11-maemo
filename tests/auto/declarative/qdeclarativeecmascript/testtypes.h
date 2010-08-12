@@ -86,6 +86,7 @@ class MyQmlObject : public QObject
     Q_PROPERTY(bool trueProperty READ trueProperty CONSTANT)
     Q_PROPERTY(bool falseProperty READ falseProperty CONSTANT)
     Q_PROPERTY(int value READ value WRITE setValue)
+    Q_PROPERTY(int console READ console CONSTANT)
     Q_PROPERTY(QString stringProperty READ stringProperty WRITE setStringProperty NOTIFY stringChanged)
     Q_PROPERTY(QObject *objectProperty READ objectProperty WRITE setObjectProperty NOTIFY objectChanged)
     Q_PROPERTY(QDeclarativeListProperty<QObject> objectListProperty READ objectListProperty CONSTANT)
@@ -142,6 +143,7 @@ public:
     QRegExp regExp() { return m_regExp; }
     void setRegExp(const QRegExp &regExp) { m_regExp = regExp; }
 
+    int console() const { return 11; }
 signals:
     void basicSignal();
     void argumentSignal(int a, QString b, qreal c);
@@ -170,7 +172,6 @@ private:
 };
 
 QML_DECLARE_TYPEINFO(MyQmlObject, QML_HAS_ATTACHED_PROPERTIES)
-QML_DECLARE_TYPE(MyQmlObject);
 
 class MyQmlContainer : public QObject
 {
@@ -185,14 +186,13 @@ private:
     QList<MyQmlObject*> m_children;
 };
 
-QML_DECLARE_TYPE(MyQmlContainer);
 
 class MyExpression : public QDeclarativeExpression
 {
     Q_OBJECT
 public:
     MyExpression(QDeclarativeContext *ctxt, const QString &expr)
-        : QDeclarativeExpression(ctxt, expr, 0), changed(false)
+        : QDeclarativeExpression(ctxt, 0, expr), changed(false)
     {
         QObject::connect(this, SIGNAL(valueChanged()), this, SLOT(expressionValueChanged()));
         setNotifyOnValueChanged(true);
@@ -258,7 +258,6 @@ private:
     QObject *m_object;
     QObject *m_object2;
 };
-QML_DECLARE_TYPE(MyDeferredObject);
 
 class MyBaseExtendedObject : public QObject
 {
@@ -273,7 +272,6 @@ public:
 private:
     int m_value;
 };
-QML_DECLARE_TYPE(MyBaseExtendedObject);
 
 class MyExtendedObject : public MyBaseExtendedObject
 {
@@ -288,7 +286,6 @@ public:
 private:
     int m_value;
 };
-QML_DECLARE_TYPE(MyExtendedObject);
 
 class MyTypeObject : public QObject
 {
@@ -555,13 +552,14 @@ signals:
     void rectPropertyChanged();
 };
 Q_DECLARE_OPERATORS_FOR_FLAGS(MyTypeObject::MyFlags)
-QML_DECLARE_TYPE(MyTypeObject);
 
 Q_DECLARE_METATYPE(QScriptValue);
 class MyInvokableObject : public QObject
 {
     Q_OBJECT
+    Q_ENUMS(TestEnum)
 public:
+    enum TestEnum { EnumValue1, EnumValue2 };
     MyInvokableObject() { reset(); }
 
     int invoked() const { return m_invoked; }
@@ -574,7 +572,7 @@ public:
 
     Q_INVOKABLE void method_NoArgs() { invoke(0); }
     Q_INVOKABLE int method_NoArgs_int() { invoke(1); return 6; }
-    Q_INVOKABLE qreal method_NoArgs_real() { invoke(2); return 19.7; }
+    Q_INVOKABLE qreal method_NoArgs_real() { invoke(2); return 19.75; }
     Q_INVOKABLE QPointF method_NoArgs_QPointF() { invoke(3); return QPointF(123, 4.5); }
     Q_INVOKABLE QObject *method_NoArgs_QObject() { invoke(4); return this; }
     Q_INVOKABLE MyInvokableObject *method_NoArgs_unknown() { invoke(5); return this; }
@@ -592,6 +590,8 @@ public:
     
     Q_INVOKABLE void method_overload(int a) { invoke(16); m_actuals << a; }
     Q_INVOKABLE void method_overload(int a, int b) { invoke(17); m_actuals << a << b; }
+
+    Q_INVOKABLE void method_with_enum(TestEnum e) { invoke(18); m_actuals << (int)e; }
 
 private:
     void invoke(int idx) { if (m_invoked != -1) m_invokedError = true; m_invoked = idx;}
@@ -663,6 +663,31 @@ public:
     unsigned int _test12;
     unsigned int test12() const { return _test12; }
     void setTest12(unsigned int v) { _test12 = v; }
+};
+
+class DefaultPropertyExtendedObject : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QObject *firstProperty READ firstProperty WRITE setFirstProperty)
+    Q_PROPERTY(QObject *secondProperty READ secondProperty WRITE setSecondProperty)
+public:
+    DefaultPropertyExtendedObject(QObject *parent = 0) : QObject(parent), m_firstProperty(0), m_secondProperty(0) {}
+
+    QObject *firstProperty() const { return m_firstProperty; }
+    QObject *secondProperty() const { return m_secondProperty; }
+    void setFirstProperty(QObject *property) { m_firstProperty = property; }
+    void setSecondProperty(QObject *property) { m_secondProperty = property; }
+private:
+    QObject* m_firstProperty;
+    QObject* m_secondProperty;
+};
+
+class OverrideDefaultPropertyObject : public DefaultPropertyExtendedObject
+{
+    Q_OBJECT
+    Q_CLASSINFO("DefaultProperty", "secondProperty")
+public:
+    OverrideDefaultPropertyObject() {}
 };
 
 void registerTypes();

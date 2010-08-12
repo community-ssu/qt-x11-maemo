@@ -60,7 +60,7 @@ QT_BEGIN_NAMESPACE
 class QDeclarativeBindPrivate : public QObjectPrivate
 {
 public:
-    QDeclarativeBindPrivate() : when(true), componentComplete(false), obj(0) {}
+    QDeclarativeBindPrivate() : when(true), componentComplete(true), obj(0) {}
 
     bool when : 1;
     bool componentComplete : 1;
@@ -92,11 +92,12 @@ public:
 
     If the binding target or binding property is changed, the bound value is
     immediately pushed onto the new target.
+
+    \sa QtDeclarative
     */
 /*!
     \internal
     \class QDeclarativeBind
-    \ingroup group_utility
     \brief The QDeclarativeBind class allows arbitrary property bindings to be created.
 
     Simple bindings are usually earier to do in-place rather than creating a
@@ -194,6 +195,12 @@ void QDeclarativeBind::setValue(const QVariant &v)
     d->value.value = v;
     d->value.isNull = false;
     eval();
+}
+
+void QDeclarativeBind::classBegin()
+{
+    Q_D(QDeclarativeBind);
+    d->componentComplete = false;
 }
 
 void QDeclarativeBind::componentComplete()

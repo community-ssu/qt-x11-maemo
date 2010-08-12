@@ -284,6 +284,7 @@ public:
     void setEnabledHelper(bool newEnabled, bool explicitly, bool update = true);
     bool discardUpdateRequest(bool ignoreVisibleBit = false,
                               bool ignoreDirtyBit = false, bool ignoreOpacity = false) const;
+    virtual void transformChanged() {}
     int depth() const;
 #ifndef QT_NO_GRAPHICSEFFECT
     enum InvalidateReason {
@@ -376,6 +377,7 @@ public:
     QGraphicsItemCache *extraItemCache() const;
     void removeExtraItemCache();
 
+    void updatePaintedViewBoundingRects(bool updateChildren);
     void ensureSceneTransformRecursive(QGraphicsItem **topMostDirtyItem);
     inline void ensureSceneTransform()
     {
@@ -480,6 +482,7 @@ public:
     void clearSubFocus(QGraphicsItem *rootItem = 0);
     void resetFocusProxy();
     virtual void subFocusItemChange();
+    virtual void focusScopeItemChange(bool isSubFocusItem);
 
     static void children_append(QDeclarativeListProperty<QGraphicsObject> *list, QGraphicsObject *item);
     static int children_count(QDeclarativeListProperty<QGraphicsObject> *list);
@@ -523,7 +526,9 @@ public:
     QGraphicsItem *focusScopeItem;
     Qt::InputMethodHints imHints;
     QGraphicsItem::PanelModality panelModality;
+#ifndef QT_NO_GESTURES
     QMap<Qt::GestureType, Qt::GestureFlags> gestureContext;
+#endif
 
     // Packed 32 bits
     quint32 acceptedMouseButtons : 5;
@@ -552,7 +557,7 @@ public:
     quint32 dirtyChildrenBoundingRect : 1;
 
     // Packed 32 bits
-    quint32 flags : 17;
+    quint32 flags : 18;
     quint32 paintedViewBoundingRectsNeedRepaint : 1;
     quint32 dirtySceneTransform : 1;
     quint32 geometryChanged : 1;
@@ -567,9 +572,9 @@ public:
     quint32 notifyBoundingRectChanged : 1;
     quint32 notifyInvalidated : 1;
     quint32 mouseSetsFocus : 1;
-    quint32 explicitActivate : 1;
 
     // New 32 bits
+    quint32 explicitActivate : 1;
     quint32 wantsActive : 1;
     quint32 holesInSiblingIndex : 1;
     quint32 sequentialOrdering : 1;
@@ -578,7 +583,7 @@ public:
     quint32 pendingPolish : 1;
     quint32 mayHaveChildWithGraphicsEffect : 1;
     quint32 isDeclarativeItem : 1;
-    quint32 padding : 24;
+    quint32 padding : 23;
 
     // Optional stacking order
     int globalStackingOrder;
@@ -844,6 +849,13 @@ inline bool QGraphicsItemPrivate::insertionOrder(QGraphicsItem *a, QGraphicsItem
 inline void QGraphicsItemPrivate::markParentDirty(bool updateBoundingRect)
 {
     QGraphicsItemPrivate *parentp = this;
+#ifndef QT_NO_GRAPHICSEFFECT
+    if (updateBoundingRect && parentp->graphicsEffect && !parentp->inSetPosHelper) {
+        parentp->notifyInvalidated = 1;
+        static_cast<QGraphicsItemEffectSourcePrivate *>(parentp->graphicsEffect->d_func()
+                                                        ->source->d_func())->invalidateCache();
+    }
+#endif
     while (parentp->parent) {
         parentp = parentp->parent->d_ptr.data();
         parentp->dirtyChildren = 1;
@@ -860,7 +872,7 @@ inline void QGraphicsItemPrivate::markParentDirty(bool updateBoundingRect)
                 static_cast<QGraphicsItemEffectSourcePrivate *>(parentp->graphicsEffect->d_func()
                                                                 ->source->d_func())->invalidateCache();
             }
-            if (parentp->graphicsEffect->isEnabled()) {
+            if (parentp->scene && parentp->graphicsEffect->isEnabled()) {
                 parentp->dirty = 1;
                 parentp->fullUpdatePending = 1;
             }

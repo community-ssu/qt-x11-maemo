@@ -83,7 +83,7 @@ public:
                      gint width, GtkStyle *style);
     void paintBox(GtkWidget *gtkWidget, const gchar* part,
                   const QRect &rect, GtkStateType state, GtkShadowType shadow, GtkStyle *style,
-                  const QString &pmKey = QString());
+                  const QString &pmKey = QString(), int scaleIfHigherThan = -1);
     void paintHline(GtkWidget *gtkWidget, const gchar* part, const QRect &rect, GtkStateType state, GtkStyle *style,
                     int x1, int x2, int y, const QString &pmKey = QString());
     void paintVline(GtkWidget *gtkWidget, const gchar* part, const QRect &rect, GtkStateType state, GtkStyle *style,

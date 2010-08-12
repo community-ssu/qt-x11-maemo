@@ -48,6 +48,11 @@
 
 #include "../shared/testhttpserver.h"
 
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
+
 #define TRY_WAIT(expr) \
     do { \
         for (int ii = 0; ii < 6; ++ii) { \
@@ -199,7 +204,7 @@ void tst_qdeclarativeanimatedimage::invalidSource()
     component.setData("import Qt 4.7\n AnimatedImage { source: \"no-such-file.gif\" }", QUrl::fromLocalFile(""));
     QVERIFY(component.isReady());
 
-    QTest::ignoreMessage(QtWarningMsg, "Error Reading Animated Image File  QUrl( \"file:no-such-file.gif\" )  ");
+    QTest::ignoreMessage(QtWarningMsg, "file::2:2: QML AnimatedImage: Error Reading Animated Image File file:no-such-file.gif");
 
     QDeclarativeAnimatedImage *anim = qobject_cast<QDeclarativeAnimatedImage *>(component.create());
     QVERIFY(anim);

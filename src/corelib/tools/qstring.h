@@ -343,6 +343,7 @@ public:
     int toWCharArray(wchar_t *array) const;
     static QString fromWCharArray(const wchar_t *, int size = -1);
 
+    QString &setRawData(const QChar *unicode, int size);
     QString &setUnicode(const QChar *unicode, int size);
     inline QString &setUtf16(const ushort *utf16, int size);
 
@@ -589,7 +590,7 @@ public:
 #endif
 
     bool isSimpleText() const { if (!d->clean) updateProperties(); return d->simpletext; }
-    bool isRightToLeft() const { if (!d->clean) updateProperties(); return d->righttoleft; }
+    bool isRightToLeft() const;
 
     QString(int size, Qt::Initialization);
 

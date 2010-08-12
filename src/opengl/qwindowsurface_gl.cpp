@@ -82,7 +82,7 @@
 #define GLX_SAMPLES_ARB         100001
 #endif
 
-#ifdef QT_OPENGL_ES
+#ifndef QT_NO_EGL
 #include <private/qeglcontext_p.h>
 #endif
 
@@ -94,8 +94,8 @@ QT_BEGIN_NAMESPACE
 #ifdef Q_WS_WIN
 extern Q_GUI_EXPORT bool qt_win_owndc_required;
 #endif
-QGLGraphicsSystem::QGLGraphicsSystem()
-    : QGraphicsSystem()
+QGLGraphicsSystem::QGLGraphicsSystem(bool useX11GL)
+    : QGraphicsSystem(), m_useX11GL(useX11GL)
 {
 #if defined(Q_WS_X11) && !defined(QT_OPENGL_ES)
     // only override the system defaults if the user hasn't already
@@ -353,6 +353,25 @@ void QGLWindowSurface::hijackWindow(QWidget *widget)
     QGLContext *ctx = new QGLContext(surfaceFormat, widget);
     ctx->create(qt_gl_share_widget()->context());
 
+#ifndef QT_NO_EGL
+    static bool checkedForNOKSwapRegion = false;
+    static bool haveNOKSwapRegion = false;
+
+    if (!checkedForNOKSwapRegion) {
+        haveNOKSwapRegion = QEgl::hasExtension("EGL_NOK_swap_region2");
+        checkedForNOKSwapRegion = true;
+
+        if (haveNOKSwapRegion)
+            qDebug() << "Found EGL_NOK_swap_region2 extension. Using partial updates.";
+    }
+
+    if (ctx->d_func()->eglContext->configAttrib(EGL_SWAP_BEHAVIOR) != EGL_BUFFER_PRESERVED &&
+        ! haveNOKSwapRegion)
+        setPartialUpdateSupport(false); // Force full-screen updates
+    else
+        setPartialUpdateSupport(true);
+#endif
+
     widgetPrivate->extraData()->glContext = ctx;
 
     union { QGLContext **ctxPtr; void **voidPtr; };
@@ -475,8 +494,13 @@ void QGLWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoint &
                 }
             }
 #endif
+            if (d_ptr->paintedRegion.boundingRect() != geometry() && 
+                hasPartialUpdateSupport()) {
+                context()->d_func()->swapRegion(&d_ptr->paintedRegion);             
+            } else
+                context()->swapBuffers();
+
             d_ptr->paintedRegion = QRegion();
-            context()->swapBuffers();
         } else {
             glFlush();
         }

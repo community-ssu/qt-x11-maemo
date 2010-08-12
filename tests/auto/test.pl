@@ -179,9 +179,9 @@ while ($next = <$SEARCH_PATH/*>)
                 my $outputRedirection = $REPORTDIR."/".$command.".xml";
                 if($EXEC_MODE =~ /^E$/)
                 {
-                    #exec($realCommand, "-qws", "-xml", "-o", $outputRedirection);
+                    exec($realCommand, "-qws", "-xml", "-o", $outputRedirection);
                 } else {
-                    #exec($realCommand, "-xml", "-o", $outputRedirection);
+                    exec($realCommand, "-xml", "-o", $outputRedirection);
                 }
                 exit(0);
             } elsif($myPid > 0 )

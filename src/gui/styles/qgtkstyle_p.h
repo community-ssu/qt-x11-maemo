@@ -329,7 +329,7 @@ public:
     static void cleanupGtkWidgets();
 
     static bool isKDE4Session();
-    void applyCustomPaletteHash();
+    virtual void applyCustomPaletteHash();
     static QFont getThemeFont(const QString &logicalFontName = QString());
     static bool isThemeAvailable() { return gtkStyle() != 0; }
 

@@ -57,6 +57,7 @@ QT_MODULE(Gui)
 
 class QPainterPath;
 class QMaemo5StylePrivate;
+class QAbstractScrollArea;
 
 class Q_GUI_EXPORT QStyleOptionMaemo5ValueButton : public QStyleOptionButton
 {
@@ -144,6 +145,8 @@ public:
     void polish(QApplication *app);
     void polish(QWidget *widget);
     void unpolish(QWidget *widget);
+
+    void showScrollIndicators(QAbstractScrollArea *);
 
 protected Q_SLOTS:
     QIcon standardIconImplementation(StandardPixmap standardIcon, const QStyleOption *option,

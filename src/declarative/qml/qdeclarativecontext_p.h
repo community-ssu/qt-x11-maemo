@@ -108,11 +108,12 @@ public:
 
 class QDeclarativeComponentAttached;
 class QDeclarativeGuardedContextData;
-class QDeclarativeContextData
+class Q_AUTOTEST_EXPORT QDeclarativeContextData
 {
 public:
     QDeclarativeContextData();
     QDeclarativeContextData(QDeclarativeContext *);
+    void clearExpressions();
     void destroy();
     void invalidate();
 
@@ -145,10 +146,8 @@ public:
     QObject *contextObject;
 
     // Any script blocks that exist on this context
-    QList<QScriptValue> scripts;
     QList<QScriptValue> importedScripts;
     void addImportedScript(const QDeclarativeParser::Object::ScriptBlock &script);
-    void addScript(const QDeclarativeParser::Object::ScriptBlock &script, QObject *scopeObject);
 
     // Context base url
     QUrl url;
@@ -199,6 +198,7 @@ public:
     // context
     QDeclarativeComponentAttached *componentAttached;
 
+    // Return the outermost id for obj, if any.
     QString findObjectId(const QObject *obj) const;
 
     static QDeclarativeContextData *get(QDeclarativeContext *context) {

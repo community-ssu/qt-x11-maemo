@@ -6,35 +6,21 @@
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** $QT_BEGIN_LICENSE:FDL$
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in a
+** written agreement between you and Nokia.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of this
+** file.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -413,7 +399,7 @@
     \section1 Source Compatibility
 
     Qt for Symbian provides the same level of source compatibility guarantee as
-    given for other platforms.  That is, a program which compiles against a given
+    given for other platforms. That is, a program which compiles against a given
     version of Qt for Symbian will also compile against all future versions of the
     same major release.
 
@@ -498,28 +484,31 @@
 
     \section1 Required Capabilities
 
-    Distributions of Qt are typically signed with \c{All -TCB}. What your
-    application needs to be signed with in order to function with Qt depends
-    on what functionality it uses:
+    The Qt libraries are typically signed with \c{All -TCB} capabilites, but
+    that does not mean your Qt application needs to be signed with the same
+    capabilities to function properly. The capabilities your application needs
+    to function properly depends on which parts of Qt you use, here is an
+    overview:
 
     \table
-    \header \o Technology
+    \header \o Module
             \o Required Symbian Capability
     \row    \o QtCore
-            \o \c PowerMgmt if applications are terminated using QProcess.
+            \o \c PowerMgmt if QProcess::kill(...) or QProcess::terminate(...) is called.
+    \row    \o QtCore
+            \o \c AllFiles when \l{http://developer.symbian.org/wiki/index.php/Capabilities_%28Symbian_Signed%29/AllFiles_Capability}{accessing specific areas.}
     \row    \o QtNetwork
-            \o NetworkServices
+            \o \c NetworkServices is basically always required for this module.
     \row    \o QtMultiMedia
             \o \c UserEnvironment if QAudioInput is used.
     \endtable
 
-    Depending on what file paths that are accessed and how AllFiles may be
-    required. Similarly, if the network is accessed indirectly through
-    components such as QtXmlPatterns, QtWebkit or QtScript, the capabilities
-    needs to match accordingly.
+    Note that some modules rely on other modules. If your application uses
+    QtXmlPatterns, QtWebkit or QtScript it may still require \c NetworkServices
+    as these modules rely on QtNetwork to go online.
 
-    See individual classes' documentation for specifics. If a class does not
-    mention Symbian capabilities, it requires none.
+    For more information see the documentation of the individual Qt classes. If
+    a class does not mention Symbian capabilities, it requires none.
 
     \section1 Multimedia and Phonon Support
 
@@ -567,7 +556,8 @@
     should look and feel the same as a native Maemo 5 application.
 
     The Qt \l{Maemo 5 Examples} show how to achieve deeper UI integration
-    with the platform.
+    with the platform. The Q_WS_MAEMO_5 macro can be used to conditionally
+    compile Maemo 5 specific features.
 
     \section2 Window Manager
     \list
@@ -635,6 +625,12 @@
     QTextEdit, QPlainTextEdit, QProgressBar, QAbstractItemView (and derived
     classes).
 
+    \o Qt's built-in dialogs are deprecated since they do not follow the Maemo 5
+    style guide. For QFileDialog, only the static functions are supported, since
+    they use the native, style guide compliant Maemo file dialogs. Maemo 5 pickers
+    (see QMaemo5AbstractPickSelector) should be used for letting the user choose
+    values. Instead of QFontDialog, a QFontComboBox can be used.
+
     \o Qt for Maemo 5 ships with a separate library (QtMaemo5) which
     implements all the special Hildon UI elements that could not be mapped
     to already existing Qt widgets: QMaemo5ValueButton,
@@ -689,21 +685,6 @@
        QRadioButton).  We recommend using local style sheets on specific
        widgets only, instead of setting one via
        QApplication::setStyleSheet().
+    \o Qt3Support is not available.
     \endlist
-
-    In addition, the PR 1.1 firmware release for the N900 contains several
-    known issues that will be resolved with the next (PR 1.2) firmware
-    release.
-
-    \list
-    \o Hildon Banners and Notifications will display with the wrong text color.
-    \o Qt::WA_Maemo5AutoOrientation is not supported.
-    \o There are styling issues with QComboBox.
-    \endlist
-
-    If you still want to test Qt 4.6 on PR 1.1, you have to use the
-    unsupported \bold libqt4-maemo5- prefixed packages from the Maemo \bold
-    extras-devel repository which will install to \bold /opt.
-    On PR 1.2 however, Qt 4.6 is already a part of the firmware and is
-    installed in \bold /usr.
 */

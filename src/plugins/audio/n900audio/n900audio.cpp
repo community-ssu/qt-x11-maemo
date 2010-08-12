@@ -868,12 +868,12 @@ qint64 N900AudioOutput::write(const char *data, qint64 len )
 
     writing = true;
 
-    if (length <= 0) return 0;
+    if (length <= 0 || dummyBuffer <= 0) return 0;
     if (length > buffer_size) length = buffer_size;
     if (dummyBuffer-length < 0) length = dummyBuffer;
 
     if (pa_simple_write(handle, data, (size_t)length, &err) < 0) {
-        qWarning()<<"QAudioOutput::write err, can't write to pulseaudio daemon";
+        qWarning()<<"QAudioOutput::write err, can't write to pulseaudio daemon:"<<pa_strerror(err);
         close();
         connected = false;
         errorState = QAudio::OpenError;

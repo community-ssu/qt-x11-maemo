@@ -38,6 +38,7 @@
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "DocumentLoader.h"
+#include "JSDOMWindowBase.h"
 #include "MIMETypeRegistry.h"
 #include "ResourceResponse.h"
 #include "Page.h"
@@ -140,6 +141,8 @@ static QString drtDescriptionSuitableForTestResult(const WebCore::ResourceRespon
 
 namespace WebCore
 {
+
+bool FrameLoaderClientQt::deferMainResourceDataLoad = true;
 
 FrameLoaderClientQt::FrameLoaderClientQt()
     : m_frame(0)
@@ -414,13 +417,13 @@ void FrameLoaderClientQt::dispatchDidFinishLoad()
 
 void FrameLoaderClientQt::dispatchDidFirstLayout()
 {
-    if (m_webFrame)
-        emit m_webFrame->initialLayoutCompleted();
+    notImplemented();
 }
 
 void FrameLoaderClientQt::dispatchDidFirstVisuallyNonEmptyLayout()
 {
-    notImplemented();
+    if (m_webFrame)
+        emit m_webFrame->initialLayoutCompleted();
 }
 
 void FrameLoaderClientQt::dispatchShow()
@@ -812,8 +815,15 @@ bool FrameLoaderClientQt::shouldFallBack(const WebCore::ResourceError&)
 WTF::PassRefPtr<WebCore::DocumentLoader> FrameLoaderClientQt::createDocumentLoader(const WebCore::ResourceRequest& request, const SubstituteData& substituteData)
 {
     RefPtr<DocumentLoader> loader = DocumentLoader::create(request, substituteData);
-    if (substituteData.isValid())
+    if (!deferMainResourceDataLoad || substituteData.isValid()) {
         loader->setDeferMainResourceDataLoad(false);
+        // Use the default timeout interval for JS as the HTML tokenizer delay. This ensures
+        // that long-running JavaScript will still allow setHtml() to be synchronous, while
+        // still giving a reasonable timeout to prevent deadlock.
+        double delay = JSDOMWindowBase::commonJSGlobalData()->timeoutChecker.timeoutInterval() / 1000.0f;
+        m_frame->page()->setCustomHTMLTokenizerTimeDelay(delay);
+    } else
+        m_frame->page()->setCustomHTMLTokenizerTimeDelay(-1);
     return loader.release();
 }
 
@@ -1176,6 +1186,8 @@ public:
         platformWidget()->setMask(clipRegion);
 
         handleVisibility();
+
+        platformWidget()->update();
     }
 
     virtual void show()

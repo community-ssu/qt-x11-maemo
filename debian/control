@@ -1,4 +1,4 @@
-Source: qt4-maemo5
+Source: qt4-experimental
 Section: libs
 Priority: optional
 Maintainer: Qt Development Frameworks <qt-info@nokia.com>
@@ -6,71 +6,85 @@ Uploaders: Brian Nelson <pyro@debian.org>, Sune Vuorela <debian@pusling.com>, Fa
 Build-Depends: cdbs, debhelper (>= 5), sharutils,
  libdbus-1-dev, libfreetype6-dev, libglib2.0-dev, libice-dev, libjpeg62-dev,
  libpng12-dev, libreadline5-dev | libreadline4-dev, libsm-dev, libtiff4-dev, libx11-dev,
- libxcursor-dev, libxext-dev, libxft-dev, libxi-dev, libxmu-dev,
+ libxv-dev, libxcursor-dev, libxext-dev, libxft-dev, libxi-dev, libxmu-dev,
  libxrandr-dev, libxrender-dev, libxt-dev, x11proto-core-dev,
  zlib1g-dev, libgstreamer-plugins-base0.10-dev, libgstreamer0.10-dev, 
  libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel],
  libgl-dev [i386], libgl1 [i386],
  libxau-dev, libxcb1-dev, libxdmcp-dev, libexpat1-dev,  opengles-sgx-img-common [arm armel],
- libsqlite3-dev, libsqlite3-0, libssl-dev, icd2-osso-ic-dev, libgtk2.0-dev, libhildon1-dev, libhildonfm2-dev, libasound2-dev, mce-dev, libpulse-dev, hildon-input-method-framework-dev
+ libsqlite3-dev, libsqlite3-0, libssl-dev, icd2-osso-ic-dev, libgtk2.0-dev, libhildon1-dev,
+ libhildonfm2-dev, libasound2-dev, mce-dev, libpulse-dev, hildon-input-method-framework-dev,
+ libconnsettings0-dev, libicd-network-wlan-dev
 Standards-Version: 3.7.3
 
-Package: libqt4-maemo5-core
+Package: libqt4-experimental-core
 Architecture: any
 Section: libs
 Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
+Conflicts: libqt4-maemo5-core (<< 4.6.99)
+Replaces: libqt4-maemo5-core (<< 4.6.99)
 Description: Qt 4 core module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  The QtCore module contains core non-GUI functionality.
 
-Package: libqt4-maemo5-core-dbg
+Package: libqt4-experimental-core-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-core (= ${binary:Version})
+Depends: libqt4-experimental-core (= ${binary:Version})
+Conflicts: libqt4-maemo5-core-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-core-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 Core libraries.
 
-Package: libqt4-maemo5-translations
+Package: libqt4-experimental-translations
 Architecture: any
 Section: libs
-Depends: libqt4-maemo5-core (= ${binary:Version})
+Depends: libqt4-experimental-core (= ${binary:Version})
+Conflicts: libqt4-maemo5-translations (<< 4.6.99)
+Replaces: libqt4-maemo5-translations (<< 4.6.99)
 Description: Qt 4 translations
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This package contains the translation files for all Qt modules.
 
-Package: libqt4-maemo5-gui
+Package: libqt4-experimental-gui
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libfontconfig1 (>= 2.4.1), libfreetype6 (>= 2.3.5), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libice6 (>= 1:1.0.0), libjpeg62, libpng12-0 (>= 1.2.8rel), libqt4-maemo5-core (= ${binary:Version}), libsm6, libstdc++6 (>= 4.2.1), libtiff4, libx11-6, libxext6, libxi6, libxrandr2 (>= 2:1.2.0), libxrender1, zlib1g (>= 1:1.2.1), fontconfig, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
+Conflicts: libqt4-maemo5-gui (<< 4.6.99)
+Replaces: libqt4-maemo5-gui (<< 4.6.99)
+Depends: libc6 (>= 2.5.0-1), libfontconfig1 (>= 2.4.1), libfreetype6 (>= 2.3.5), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libice6 (>= 1:1.0.0), libjpeg62, libpng12-0 (>= 1.2.8rel), libqt4-experimental-core (= ${binary:Version}), libsm6, libstdc++6 (>= 4.2.1), libtiff4, libx11-6, libxext6, libxi6, libxrandr2 (>= 2:1.2.0), libxrender1, zlib1g (>= 1:1.2.1), fontconfig, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
 Description: Qt 4 GUI module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  The QtGui module extends QtCore with GUI functionality.
 
-Package: libqt4-maemo5-gui-dbg
+Package: libqt4-experimental-gui-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-gui (= ${binary:Version})
+Conflicts: libqt4-maemo5-gui-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-gui-dbg (<< 4.6.99)
+Depends: libqt4-experimental-gui (= ${binary:Version})
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 GUI libraries.
 
-Package: libqt4-maemo5-network
+Package: libqt4-experimental-network
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
+Conflicts: libqt4-maemo5-network (<< 4.6.99)
+Replaces: libqt4-maemo5-network (<< 4.6.99)
 Description: Qt 4 network module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -78,44 +92,52 @@ Description: Qt 4 network module
  The QtNetwork module offers classes that allow you to write TCP/IP clients and
  servers. It provides classes to make network programming easier and portable.
 
-Package: libqt4-maemo5-network-dbg
+Package: libqt4-experimental-network-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-network (= ${binary:Version})
+Depends: libqt4-experimental-network (= ${binary:Version})
+Conflicts: libqt4-maemo5-network-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-network-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 Network libraries.
 
-Package: libqt4-maemo5-script
+Package: libqt4-experimental-script
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-dbus (= ${binary:Version}), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Conflicts: libqt4-maemo5-script (<< 4.6.99)
+Replaces: libqt4-maemo5-script (<< 4.6.99)
 Description: Qt 4 script module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  The QtScript module provides classes for making Qt applications scriptable.
 
-Package: libqt4-maemo5-script-dbg
+Package: libqt4-experimental-script-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-script (= ${binary:Version})
+Depends: libqt4-experimental-script (= ${binary:Version})
+Conflicts: libqt4-maemo5-script-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-script-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 Script libraries.
 
-Package: libqt4-maemo5-sql
+Package: libqt4-experimental-sql
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
-Recommends: libqt4-maemo5-sql-sqlite
-Suggests: libqt4-maemo5-dev
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Conflicts: libqt4-maemo5-sql (<< 4.6.99)
+Replaces: libqt4-maemo5-sql (<< 4.6.99)
+Recommends: libqt4-experimental-sql-sqlite
+Suggests: libqt4-experimental-dev
 Description: Qt 4 SQL module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -124,42 +146,50 @@ Description: Qt 4 SQL module
  applications.
  .
  If you wish to to use the SQL module for development, you should install the
- libqt4-maemo5-dev package.
+ libqt4-experimental-dev package.
 
-Package: libqt4-maemo5-sql-dbg
+Package: libqt4-experimental-sql-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-sql (= ${binary:Version})
+Depends: libqt4-experimental-sql (= ${binary:Version})
+Conflicts: libqt4-maemo5-sql-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-sql-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 SQL libraries.
 
-Package: libqt4-maemo5-sql-sqlite
+Package: libqt4-experimental-sql-sqlite
 Architecture: any
 Section: libs
-Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-maemo5-sql (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-experimental-sql (= ${binary:Version})
+Conflicts: libqt4-maemo5-sql-sqlite (<< 4.6.99)
+Replaces: libqt4-maemo5-sql-sqlite (<< 4.6.99)
 Description: Qt 4 SQLite plugin
  Qt is a cross-platform C++ application framework. Qt's primary feature
   is its rich set of widgets that provide standard GUI functionality.
 
-Package: libqt4-maemo5-sql-sqlite-dbg
+Package: libqt4-experimental-sql-sqlite-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-sql-sqlite (= ${binary:Version})
+Depends: libqt4-experimental-sql-sqlite (= ${binary:Version})
+Conflicts: libqt4-maemo5-sql-sqlite-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-sql-sqlite-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 SQL SQLite plugin.
 
-Package: libqt4-maemo5-svg
+Package: libqt4-experimental-svg
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), libqt4-maemo5-gui (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libqt4-experimental-gui (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Conflicts: libqt4-maemo5-svg (<< 4.6.99)
+Replaces: libqt4-maemo5-svg (<< 4.6.99)
 Description: Qt 4 SVG module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -169,24 +199,28 @@ Description: Qt 4 SVG module
  Scalable Vector Graphics (SVG) is a language for describing two-dimensional
  graphics and graphical applications in XML.
 
-Package: libqt4-maemo5-svg-dbg
+Package: libqt4-experimental-svg-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-svg (= ${binary:Version})
+Depends: libqt4-experimental-svg (= ${binary:Version})
+Conflicts: libqt4-maemo5-svg-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-svg-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 SVG libraries.
 
-Package: libqt4-maemo5-webkit
+Package: libqt4-experimental-webkit
 Architecture: any
 Section: libs
 Depends:  libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1),
- libqt4-maemo5-network (= ${binary:Version}), libqt4-maemo5-core (= ${binary:Version}),
- libqt4-maemo5-gui (= ${binary:Version}), libqt4-maemo5-phonon (= ${binary:Version}),
- libqt4-maemo5-xmlpatterns (= ${binary:Version}), libstdc++6 (>= 4.2.1), libsqlite3-0
+ libqt4-experimental-network (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}),
+ libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-phonon (= ${binary:Version}),
+ libqt4-experimental-xmlpatterns (= ${binary:Version}), libqt4-experimental-multimedia (= ${binary:Version}), libstdc++6 (>= 4.2.1), libsqlite3-0
+Conflicts: libqt4-maemo5-webkit (<< 4.6.99)
+Replaces: libqt4-maemo5-webkit (<< 4.6.99)
 Description: Qt 4 WebKit module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -194,21 +228,25 @@ Description: Qt 4 WebKit module
  QtWebKit provides a Web browser engine that makes it easy to embed content
  from the World Wide Web into your Qt application.
 
-Package: libqt4-maemo5-webkit-dbg
+Package: libqt4-experimental-webkit-dbg
 Priority: extra
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libqt4-maemo5-webkit (= ${binary:Version})
+ libqt4-experimental-webkit (= ${binary:Version})
+Conflicts: libqt4-maemo5-webkit-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-webkit-dbg (<< 4.6.99)
 Description: Qt 4 WebKit library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 WebKit library.
 
-Package: libqt4-maemo5-xml
+Package: libqt4-experimental-xml
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Conflicts: libqt4-maemo5-xml (<< 4.6.99)
+Replaces: libqt4-maemo5-xml (<< 4.6.99)
 Description: Qt 4 XML module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -216,31 +254,38 @@ Description: Qt 4 XML module
  The QtXml module provides a stream reader and writer for XML documents,
  and C++ implementations of SAX and DOM.
 
-Package: libqt4-maemo5-xml-dbg
+Package: libqt4-experimental-xml-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-xml (= ${binary:Version})
+Depends: libqt4-experimental-xml (= ${binary:Version})
+Conflicts: libqt4-maemo5-xml-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-xml-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 XML libraries.
 
-Package: libqt4-maemo5-xmlpatterns
+Package: libqt4-experimental-xmlpatterns
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), libqt4-maemo5-xml (= ${binary:Version})
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), libqt4-experimental-xml (= ${binary:Version})
+Conflicts: libqt4-maemo5-xmlpatterns (<< 4.6.99)
+Replaces: libqt4-maemo5-xmlpatterns (<< 4.6.99)
 Description: Qt 4 XML Patterns module
- lorem ipsum
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
  .
- and all that 
+ The QtXmlPatterns module provides XML Patterns for traversing XML documents
 
-Package: libqt4-maemo5-xmlpatterns-dbg
+Package: libqt4-experimental-xmlpatterns-dbg
 Priority: extra
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libqt4-maemo5-xmlpatterns (= ${binary:Version})
+ libqt4-experimental-xmlpatterns (= ${binary:Version})
+Conflicts: libqt4-maemo5-xmlpatterns-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-xmlpatterns-dbg (<< 4.6.99)
 Description: Qt 4 XML patterns library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -248,10 +293,12 @@ Description: Qt 4 XML patterns library debugging symbols
  This packages contains the debugging symbols for the Qt 4 XML patterns
  library.
 
-Package: libqt4-maemo5-dbus
+Package: libqt4-experimental-dbus
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-xml (= ${binary:Version}), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-xml (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Conflicts: libqt4-maemo5-dbus (<< 4.6.99)
+Replaces: libqt4-maemo5-dbus (<< 4.6.99)
 Description: Qt 4 D-Bus module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -263,21 +310,25 @@ Description: Qt 4 D-Bus module
  applications by exporting objects, as well as use services exported by those
  applications by placing calls and accessing properties.
 
-Package: libqt4-maemo5-dbus-dbg
+Package: libqt4-experimental-dbus-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-dbus (= ${binary:Version})
+Depends: libqt4-experimental-dbus (= ${binary:Version})
+Conflicts: libqt4-maemo5-dbus-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-dbus-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 DBus libraries.
 
-Package: libqt4-maemo5-test
+Package: libqt4-experimental-test
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Conflicts: libqt4-maemo5-test (<< 4.6.99)
+Replaces: libqt4-maemo5-test (<< 4.6.99)
 Description: Qt 4 test module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -285,24 +336,26 @@ Description: Qt 4 test module
  The QtTest module provides classes for unit testing Qt applications and
  libraries.
 
-Package: libqt4-maemo5-test-dbg
+Package: libqt4-experimental-test-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-test (= ${binary:Version})
+Depends: libqt4-experimental-test (= ${binary:Version})
+Conflicts: libqt4-maemo5-test-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-test-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 Test libraries.
 
-Package: libqt4-maemo5-dev
+Package: libqt4-experimental-dev
 Architecture: any
 Section: libdevel
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-dbus (= ${binary:Version}), libqt4-maemo5-xml (= ${binary:Version}), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-maemo5-network, libqt4-maemo5-gui, libqt4-maemo5-svg, libqt4-maemo5-webkit, libqt4-maemo5-sql, libqt4-maemo5-script, libqt4-maemo5-test, libqt4-maemo5-maemo5, libqt4-maemo5-multimedia, libqt4-maemo5-phonon, libqt4-maemo5-opengl (= ${binary:Version}), libqt4-maemo5-xmlpatterns, libgl-dev [i386], libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libsqlite3-dev
-Conflicts: libqt4-maemo5-opengl-dev (<< 4.6.1), libqt4-maemo5-declarative-dev (<< 4.6.99)
-Replaces: libqt4-maemo5-opengl-dev (<< 4.6.1), libqt4-maemo5-declarative-dev (<< 4.6.99)
-Provides: libqt4-maemo5-opengl-dev, libqt4-maemo5-declarative-dev
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-xml (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-network, libqt4-experimental-gui, libqt4-experimental-svg, libqt4-experimental-webkit, libqt4-experimental-sql, libqt4-experimental-script, libqt4-experimental-test, libqt4-experimental-maemo5, libqt4-experimental-multimedia, libqt4-experimental-phonon, libqt4-experimental-opengl (= ${binary:Version}), libqt4-experimental-xmlpatterns, libqt4-experimental-declarative, libgl-dev [i386], libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libsqlite3-dev
+Conflicts: libqt4-maemo5-dev (<< 4.6.99), libqt4-maemo5-opengl-dev (<< 4.6.99), libqt4-maemo5-declarative-dev (<< 4.6.99)
+Replaces: libqt4-maemo5-dev (<< 4.6.99), libqt4-maemo5-opengl-dev (<< 4.6.99), libqt4-maemo5-declarative-dev (<< 4.6.99)
+Provides: libqt4-maemo5-dev, libqt4-maemo5-opengl-dev, libqt4-maemo5-declarative-dev
 Description: Qt 4 development files
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -310,54 +363,66 @@ Description: Qt 4 development files
  This package contains the header development files and development programs
  such as qmake used for building Qt4 applications.
 
-Package: libqt4-maemo5-opengl-dev
+Package: libqt4-experimental-opengl-dev
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-dev
+Depends: libqt4-experimental-dev
+Conflicts: libqt4-maemo5-opengl-dev (<< 4.6.99)
+Replaces: libqt4-maemo5-opengl-dev (<< 4.6.99)
+Provides: libqt4-maemo5-opengl-dev
 Description: Qt4 OpenGL development files
- This is a transitional package for libqt4-maemo5-opengl-dev, and can be safely removed
+ This is a transitional package for libqt4-experimental-opengl-dev, and can be safely removed
  after the installation is complete.
 
-Package: libqt4-maemo5-phonon
+Package: libqt4-experimental-phonon
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-maemo5-xml (= ${binary:Version}), libqt4-maemo5-gui (= ${binary:Version}), libqt4-maemo5-opengl (= ${binary:Version})
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-xml (= ${binary:Version}), libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-opengl (= ${binary:Version})
+Conflicts: libqt4-maemo5-phonon (<< 4.6.99)
+Replaces: libqt4-maemo5-phonon (<< 4.6.99)
 Description: Qt 4 Phonon Libraries
  Qt 4 media playing libraries
 
-Package: libqt4-maemo5-phonon-dbg
+Package: libqt4-experimental-phonon-dbg
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends},
- libqt4-maemo5-phonon (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-experimental-phonon (= ${binary:Version})
+Conflicts: libqt4-maemo5-phonon-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-phonon-dbg (<< 4.6.99)
 Description: Qt 4 phonon module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbol for the Qt phonon library.
 
-Package: libqt4-maemo5-multimedia
+Package: libqt4-experimental-multimedia
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-maemo5-gui (= ${binary:Version}), libasound2 (>= 1.0.0), libpulse0 
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-gui (= ${binary:Version}), libasound2 (>= 1.0.0), libpulse0 
+Conflicts: libqt4-maemo5-multimedia (<< 4.6.99)
+Replaces: libqt4-maemo5-multimedia (<< 4.6.99)
 Description: Qt 4 Multimedia Libraries
  Qt 4 media playing libraries
 
-Package: libqt4-maemo5-multimedia-dbg
+Package: libqt4-experimental-multimedia-dbg
 Priority: extra
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libqt4-maemo5-multimedia (= ${binary:Version})
+ libqt4-experimental-multimedia (= ${binary:Version})
+Conflicts: libqt4-maemo5-multimedia-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-multimedia-dbg (<< 4.6.99)
 Description: Qt 4 multimedia module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbol for the Qt multimedia library.
 
-Package: libqt4-maemo5-opengl
+Package: libqt4-experimental-opengl
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-maemo5-core (= ${binary:Version}), ${shlibs:Depends}, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), ${shlibs:Depends}, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
+Conflicts: libqt4-maemo5-opengl (<< 4.6.99)
+Replaces: libqt4-maemo5-opengl (<< 4.6.99)
 Description: Qt 4 OpenGL module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -374,84 +439,160 @@ Description: Qt 4 OpenGL module
  This package contains the development files needed to build Qt 4 applications
  using QtOpenGL library.
 
-Package: libqt4-maemo5-opengl-dbg
+Package: libqt4-experimental-opengl-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-opengl (= ${binary:Version})
+Depends: libqt4-experimental-opengl (= ${binary:Version})
+Conflicts: libqt4-maemo5-opengl-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-opengl-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 OpenGL libraries.
 
-Package: libqt4-maemo5-maemo5
+Package: libqt4-experimental-maemo5
 Architecture: any
 Section: libs
-Depends: libqt4-maemo5-gui (= ${binary:Version}), libqt4-maemo5-dbus (= ${binary:Version})
+Depends: libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-dbus (= ${binary:Version})
+Conflicts: libqt4-maemo5-maemo5 (<< 4.6.99)
+Replaces: libqt4-maemo5-maemo5 (<< 4.6.99)
 Description: Qt 4 Maemo5 module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  The QtMaemo5 module extends QtGui with Maemo5 specific functionality.
 
-Package: libqt4-maemo5-maemo5-dbg
+Package: libqt4-experimental-maemo5-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-maemo5 (= ${binary:Version})
+Depends: libqt4-experimental-maemo5 (= ${binary:Version})
+Conflicts: libqt4-maemo5-maemo5-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-maemo5-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 Maemo5 libraries.
 
-Package: libqt4-maemo5-examples
+Package: libqt4-experimental-examples
 Priority: optional
 Architecture: any
 Section: libs
-Depends: libqt4-maemo5-gui (= ${binary:Version}), libqt4-maemo5-dbus (= ${binary:Version}), libqt4-maemo5-maemo5 (= ${binary:Version})
+Depends: libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-maemo5 (= ${binary:Version})
+Conflicts: libqt4-maemo5-examples (<< 4.6.99)
+Replaces: libqt4-maemo5-examples (<< 4.6.99)
 Description: Qt 4 Maemo5 example applications
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  A set of example applications for developers of Qt for Maemo 5 applications
 
-Package: libqt4-maemo5-declarative
+Package: libqt4-experimental-declarative
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-maemo5-core (= ${binary:Version}), libqt4-maemo5-gui (= ${binary:Version}), libqt4-maemo5-svg (= ${binary:Version}), libqt4-maemo5-opengl (= ${binary:Version}), libqt4-maemo5-webkit (= ${binary:Version}), libqt4-maemo5-script (= ${binary:Version}), libqt4-maemo5-network (= ${binary:Version}), libqt4-maemo5-xmlpatterns (= ${binary:Version}), libqt4-maemo5-dbus (= ${binary:Version}), libqt4-maemo5-sql (= ${binary:Version}), libqt4-maemo5-sql-sqlite (= ${binary:Version}) 
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-core (= ${binary:Version}), libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-svg (= ${binary:Version}), libqt4-experimental-opengl (= ${binary:Version}), libqt4-experimental-webkit (= ${binary:Version}), libqt4-experimental-script (= ${binary:Version}), libqt4-experimental-network (= ${binary:Version}), libqt4-experimental-xmlpatterns (= ${binary:Version}), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-sql (= ${binary:Version}), libqt4-experimental-sql-sqlite (= ${binary:Version}) 
+Conflicts: libqt4-maemo5-declarative (<< 4.6.99)
+Replaces: libqt4-maemo5-declarative (<< 4.6.99)
 Description: Qt 4 declarative module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  The QtDeclarative module contains declarative UI functionality.
 
-Package: libqt4-maemo5-declarative-dbg
+Package: libqt4-experimental-declarative-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-declarative (= ${binary:Version})
+Depends: libqt4-experimental-declarative (= ${binary:Version})
+Conflicts: libqt4-maemo5-declarative-dbg (<< 4.6.99)
+Replaces: libqt4-maemo5-declarative-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 Declarative libraries.
 
-Package: libqt4-maemo5-declarative-dev
+Package: libqt4-experimental-declarative-dev
 Architecture: any
 Section: libdevel
-Depends: libqt4-maemo5-dev
+Depends: libqt4-experimental-dev
+Conflicts: libqt4-maemo5-declarative-dev (<< 4.6.99)
+Replaces: libqt4-maemo5-declarative-dev (<< 4.6.99)
+Provides: libqt4-maemo5-declarative-dev
 Description: Qt4 Declarative development files
- This is a transitional package for libqt4-maemo5-declarative-dev, and can be safely removed
+ This is a transitional package for libqt4-experimental-declarative-dev, and can be safely removed
  after the installation is complete.
 
-Package: qt4-maemo5-declarative-qmlviewer
+Package: qt4-experimental-declarative-qmlviewer
 Architecture: any
 Section: devel
-Depends: libqt4-maemo5-declarative (=${binary:Version})
+Depends: libqt4-experimental-declarative (=${binary:Version})
+Conflicts: qt4-maemo5-declarative-qmlviewer (<< 4.6.99)
+Replaces: qt4-maemo5-declarative-qmlviewer (<< 4.6.99)
 Description: Qt 4 declarative module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  The QtDeclarative viewer allows viewing QML files
+XB-Maemo-Icon-26:
+ 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
+ Bc8XAAAAAElFTkSuQmCC
+XSBC-Bugtracker: http://bugreports.qt.nokia.com/
+XB-Maemo-Display-Name: QML Viewer (experimental)

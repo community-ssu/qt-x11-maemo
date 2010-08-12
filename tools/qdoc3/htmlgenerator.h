@@ -46,8 +46,6 @@
 #ifndef HTMLGENERATOR_H
 #define HTMLGENERATOR_H
 
-#define QDOC_NAME_ALIGNMENT
-
 #include <qmap.h>
 #include <qregexp.h>
 #include <QXmlStreamWriter>
@@ -125,14 +123,24 @@ class HtmlGenerator : public PageGenerator
 
  private:
     enum SubTitleSize { SmallSubTitle, LargeSubTitle };
+    enum ExtractionMarkType {
+        BriefMark,
+        DetailedDescriptionMark,
+        MemberMark,
+        EndMark
+    };
 
     const QPair<QString,QString> anchorForNode(const Node *node);
     const Node *findNodeForTarget(const QString &target, 
                                   const Node *relative,
                                   CodeMarker *marker, 
                                   const Atom *atom = 0);
-    void generateHeader(const QString& title, const Node *node = 0,
-                        CodeMarker *marker = 0, bool mainPage = true);
+    void generateBreadCrumbs(const QString& title,
+                             const Node *node,
+                             CodeMarker *marker);
+    void generateHeader(const QString& title, 
+                        const Node *node = 0,
+                        CodeMarker *marker = 0);
     void generateTitle(const QString& title, 
                        const Text &subTitle, 
                        SubTitleSize subTitleSize,
@@ -169,6 +177,7 @@ class HtmlGenerator : public PageGenerator
     void generateCompactList(const Node *relative, 
                              CodeMarker *marker,
 			     const NodeMap &classMap,
+                             bool includeAlphabet,
                              QString commonPrefix = QString());
     void generateFunctionIndex(const Node *relative, CodeMarker *marker);
     void generateLegaleseList(const Node *relative, CodeMarker *marker);
@@ -193,7 +202,7 @@ class HtmlGenerator : public PageGenerator
     void generateQmlInstantiates(const QmlClassNode* qcn, CodeMarker* marker);
     void generateInstantiatedBy(const ClassNode* cn, CodeMarker* marker);
 #endif
-#ifdef QDOC_NAME_ALIGNMENT
+
     void generateSection(const NodeList& nl,
                          const Node *relative,
                          CodeMarker *marker,
@@ -202,28 +211,16 @@ class HtmlGenerator : public PageGenerator
                           const Node *relative, 
                           CodeMarker *marker,
 			  CodeMarker::SynopsisStyle style,
-                          bool nameAlignment = false);
-    void generateSectionInheritedList(const Section& section, 
-                                      const Node *relative,
-                                      CodeMarker *marker,
-                                      bool nameAlignment = false);
-    QString highlightedCode(const QString& markedCode, 
-                            CodeMarker *marker, 
-                            const Node *relative,
-                            CodeMarker::SynopsisStyle style = CodeMarker::Accessors,
-                            bool nameAlignment = false);
-#else
-    void generateSynopsis(const Node *node, 
-                          const Node *relative, 
-                          CodeMarker *marker,
-			  CodeMarker::SynopsisStyle style);
+                          bool alignNames = false);
     void generateSectionInheritedList(const Section& section, 
                                       const Node *relative,
                                       CodeMarker *marker);
     QString highlightedCode(const QString& markedCode, 
-                            CodeMarker *marker, 
-                            const Node *relative);
-#endif
+                            CodeMarker* marker, 
+                            const Node* relative,
+                            bool alignNames = false,
+                            const Node* self = 0);
+
     void generateFullName(const Node *apparentNode, 
                           const Node *relative, 
                           CodeMarker *marker,
@@ -246,9 +243,6 @@ class HtmlGenerator : public PageGenerator
     void findAllFunctions(const InnerNode *node);
     void findAllLegaleseTexts(const InnerNode *node);
     void findAllNamespaces(const InnerNode *node);
-#ifdef ZZZ_QDOC_QML    
-    void findAllQmlClasses(const InnerNode *node);
-#endif
     void findAllSince(const InnerNode *node);
     static int hOffset(const Node *node);
     static bool isThreeColumnEnumValueTable(const Atom *atom);
@@ -262,7 +256,9 @@ class HtmlGenerator : public PageGenerator
     virtual void generateIndex(const QString &fileBase, 
                                const QString &url,
                                const QString &title);
+#ifdef GENERATE_MAC_REFS    
     void generateMacRef(const Node *node, CodeMarker *marker);
+#endif
     void beginLink(const QString &link, 
                    const Node *node, 
                    const Node *relative, 
@@ -276,6 +272,7 @@ class HtmlGenerator : public PageGenerator
                               CodeMarker* marker) const;
     void generatePageIndex(const QString& fileName, 
                            CodeMarker* marker) const;
+    void generateExtractionMark(const Node *node, ExtractionMarkType markType);
 
 #if 0
     NavigationBar currentNavigationBar;
@@ -297,11 +294,17 @@ class HtmlGenerator : public PageGenerator
     bool inTableHeader;
     int numTableRows;
     bool threeColumnEnumValueTable;
+    bool onlineDocs;
+    bool offlineDocs;
+    bool creatorDocs;
     QString link;
     QStringList sectionNumber;
     QRegExp funcLeftParen;
     QString style;
     QString postHeader;
+    QString postPostHeader;
+    QString creatorPostHeader;
+    QString creatorPostPostHeader;
     QString footer;
     QString address;
     bool pleaseGenerateMacRef;
@@ -322,9 +325,6 @@ class HtmlGenerator : public PageGenerator
     NodeMap obsoleteClasses;
     NodeMap namespaceIndex;
     NodeMap serviceClasses;
-#ifdef QDOC_QML    
-    NodeMap qmlClasses;
-#endif
     QMap<QString, NodeMap > funcIndex;
     QMap<Text, const Node *> legaleseTexts;
     NewSinceMaps newSinceMaps;
@@ -332,12 +332,18 @@ class HtmlGenerator : public PageGenerator
     NewClassMaps newClassMaps;
     NewClassMaps newQmlClassMaps;
     static int id;
+ public:
+    static bool debugging_on;
+    static QString divNavTop;
 };
 
 #define HTMLGENERATOR_ADDRESS           "address"
 #define HTMLGENERATOR_FOOTER            "footer"
-#define HTMLGENERATOR_GENERATEMACREFS    "generatemacrefs" // ### document me
+#define HTMLGENERATOR_GENERATEMACREFS   "generatemacrefs" // ### document me
 #define HTMLGENERATOR_POSTHEADER        "postheader"
+#define HTMLGENERATOR_POSTPOSTHEADER    "postpostheader"
+#define HTMLGENERATOR_CREATORPOSTHEADER        "postheader"
+#define HTMLGENERATOR_CREATORPOSTPOSTHEADER    "postpostheader"
 #define HTMLGENERATOR_STYLE             "style"
 #define HTMLGENERATOR_STYLESHEETS       "stylesheets"
 #define HTMLGENERATOR_CUSTOMHEADELEMENTS "customheadelements"

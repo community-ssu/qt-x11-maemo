@@ -47,8 +47,14 @@
 #include <QtDeclarative/qdeclarativecomponent.h>
 #include <private/qdeclarativeloader_p.h>
 #include "testhttpserver.h"
+#include "../../../shared/util.h"
 
 #define SERVER_PORT 14450
+
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
 
 inline QUrl TEST_FILE(const QString &filename)
 {
@@ -78,6 +84,7 @@ private slots:
     void clear();
     void urlToComponent();
     void componentToUrl();
+    void anchoredLoader();
     void sizeLoaderToItem();
     void sizeItemToLoader();
     void noResize();
@@ -104,13 +111,14 @@ tst_QDeclarativeLoader::tst_QDeclarativeLoader()
 void tst_QDeclarativeLoader::url()
 {
     QDeclarativeComponent component(&engine);
-    component.setData(QByteArray("import Qt 4.7\nLoader { source: \"Rect120x60.qml\" }"), TEST_FILE(""));
+    component.setData(QByteArray("import Qt 4.7\nLoader { property int did_load: 0; onLoaded: did_load=123; source: \"Rect120x60.qml\" }"), TEST_FILE(""));
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
     QVERIFY(loader != 0);
     QVERIFY(loader->item());
     QVERIFY(loader->source() == QUrl::fromLocalFile(SRCDIR "/data/Rect120x60.qml"));
     QCOMPARE(loader->progress(), 1.0);
     QCOMPARE(loader->status(), QDeclarativeLoader::Ready);
+    QCOMPARE(loader->property("did_load").toInt(), 123);
     QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 1);
 
     delete loader;
@@ -138,7 +146,7 @@ void tst_QDeclarativeLoader::component()
 
 void tst_QDeclarativeLoader::invalidUrl()
 {
-    QTest::ignoreMessage(QtWarningMsg, QString("(:-1: File error for URL " + QUrl::fromLocalFile(SRCDIR "/data/IDontExist.qml").toString() + ") ").toUtf8().constData());
+    QTest::ignoreMessage(QtWarningMsg, QString("<Unknown File>: File error for URL " + QUrl::fromLocalFile(SRCDIR "/data/IDontExist.qml").toString()).toUtf8().constData());
 
     QDeclarativeComponent component(&engine);
     component.setData(QByteArray("import Qt 4.7\nLoader { source: \"IDontExist.qml\" }"), TEST_FILE(""));
@@ -169,9 +177,7 @@ void tst_QDeclarativeLoader::clear()
         QCOMPARE(loader->progress(), 1.0);
         QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 1);
 
-        QTest::qWait(500);
-
-        QVERIFY(loader->item() == 0);
+        QTRY_VERIFY(loader->item() == 0);
         QCOMPARE(loader->progress(), 0.0);
         QCOMPARE(loader->status(), QDeclarativeLoader::Null);
         QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 0);
@@ -198,6 +204,26 @@ void tst_QDeclarativeLoader::clear()
 
         delete item;
     }
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("/SetSourceComponent.qml"));
+        QDeclarativeItem *item = qobject_cast<QDeclarativeItem*>(component.create());
+        QVERIFY(item);
+
+        QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(item->QGraphicsObject::children().at(1)); 
+        QVERIFY(loader);
+        QVERIFY(loader->item());
+        QCOMPARE(loader->progress(), 1.0);
+        QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 1);
+
+        QMetaObject::invokeMethod(item, "clear");
+
+        QVERIFY(loader->item() == 0);
+        QCOMPARE(loader->progress(), 0.0);
+        QCOMPARE(loader->status(), QDeclarativeLoader::Null);
+        QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 0);
+
+        delete item;
+    }
 }
 
 void tst_QDeclarativeLoader::urlToComponent()
@@ -212,8 +238,8 @@ void tst_QDeclarativeLoader::urlToComponent()
                 "}" )
             , TEST_FILE(""));
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
-    QTest::qWait(500);
-    QVERIFY(loader != 0);
+    QTest::qWait(200);
+    QTRY_VERIFY(loader != 0);
     QVERIFY(loader->item());
     QCOMPARE(loader->progress(), 1.0);
     QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 1);
@@ -245,12 +271,32 @@ void tst_QDeclarativeLoader::componentToUrl()
     delete item;
 }
 
+void tst_QDeclarativeLoader::anchoredLoader()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("/AnchoredLoader.qml"));
+    QDeclarativeItem *rootItem = qobject_cast<QDeclarativeItem*>(component.create());
+    QVERIFY(rootItem != 0);
+    QDeclarativeItem *loader = rootItem->findChild<QDeclarativeItem*>("loader");
+    QDeclarativeItem *sourceElement = rootItem->findChild<QDeclarativeItem*>("sourceElement");
+
+    QVERIFY(loader != 0);
+    QVERIFY(sourceElement != 0);
+
+    QCOMPARE(rootItem->width(), 300.0);
+    QCOMPARE(rootItem->height(), 200.0);
+
+    QCOMPARE(loader->width(), 300.0);
+    QCOMPARE(loader->height(), 200.0);
+
+    QCOMPARE(sourceElement->width(), 300.0);
+    QCOMPARE(sourceElement->height(), 200.0);
+}
+
 void tst_QDeclarativeLoader::sizeLoaderToItem()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("/SizeToItem.qml"));
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
     QVERIFY(loader != 0);
-    QVERIFY(loader->resizeMode() == QDeclarativeLoader::SizeLoaderToItem);
     QCOMPARE(loader->width(), 120.0);
     QCOMPARE(loader->height(), 60.0);
 
@@ -262,19 +308,27 @@ void tst_QDeclarativeLoader::sizeLoaderToItem()
     QCOMPARE(loader->width(), 150.0);
     QCOMPARE(loader->height(), 45.0);
 
+    // Check explicit width
+    loader->setWidth(200.0);
+    QCOMPARE(loader->width(), 200.0);
+    QCOMPARE(rect->width(), 200.0);
+    rect->setWidth(100.0); // when rect changes ...
+    QCOMPARE(rect->width(), 100.0); // ... it changes
+    QCOMPARE(loader->width(), 200.0); // ... but loader stays the same
+
+    // Check explicit height
+    loader->setHeight(200.0);
+    QCOMPARE(loader->height(), 200.0);
+    QCOMPARE(rect->height(), 200.0);
+    rect->setHeight(100.0); // when rect changes ...
+    QCOMPARE(rect->height(), 100.0); // ... it changes
+    QCOMPARE(loader->height(), 200.0); // ... but loader stays the same
+
     // Switch mode
-    loader->setResizeMode(QDeclarativeLoader::SizeItemToLoader);
     loader->setWidth(180);
     loader->setHeight(30);
     QCOMPARE(rect->width(), 180.0);
     QCOMPARE(rect->height(), 30.0);
-
-    // notify
-    QSignalSpy spy(loader, SIGNAL(resizeModeChanged()));
-    loader->setResizeMode(QDeclarativeLoader::NoResize);
-    QCOMPARE(spy.count(),1);
-    loader->setResizeMode(QDeclarativeLoader::NoResize);
-    QCOMPARE(spy.count(),1);
 
     delete loader;
 }
@@ -284,7 +338,6 @@ void tst_QDeclarativeLoader::sizeItemToLoader()
     QDeclarativeComponent component(&engine, TEST_FILE("/SizeToLoader.qml"));
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
     QVERIFY(loader != 0);
-    QVERIFY(loader->resizeMode() == QDeclarativeLoader::SizeItemToLoader);
     QCOMPARE(loader->width(), 200.0);
     QCOMPARE(loader->height(), 80.0);
 
@@ -300,7 +353,8 @@ void tst_QDeclarativeLoader::sizeItemToLoader()
     QCOMPARE(rect->height(), 30.0);
 
     // Switch mode
-    loader->setResizeMode(QDeclarativeLoader::SizeLoaderToItem);
+    loader->resetWidth(); // reset explicit size
+    loader->resetHeight();
     rect->setWidth(160);
     rect->setHeight(45);
     QCOMPARE(loader->width(), 160.0);
@@ -312,17 +366,12 @@ void tst_QDeclarativeLoader::sizeItemToLoader()
 void tst_QDeclarativeLoader::noResize()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("/NoResize.qml"));
-    QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
-    QVERIFY(loader != 0);
-    QCOMPARE(loader->width(), 200.0);
-    QCOMPARE(loader->height(), 80.0);
+    QDeclarativeItem* item = qobject_cast<QDeclarativeItem*>(component.create());
+    QVERIFY(item != 0);
+    QCOMPARE(item->width(), 200.0);
+    QCOMPARE(item->height(), 80.0);
 
-    QDeclarativeItem *rect = qobject_cast<QDeclarativeItem*>(loader->item());
-    QVERIFY(rect);
-    QCOMPARE(rect->width(), 120.0);
-    QCOMPARE(rect->height(), 60.0);
-
-    delete loader;
+    delete item;
 }
 
 void tst_QDeclarativeLoader::sizeLoaderToGraphicsWidget()
@@ -333,7 +382,6 @@ void tst_QDeclarativeLoader::sizeLoaderToGraphicsWidget()
     scene.addItem(loader);
 
     QVERIFY(loader != 0);
-    QVERIFY(loader->resizeMode() == QDeclarativeLoader::SizeLoaderToItem);
     QCOMPARE(loader->width(), 250.0);
     QCOMPARE(loader->height(), 250.0);
 
@@ -345,7 +393,6 @@ void tst_QDeclarativeLoader::sizeLoaderToGraphicsWidget()
     QCOMPARE(loader->height(), 45.0);
 
     // Switch mode
-    loader->setResizeMode(QDeclarativeLoader::SizeItemToLoader);
     loader->setWidth(180);
     loader->setHeight(30);
     QCOMPARE(widget->size().width(), 180.0);
@@ -362,7 +409,6 @@ void tst_QDeclarativeLoader::sizeGraphicsWidgetToLoader()
     scene.addItem(loader);
 
     QVERIFY(loader != 0);
-    QVERIFY(loader->resizeMode() == QDeclarativeLoader::SizeItemToLoader);
     QCOMPARE(loader->width(), 200.0);
     QCOMPARE(loader->height(), 80.0);
 
@@ -378,7 +424,8 @@ void tst_QDeclarativeLoader::sizeGraphicsWidgetToLoader()
     QCOMPARE(widget->size().height(), 30.0);
 
     // Switch mode
-    loader->setResizeMode(QDeclarativeLoader::SizeLoaderToItem);
+    loader->resetWidth(); // reset explicit size
+    loader->resetHeight();
     widget->resize(QSizeF(160,45));
     QCOMPARE(loader->width(), 160.0);
     QCOMPARE(loader->height(), 45.0);
@@ -389,20 +436,15 @@ void tst_QDeclarativeLoader::sizeGraphicsWidgetToLoader()
 void tst_QDeclarativeLoader::noResizeGraphicsWidget()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("/NoResizeGraphicsWidget.qml"));
-    QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
+    QDeclarativeItem *item = qobject_cast<QDeclarativeItem*>(component.create());
     QGraphicsScene scene;
-    scene.addItem(loader);
+    scene.addItem(item);
 
-    QVERIFY(loader != 0);
-    QCOMPARE(loader->width(), 200.0);
-    QCOMPARE(loader->height(), 80.0);
+    QVERIFY(item != 0);
+    QCOMPARE(item->width(), 200.0);
+    QCOMPARE(item->height(), 80.0);
 
-    QGraphicsWidget *widget = qobject_cast<QGraphicsWidget*>(loader->item());
-    QVERIFY(widget);
-    QCOMPARE(widget->size().width(), 250.0);
-    QCOMPARE(widget->size().height(), 250.0);
-
-    delete loader;
+    delete item;
 }
 
 void tst_QDeclarativeLoader::networkRequestUrl()
@@ -412,7 +454,7 @@ void tst_QDeclarativeLoader::networkRequestUrl()
     server.serveDirectory(SRCDIR "/data");
 
     QDeclarativeComponent component(&engine);
-    component.setData(QByteArray("import Qt 4.7\nLoader { source: \"http://127.0.0.1:14450/Rect120x60.qml\" }"), QUrl::fromLocalFile(SRCDIR "/dummy.qml"));
+    component.setData(QByteArray("import Qt 4.7\nLoader { property int did_load : 0; source: \"http://127.0.0.1:14450/Rect120x60.qml\"; onLoaded: did_load=123 }"), QUrl::fromLocalFile(SRCDIR "/dummy.qml"));
     if (component.isError())
         qDebug() << component.errors();
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
@@ -422,6 +464,7 @@ void tst_QDeclarativeLoader::networkRequestUrl()
 
     QVERIFY(loader->item());
     QCOMPARE(loader->progress(), 1.0);
+    QCOMPARE(loader->property("did_load").toInt(), 123);
     QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 1);
 
     delete loader;
@@ -465,10 +508,10 @@ void tst_QDeclarativeLoader::failNetworkRequest()
     QVERIFY(server.isValid());
     server.serveDirectory(SRCDIR "/data");
 
-    QTest::ignoreMessage(QtWarningMsg, "(:-1: Network error for URL http://127.0.0.1:14450/IDontExist.qml) ");
+    QTest::ignoreMessage(QtWarningMsg, "<Unknown File>: Network error for URL http://127.0.0.1:14450/IDontExist.qml");
 
     QDeclarativeComponent component(&engine);
-    component.setData(QByteArray("import Qt 4.7\nLoader { source: \"http://127.0.0.1:14450/IDontExist.qml\" }"), QUrl::fromLocalFile("http://127.0.0.1:14450/dummy.qml"));
+    component.setData(QByteArray("import Qt 4.7\nLoader { property int did_load: 123; source: \"http://127.0.0.1:14450/IDontExist.qml\"; onLoaded: did_load=456 }"), QUrl::fromLocalFile("http://127.0.0.1:14450/dummy.qml"));
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
     QVERIFY(loader != 0);
 
@@ -476,6 +519,7 @@ void tst_QDeclarativeLoader::failNetworkRequest()
 
     QVERIFY(loader->item() == 0);
     QCOMPARE(loader->progress(), 0.0);
+    QCOMPARE(loader->property("did_load").toInt(), 123);
     QCOMPARE(static_cast<QGraphicsItem*>(loader)->children().count(), 0);
 
     delete loader;
@@ -505,7 +549,7 @@ void tst_QDeclarativeLoader::deleteComponentCrash()
 void tst_QDeclarativeLoader::nonItem()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("nonItem.qml"));
-    QString err = QString("QML Loader (") + QUrl::fromLocalFile(SRCDIR).toString() + QString("/data/nonItem.qml:3:1) Loader does not support loading non-visual elements.");
+    QString err = QUrl::fromLocalFile(SRCDIR).toString() + "/data/nonItem.qml:3:1: QML Loader: Loader does not support loading non-visual elements.";
 
     QTest::ignoreMessage(QtWarningMsg, err.toLatin1().constData());
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
@@ -518,9 +562,8 @@ void tst_QDeclarativeLoader::nonItem()
 void tst_QDeclarativeLoader::vmeErrors()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("vmeErrors.qml"));
-    //ignore message for now
-    //QString err = QUrl::fromLocalFile(SRCDIR "/data/VmeError.qml:6: Cannot assign object type QObject with no default method\n        onSomethingHappened: QtObject {}) ");
-    //QTest::ignoreMessage(QtWarningMsg, err.toLatin1().constData());
+    QString err = QUrl::fromLocalFile(SRCDIR).toString() + "/data/VmeError.qml:6: Cannot assign object type QObject with no default method";
+    QTest::ignoreMessage(QtWarningMsg, err.toLatin1().constData());
     QDeclarativeLoader *loader = qobject_cast<QDeclarativeLoader*>(component.create());
     QVERIFY(loader);
     QVERIFY(loader->item() == 0);

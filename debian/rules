@@ -28,7 +28,7 @@ DEB_MAKE_INSTALL_TARGET := INSTALL_ROOT=$(DEB_DESTDIR) install
 DEB_DH_INSTALL_SOURCEDIR := debian/tmp
 DEB_DH_ALWAYS_EXCLUDE := .git
 
-# Ensure the *.debug files aren't included in any package other than libqt4-maemo5-dbg
+# Ensure the *.debug files aren't included in any package other than libqt4-experimental-dbg
 DEB_DH_INSTALL_ARGS := --exclude=.debug
 
 DEB_MAKE_CLEAN_TARGET := confclean distclean
@@ -48,17 +48,21 @@ endif
 ifeq ($(TARGET_BUILD),1)
 	GL_BACKEND=es2
 	# On the target, moc, rcc, uic and qmake are built as host tools, so we'll strip them later
-	EXTRA_STRIP_ARGS=-X/moc -X/rcc -X/uic -X/qmake -X/lrelease
+	HOST_EXCLUDES=-X/moc -X/rcc -X/uic -X/qmake -X/lrelease
+	EXTRA_STRIP_ARGS=$(HOST_EXCLUDES)
 	EXTRA_HOST_STRIP_ARGS=--strip-all bin/moc bin/rcc bin/uic bin/qmake bin/lrelease
+	HOST_MKSPEC=-spec $(CURDIR)/mkspecs/linux-host-g++
 else
+	HOST_EXCLUDES=
 	GL_BACKEND=desktop
 	EXTRA_STRIP_ARGS=
 	EXTRA_HOST_STRIP_ARGS=
+	HOST_MKSPEC=
 endif
 
-DEB_DH_STRIP_ARGS := --dbg-package=libqt4-maemo5-core --dbg-package=libqt4-maemo5-gui --dbg-package=libqt4-maemo5-network --dbg-package=libqt4-maemo5-script --dbg-package=libqt4-maemo5-sql --dbg-package=libqt4-maemo5-sql-sqlite --dbg-package=libqt4-maemo5-svg --dbg-package=libqt4-maemo5-xml --dbg-package=libqt4-maemo5-dbus --dbg-package=libqt4-maemo5-opengl --dbg-package=libqt4-maemo5-phonon --dbg-package=libqt4-maemo5-multimedia --dbg-package=libqt4-maemo5-xmlpatterns --dbg-package=libqt4-maemo5-webkit --dbg-package=libqt4-maemo5-test --dbg-package=libqt4-maemo5-maemo5 --dbg-package=libqt4-maemo5-declarative $(EXTRA_STRIP_ARGS)
+DEB_DH_STRIP_ARGS := --dbg-package=libqt4-experimental-core --dbg-package=libqt4-experimental-gui --dbg-package=libqt4-experimental-network --dbg-package=libqt4-experimental-script --dbg-package=libqt4-experimental-sql --dbg-package=libqt4-experimental-sql-sqlite --dbg-package=libqt4-experimental-svg --dbg-package=libqt4-experimental-xml --dbg-package=libqt4-experimental-dbus --dbg-package=libqt4-experimental-opengl --dbg-package=libqt4-experimental-phonon --dbg-package=libqt4-experimental-multimedia --dbg-package=libqt4-experimental-xmlpatterns --dbg-package=libqt4-experimental-webkit --dbg-package=libqt4-experimental-test --dbg-package=libqt4-experimental-maemo5 --dbg-package=libqt4-experimental-declarative $(EXTRA_STRIP_ARGS)
 
-DEB_DH_SHLIBDEPS_ARGS_ALL := --exclude=.debug
+DEB_DH_SHLIBDEPS_ARGS_ALL := --exclude=.debug $(HOST_EXCLUDES)
 
 # Only present in official source package
 #DEB_INSTALL_CHANGELOGS_ALL := changes-$(QTVERSION)
@@ -123,11 +127,12 @@ build-dbus-tools:
 	$(MAKE) -C tools/qdbus/qdbuscpp2xml
 
 build-qml-tool:
+	bin/qmake -o debian/qmlviewer-experimental-desktop/Makefile debian/qmlviewer-experimental-desktop/qmlviewer-experimental-desktop.pro
 	bin/qmake -o tools/qml/Makefile tools/qml/qml.pro
 	$(MAKE) -C tools/qml
 
 build-linguist-tools:
-	bin/qmake -spec $(CURDIR)/mkspecs/linux-host-g++ -o tools/linguist/lrelease/Makefile tools/linguist/lrelease/lrelease.pro
+	bin/qmake $(HOST_MKSPEC) -o tools/linguist/lrelease/Makefile tools/linguist/lrelease/lrelease.pro
 	bin/qmake -o tools/linguist/lupdate/Makefile tools/linguist/lupdate/lupdate.pro
 	$(MAKE) -C tools/linguist/lrelease
 	$(MAKE) -C tools/linguist/lupdate
@@ -158,6 +163,7 @@ install-uitools:
 	$(MAKE) -C tools/designer/src/uitools $(DEB_MAKE_INSTALL_TARGET)
 
 install-qml-tool:
+	$(MAKE) -C debian/qmlviewer-experimental-desktop $(DEB_MAKE_INSTALL_TARGET)
 	$(MAKE) -C tools/qml $(DEB_MAKE_INSTALL_TARGET)
 
 clean::

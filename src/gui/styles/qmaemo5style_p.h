@@ -115,6 +115,7 @@ public:
     virtual void resolveGtk() const;
     virtual void initGtkMenu() const;
     virtual void initGtkWidgets() const;
+    virtual void applyCustomPaletteHash();
 
     static void setupGtkFileChooser(GtkWidget* gtkFileChooser, QWidget *parent,
             const QString &dir, const QString &filter, QString *selectedFilter,
@@ -180,10 +181,9 @@ public:
     ScrollBarFader(QAbstractScrollArea *area, int delay, int duration, int update_interval);
     ~ScrollBarFader();
 
-    inline qreal currentAlpha() const  { return m_current_alpha; }
+    void show();
 
-protected:
-    bool eventFilter(QObject *o, QEvent *e);
+    inline qreal currentAlpha() const  { return m_current_alpha; }
 
 private slots:
     void delayTimeout();

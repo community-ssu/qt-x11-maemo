@@ -1,3 +1,69 @@
+qt4-experimental (4.7.0~git20100802-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7.0 release branch
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Mon, 02 Aug 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100728-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7.0 release branch
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Tue, 28 Jul 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100715-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Thu, 15 Jul 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100706-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Tue, 6 Jul 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100628-0maemo1) unstable; urgency=low
+
+  * Install QML Viewer icon and sync with latest 4.7
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Mon, 28 Jun 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100624-0maemo1) unstable; urgency=low
+
+  * Give QML Viewer a desktop file and an icon
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Thu, 24 Jun 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100617-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Thu, 17 Jun 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100614-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Mon, 14 Jun 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100520-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Thu, 20 May 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100518-0maemo1) unstable; urgency=low
+
+  * Temporarily enable the GL_SCISSOR tests
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Tue, 18 May 2010 09:29:01 +0200
+
+qt4-experimental (4.7.0~git20100505-0maemo1) unstable; urgency=low
+
+  * Rename all packages to qt4-experimental
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Wed, 5 May 2010 09:29:01 +0200
+
 qt4-maemo5 (4.7.0~git20100329-0maemo1) unstable; urgency=low
 
   * Also package QML's import/ directory

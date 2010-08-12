@@ -44,6 +44,9 @@
 #include "qcoefepinputcontext_p.h"
 #include <qapplication.h>
 #include <qtextformat.h>
+#include <qgraphicsview.h>
+#include <qgraphicsscene.h>
+#include <qgraphicswidget.h>
 #include <private/qcore_symbian_p.h>
 
 #include <fepitfr.h>
@@ -87,7 +90,7 @@ QCoeFepInputContext::QCoeFepInputContext(QObject *parent)
     m_fepState->SetDefaultInputMode( EAknEditorTextInputMode );
     m_fepState->SetPermittedInputModes( EAknEditorAllInputModes );
     m_fepState->SetDefaultCase( EAknEditorLowerCase );
-    m_fepState->SetPermittedCases( EAknEditorLowerCase|EAknEditorUpperCase );
+    m_fepState->SetPermittedCases( EAknEditorAllCaseModes );
     m_fepState->SetSpecialCharacterTableResourceId(R_AVKON_SPECIAL_CHARACTER_TABLE_DIALOG);
     m_fepState->SetNumericKeymap( EAknEditorStandardNumberModeKeymap );
 }
@@ -294,6 +297,10 @@ void QCoeFepInputContext::commitTemporaryPreeditString()
         return;
 
     commitCurrentString(false);
+
+    //update cursor position, now this pre-edit text has been committed.
+    //this prevents next keypress overwriting it (QTBUG-11673)
+    m_cursorPos = focusWidget()->inputMethodQuery(Qt::ImCursorPosition).toInt();
 }
 
 void QCoeFepInputContext::mouseHandler( int x, QMouseEvent *event)
@@ -320,12 +327,14 @@ TCoeInputCapabilities QCoeFepInputContext::inputCapabilities()
     return TCoeInputCapabilities(m_textCapabilities, this, 0);
 }
 
-static QTextCharFormat qt_TCharFormat2QTextCharFormat(const TCharFormat &cFormat)
+static QTextCharFormat qt_TCharFormat2QTextCharFormat(const TCharFormat &cFormat, bool validStyleColor)
 {
     QTextCharFormat qFormat;
 
-    QBrush foreground(QColor(cFormat.iFontPresentation.iTextColor.Internal()));
-    qFormat.setForeground(foreground);
+    if (validStyleColor) {
+        QBrush foreground(QColor(cFormat.iFontPresentation.iTextColor.Internal()));
+        qFormat.setForeground(foreground);
+    }
 
     qFormat.setFontStrikeOut(cFormat.iFontPresentation.iStrikethrough == EStrikethroughOn);
     qFormat.setFontUnderline(cFormat.iFontPresentation.iUnderline == EUnderlineOn);
@@ -484,9 +493,30 @@ void QCoeFepInputContext::applyHints(Qt::InputMethodHints hints)
 void QCoeFepInputContext::applyFormat(QList<QInputMethodEvent::Attribute> *attributes)
 {
     TCharFormat cFormat;
-    QColor styleTextColor = QApplication::palette("QLineEdit").text().color();
-    TLogicalRgb tontColor(TRgb(styleTextColor.red(), styleTextColor.green(), styleTextColor.blue(), styleTextColor.alpha()));
-    cFormat.iFontPresentation.iTextColor = tontColor;
+    QColor styleTextColor;
+    if (QWidget *focused = focusWidget()) {
+        QGraphicsView *gv = qobject_cast<QGraphicsView*>(focused);
+        if (!gv) // could be either the QGV or its viewport that has focus
+            gv = qobject_cast<QGraphicsView*>(focused->parentWidget());
+        if (gv) {
+            if (QGraphicsScene *scene = gv->scene()) {
+                if (QGraphicsItem *focusItem = scene->focusItem()) {
+                    if (focusItem->isWidget()) {
+                        styleTextColor = static_cast<QGraphicsWidget*>(focusItem)->palette().text().color();
+                    }
+                }
+            }
+        } else {
+            styleTextColor = focused->palette().text().color();
+        }
+    } else {
+        styleTextColor = QApplication::palette("QLineEdit").text().color();
+    }
+
+    if (styleTextColor.isValid()) {
+        const TLogicalRgb fontColor(TRgb(styleTextColor.red(), styleTextColor.green(), styleTextColor.blue(), styleTextColor.alpha()));
+        cFormat.iFontPresentation.iTextColor = fontColor;
+    }
 
     TInt numChars = 0;
     TInt charPos = 0;
@@ -500,7 +530,7 @@ void QCoeFepInputContext::applyFormat(QList<QInputMethodEvent::Attribute> *attri
         attributes->append(QInputMethodEvent::Attribute(QInputMethodEvent::TextFormat,
                                                         charPos,
                                                         numChars,
-                                                        QVariant(qt_TCharFormat2QTextCharFormat(cFormat))));
+                                                        QVariant(qt_TCharFormat2QTextCharFormat(cFormat, styleTextColor.isValid()))));
         charPos += numChars;
         if (charPos >= m_preeditString.size()) {
             break;

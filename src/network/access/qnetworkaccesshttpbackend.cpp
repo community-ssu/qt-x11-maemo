@@ -346,6 +346,8 @@ void QNetworkAccessHttpBackend::setupConnection()
 #endif
     connect(http, SIGNAL(authenticationRequired(QHttpNetworkRequest,QAuthenticator*)),
             SLOT(httpAuthenticationRequired(QHttpNetworkRequest,QAuthenticator*)));
+    connect(http, SIGNAL(cacheCredentials(QHttpNetworkRequest,QAuthenticator*)),
+            SLOT(httpCacheCredentials(QHttpNetworkRequest,QAuthenticator*)));
     connect(http, SIGNAL(error(QNetworkReply::NetworkError,QString)),
             SLOT(httpError(QNetworkReply::NetworkError,QString)));
 #ifndef QT_NO_OPENSSL
@@ -578,6 +580,11 @@ void QNetworkAccessHttpBackend::postRequest()
     if (request().attribute(QNetworkRequest::HttpPipeliningAllowedAttribute).toBool() == true)
         httpRequest.setPipeliningAllowed(true);
 
+    if (static_cast<QNetworkRequest::LoadControl>
+        (request().attribute(QNetworkRequest::AuthenticationReuseAttribute,
+                             QNetworkRequest::Automatic).toInt()) == QNetworkRequest::Manual)
+        httpRequest.setWithCredentials(false);
+
     httpReply = http->sendRequest(httpRequest);
     httpReply->setParent(this);
 #ifndef QT_NO_OPENSSL
@@ -726,8 +733,7 @@ void QNetworkAccessHttpBackend::readFromHttp()
     QByteDataBuffer list;
 
     while (httpReply->bytesAvailable() != 0 && nextDownstreamBlockSize() != 0 && nextDownstreamBlockSize() > list.byteAmount()) {
-        QByteArray data = httpReply->readAny();
-        list.append(data);
+        list.append(httpReply->readAny());
     }
 
     if (!list.isEmpty())
@@ -862,6 +868,12 @@ void QNetworkAccessHttpBackend::httpAuthenticationRequired(const QHttpNetworkReq
     authenticationRequired(auth);
 }
 
+void QNetworkAccessHttpBackend::httpCacheCredentials(const QHttpNetworkRequest &,
+                                                 QAuthenticator *auth)
+{
+    cacheCredentials(auth);
+}
+
 void QNetworkAccessHttpBackend::httpError(QNetworkReply::NetworkError errorCode,
                                           const QString &errorString)
 {
@@ -932,10 +944,10 @@ bool QNetworkAccessHttpBackend::sendCacheContents(const QNetworkCacheMetaData &m
 
     checkForRedirect(status);
 
-    emit metaDataChanged();
-
-    // invoke this asynchronously, else Arora/QtDemoBrowser don't like cached downloads
-    // see task 250221 / 251801
+    // This needs to be emitted in the event loop because it can be reached at
+    // the direct code path of qnam.get(...) before the user has a chance
+    // to connect any signals.
+    QMetaObject::invokeMethod(this, "metaDataChanged", Qt::QueuedConnection);
     qRegisterMetaType<QIODevice*>("QIODevice*");
     QMetaObject::invokeMethod(this, "writeDownstreamData", Qt::QueuedConnection, Q_ARG(QIODevice*, contents));
 

@@ -354,6 +354,7 @@ static const char * x11_atomnames = {
     "_HILDON_IM_INPUT_MODE\0"
     "_HILDON_IM_PREEDIT_COMMITTED\0"
     "_HILDON_IM_PREEDIT_COMMITTED_CONTENT\0"
+    "_HILDON_IM_LONG_PRESS_SETTINGS\0"
 #endif
 
     // XEMBED
@@ -2257,7 +2258,7 @@ void qt_init(QApplicationPrivate *priv, int,
         X11->fc_scale = fc_scale;
         for (int s = 0; s < ScreenCount(X11->display); ++s) {
             int subpixel = FC_RGBA_UNKNOWN;
-#if RENDER_MAJOR > 0 || RENDER_MINOR >= 6
+#if !defined(QT_NO_XRENDER) && (RENDER_MAJOR > 0 || RENDER_MINOR >= 6)
             if (X11->use_xrender) {
                 int rsp = XRenderQuerySubpixelOrder(X11->display, s);
                 switch (rsp) {
@@ -4534,6 +4535,9 @@ bool QETWidget::translateMouseEvent(const XEvent *event)
                 widgetPos = receiver->mapFromGlobal(globalPos);
             QWidget *alien = childAt(mapFromGlobal(globalPos));
             QMouseEvent e(type, widgetPos, globalPos, button, buttons, modifiers);
+#ifdef Q_WS_MAEMO_5
+            QApplicationPrivate::sendTouchEvent(receiver, type, globalPos);
+#endif
             QApplicationPrivate::sendMouseEvent(receiver, &e, alien, this, &qt_button_down, qt_last_mouse_receiver);
         } else {
             // close disabled popups when a mouse button is pressed or released
@@ -4589,6 +4593,9 @@ bool QETWidget::translateMouseEvent(const XEvent *event)
         }
     } else {
         QWidget *alienWidget = childAt(pos);
+#ifdef Q_WS_MAEMO_5
+        QApplicationPrivate::sendTouchEvent((alienWidget ? alienWidget : this), type, globalPos);
+#endif
         QWidget *widget = QApplicationPrivate::pickMouseReceiver(this, globalPos, pos, type, buttons,
                                                                  qt_button_down, alienWidget);
         if (!widget) {
@@ -5468,7 +5475,7 @@ bool QETWidget::translateConfigEvent(const XEvent *event)
 
         if (isVisible() && data->crect.size() != oldSize) {
             Q_ASSERT(d->extra->topextra);
-            QWidgetBackingStore *bs = d->extra->topextra->backingStore;
+            QWidgetBackingStore *bs = d->extra->topextra->backingStore.data();
             const bool hasStaticContents = bs && bs->hasStaticContents();
             // If we have a backing store with static contents, we have to disable the top-level
             // resize optimization in order to get invalidated regions for resized widgets.

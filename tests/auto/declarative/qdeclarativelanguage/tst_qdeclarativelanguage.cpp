@@ -48,11 +48,20 @@
 
 #include <private/qdeclarativeproperty_p.h>
 #include <private/qdeclarativemetatype_p.h>
+#include <private/qdeclarativeglobal_p.h>
 
 #include "testtypes.h"
 
 #include "../../../shared/util.h"
 #include "testhttpserver.h"
+
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
+
+DEFINE_BOOL_CONFIG_OPTION(qmlCheckTypes, QML_CHECK_TYPES)
+
 
 /*
 This test case covers QML language issues.  This covers everything that does not
@@ -225,11 +234,15 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("wrongType (number string for int)") << "wrongType.13.qml" << "wrongType.13.errors.txt" << false;
     QTest::newRow("wrongType (int for string)") << "wrongType.14.qml" << "wrongType.14.errors.txt" << false;
     QTest::newRow("wrongType (int for url)") << "wrongType.15.qml" << "wrongType.15.errors.txt" << false;
+    QTest::newRow("wrongType (invalid object)") << "wrongType.16.qml" << "wrongType.16.errors.txt" << false;
 
     QTest::newRow("readOnly.1") << "readOnly.1.qml" << "readOnly.1.errors.txt" << false;
     QTest::newRow("readOnly.2") << "readOnly.2.qml" << "readOnly.2.errors.txt" << false;
     QTest::newRow("readOnly.3") << "readOnly.3.qml" << "readOnly.3.errors.txt" << false;
+    QTest::newRow("readOnly.4") << "readOnly.4.qml" << "readOnly.4.errors.txt" << false;
+    QTest::newRow("readOnly.5") << "readOnly.5.qml" << "readOnly.5.errors.txt" << false;
 
+    QTest::newRow("listAssignment.1") << "listAssignment.1.qml" << "listAssignment.1.errors.txt" << false;
     QTest::newRow("listAssignment.2") << "listAssignment.2.qml" << "listAssignment.2.errors.txt" << false;
     QTest::newRow("listAssignment.3") << "listAssignment.3.qml" << "listAssignment.3.errors.txt" << false;
 
@@ -242,6 +255,9 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("invalidID.7") << "invalidID.7.qml" << "invalidID.7.errors.txt" << false;
     QTest::newRow("invalidID.8") << "invalidID.8.qml" << "invalidID.8.errors.txt" << false;
     QTest::newRow("invalidID.9") << "invalidID.9.qml" << "invalidID.9.errors.txt" << false;
+
+    QTest::newRow("scriptString.1") << "scriptString.1.qml" << "scriptString.1.errors.txt" << false;
+    QTest::newRow("scriptString.2") << "scriptString.2.qml" << "scriptString.2.errors.txt" << false;
 
     QTest::newRow("unsupportedProperty") << "unsupportedProperty.qml" << "unsupportedProperty.errors.txt" << false;
     QTest::newRow("nullDotProperty") << "nullDotProperty.qml" << "nullDotProperty.errors.txt" << true;
@@ -270,8 +286,10 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("importVersionMissing (builtin)") << "importVersionMissingBuiltIn.qml" << "importVersionMissingBuiltIn.errors.txt" << false;
     QTest::newRow("importVersionMissing (installed)") << "importVersionMissingInstalled.qml" << "importVersionMissingInstalled.errors.txt" << false;
     QTest::newRow("importNonExist (installed)") << "importNonExist.qml" << "importNonExist.errors.txt" << false;
+    QTest::newRow("importNonExistOlder (installed)") << "importNonExistOlder.qml" << "importNonExistOlder.errors.txt" << false;
     QTest::newRow("importNewerVersion (installed)") << "importNewerVersion.qml" << "importNewerVersion.errors.txt" << false;
     QTest::newRow("invalidImportID") << "invalidImportID.qml" << "invalidImportID.errors.txt" << false;
+    QTest::newRow("importFile") << "importFile.qml" << "importFile.errors.txt" << false;
 
     QTest::newRow("signal.1") << "signal.1.qml" << "signal.1.errors.txt" << false;
     QTest::newRow("signal.2") << "signal.2.qml" << "signal.2.errors.txt" << false;
@@ -296,6 +314,9 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("Component.4") << "component.4.qml" << "component.4.errors.txt" << false;
     QTest::newRow("Component.5") << "component.5.qml" << "component.5.errors.txt" << false;
     QTest::newRow("Component.6") << "component.6.qml" << "component.6.errors.txt" << false;
+    QTest::newRow("Component.7") << "component.7.qml" << "component.7.errors.txt" << false;
+    QTest::newRow("Component.8") << "component.8.qml" << "component.8.errors.txt" << false;
+    QTest::newRow("Component.9") << "component.9.qml" << "component.9.errors.txt" << false;
 
     QTest::newRow("MultiSet.1") << "multiSet.1.qml" << "multiSet.1.errors.txt" << false;
     QTest::newRow("MultiSet.2") << "multiSet.2.qml" << "multiSet.2.errors.txt" << false;
@@ -307,6 +328,20 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("MultiSet.8") << "multiSet.8.qml" << "multiSet.8.errors.txt" << false;
     QTest::newRow("MultiSet.9") << "multiSet.9.qml" << "multiSet.9.errors.txt" << false;
     QTest::newRow("MultiSet.10") << "multiSet.10.qml" << "multiSet.10.errors.txt" << false;
+    QTest::newRow("MultiSet.11") << "multiSet.11.qml" << "multiSet.11.errors.txt" << false;
+
+    QTest::newRow("dynamicMeta.1") << "dynamicMeta.1.qml" << "dynamicMeta.1.errors.txt" << false;
+    QTest::newRow("dynamicMeta.2") << "dynamicMeta.2.qml" << "dynamicMeta.2.errors.txt" << false;
+    QTest::newRow("dynamicMeta.3") << "dynamicMeta.3.qml" << "dynamicMeta.3.errors.txt" << false;
+    QTest::newRow("dynamicMeta.4") << "dynamicMeta.4.qml" << "dynamicMeta.4.errors.txt" << false;
+    QTest::newRow("dynamicMeta.5") << "dynamicMeta.5.qml" << "dynamicMeta.5.errors.txt" << false;
+
+    QTest::newRow("invalidAlias.1") << "invalidAlias.1.qml" << "invalidAlias.1.errors.txt" << false;
+    QTest::newRow("invalidAlias.2") << "invalidAlias.2.qml" << "invalidAlias.2.errors.txt" << false;
+    QTest::newRow("invalidAlias.3") << "invalidAlias.3.qml" << "invalidAlias.3.errors.txt" << false;
+    QTest::newRow("invalidAlias.4") << "invalidAlias.4.qml" << "invalidAlias.4.errors.txt" << false;
+    QTest::newRow("invalidAlias.5") << "invalidAlias.5.qml" << "invalidAlias.5.errors.txt" << false;
+    QTest::newRow("invalidAlias.6") << "invalidAlias.6.qml" << "invalidAlias.6.errors.txt" << false;
 
     QTest::newRow("invalidAttachedProperty.1") << "invalidAttachedProperty.1.qml" << "invalidAttachedProperty.1.errors.txt" << false;
     QTest::newRow("invalidAttachedProperty.2") << "invalidAttachedProperty.2.qml" << "invalidAttachedProperty.2.errors.txt" << false;
@@ -319,9 +354,11 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("invalidAttachedProperty.9") << "invalidAttachedProperty.9.qml" << "invalidAttachedProperty.9.errors.txt" << false;
     QTest::newRow("invalidAttachedProperty.10") << "invalidAttachedProperty.10.qml" << "invalidAttachedProperty.10.errors.txt" << false;
     QTest::newRow("invalidAttachedProperty.11") << "invalidAttachedProperty.11.qml" << "invalidAttachedProperty.11.errors.txt" << false;
+    QTest::newRow("invalidAttachedProperty.12") << "invalidAttachedProperty.12.qml" << "invalidAttachedProperty.12.errors.txt" << false;
+    QTest::newRow("invalidAttachedProperty.13") << "invalidAttachedProperty.13.qml" << "invalidAttachedProperty.13.errors.txt" << false;
 
+    QTest::newRow("assignValueToSignal") << "assignValueToSignal.qml" << "assignValueToSignal.errors.txt" << false;
     QTest::newRow("emptySignal") << "emptySignal.qml" << "emptySignal.errors.txt" << false;
-    QTest::newRow("emptySignal.2") << "emptySignal.2.qml" << "emptySignal.2.errors.txt" << false;
 
     QTest::newRow("nestedErrors") << "nestedErrors.qml" << "nestedErrors.errors.txt" << false;
     QTest::newRow("defaultGrouped") << "defaultGrouped.qml" << "defaultGrouped.errors.txt" << false;
@@ -330,7 +367,11 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("missingValueTypeProperty") << "missingValueTypeProperty.qml" << "missingValueTypeProperty.errors.txt" << false;
     QTest::newRow("objectValueTypeProperty") << "objectValueTypeProperty.qml" << "objectValueTypeProperty.errors.txt" << false;
     QTest::newRow("enumTypes") << "enumTypes.qml" << "enumTypes.errors.txt" << false;
+    QTest::newRow("noCreation") << "noCreation.qml" << "noCreation.errors.txt" << false;
     QTest::newRow("destroyedSignal") << "destroyedSignal.qml" << "destroyedSignal.errors.txt" << false;
+    QTest::newRow("assignToNamespace") << "assignToNamespace.qml" << "assignToNamespace.errors.txt" << false;
+    QTest::newRow("invalidOn") << "invalidOn.qml" << "invalidOn.errors.txt" << false;
+    QTest::newRow("invalidProperty") << "invalidProperty.qml" << "invalidProperty.errors.txt" << false;
 }
 
 
@@ -502,6 +543,8 @@ void tst_qdeclarativelanguage::assignLiteralToVariant()
     QCOMPARE(object->property("test7").userType(), (int)QVariant::SizeF);
     QCOMPARE(object->property("test8").userType(), (int)QVariant::Vector3D);
     QCOMPARE(object->property("test9").userType(), (int)QVariant::String);
+    QCOMPARE(object->property("test10").userType(), (int)QVariant::Bool);
+    QCOMPARE(object->property("test11").userType(), (int)QVariant::Bool);
 
     QVERIFY(object->property("test1") == QVariant(1));
     QVERIFY(object->property("test2") == QVariant((double)1.7));
@@ -512,6 +555,8 @@ void tst_qdeclarativelanguage::assignLiteralToVariant()
     QVERIFY(object->property("test7") == QVariant(QSizeF(10, 10)));
     QVERIFY(object->property("test8") == QVariant(QVector3D(100, 100, 100)));
     QVERIFY(object->property("test9") == QVariant(QString(QLatin1String("#FF008800"))));
+    QVERIFY(object->property("test10") == QVariant(bool(true)));
+    QVERIFY(object->property("test11") == QVariant(bool(false)));
 
     delete object;
 }
@@ -645,6 +690,7 @@ void tst_qdeclarativelanguage::listProperties()
 // ### Not complete
 void tst_qdeclarativelanguage::dynamicObjectProperties()
 {
+    {
     QDeclarativeComponent component(&engine, TEST_FILE("dynamicObjectProperties.qml"));
     VERIFY_ERRORS(0);
     QObject *object = component.create();
@@ -652,6 +698,16 @@ void tst_qdeclarativelanguage::dynamicObjectProperties()
 
     QVERIFY(object->property("objectProperty") == qVariantFromValue((QObject*)0));
     QVERIFY(object->property("objectProperty2") != qVariantFromValue((QObject*)0));
+    }
+    {
+    QDeclarativeComponent component(&engine, TEST_FILE("dynamicObjectProperties.2.qml"));
+    QEXPECT_FAIL("", "QTBUG-10822", Abort);
+    VERIFY_ERRORS(0);
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+
+    QVERIFY(object->property("objectProperty") != qVariantFromValue((QObject*)0));
+    }
 }
 
 // Tests the declaration of dynamic signals and slots
@@ -779,8 +835,7 @@ void tst_qdeclarativelanguage::valueTypes()
     QDeclarativeComponent component(&engine, TEST_FILE("valueTypes.qml"));
     VERIFY_ERRORS(0);
 
-    QString message = QLatin1String("QML MyTypeObject (") + component.url().toString() + 
-                      QLatin1String(":2:1) Binding loop detected for property \"rectProperty.width\"");
+    QString message = component.url().toString() + ":2:1: QML MyTypeObject: Binding loop detected for property \"rectProperty.width\"";
     QTest::ignoreMessage(QtWarningMsg, qPrintable(message));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(message));
 
@@ -1068,19 +1123,48 @@ void tst_qdeclarativelanguage::onDestruction()
 // Check that assignments to QDeclarativeScriptString properties work
 void tst_qdeclarativelanguage::scriptString()
 {
-    QDeclarativeComponent component(&engine, TEST_FILE("scriptString.qml"));
-    VERIFY_ERRORS(0);
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("scriptString.qml"));
+        VERIFY_ERRORS(0);
 
-    MyTypeObject *object = qobject_cast<MyTypeObject*>(component.create());
-    QVERIFY(object != 0);
-    QCOMPARE(object->scriptProperty().script(), QString("foo + bar"));
-    QCOMPARE(object->scriptProperty().scopeObject(), qobject_cast<QObject*>(object));
-    QCOMPARE(object->scriptProperty().context(), qmlContext(object));
+        MyTypeObject *object = qobject_cast<MyTypeObject*>(component.create());
+        QVERIFY(object != 0);
+        QCOMPARE(object->scriptProperty().script(), QString("foo + bar"));
+        QCOMPARE(object->scriptProperty().scopeObject(), qobject_cast<QObject*>(object));
+        QCOMPARE(object->scriptProperty().context(), qmlContext(object));
 
-    QVERIFY(object->grouped() != 0);
-    QCOMPARE(object->grouped()->script().script(), QString("console.log(1921)"));
-    QCOMPARE(object->grouped()->script().scopeObject(), qobject_cast<QObject*>(object));
-    QCOMPARE(object->grouped()->script().context(), qmlContext(object));
+        QVERIFY(object->grouped() != 0);
+        QCOMPARE(object->grouped()->script().script(), QString("console.log(1921)"));
+        QCOMPARE(object->grouped()->script().scopeObject(), qobject_cast<QObject*>(object));
+        QCOMPARE(object->grouped()->script().context(), qmlContext(object));
+    }
+
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("scriptString2.qml"));
+        VERIFY_ERRORS(0);
+
+        MyTypeObject *object = qobject_cast<MyTypeObject*>(component.create());
+        QVERIFY(object != 0);
+        QCOMPARE(object->scriptProperty().script(), QString("\"hello\\n\\\"world\\\"\""));
+    }
+
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("scriptString3.qml"));
+        VERIFY_ERRORS(0);
+
+        MyTypeObject *object = qobject_cast<MyTypeObject*>(component.create());
+        QVERIFY(object != 0);
+        QCOMPARE(object->scriptProperty().script(), QString("12.345"));
+    }
+
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("scriptString4.qml"));
+        VERIFY_ERRORS(0);
+
+        MyTypeObject *object = qobject_cast<MyTypeObject*>(component.create());
+        QVERIFY(object != 0);
+        QCOMPARE(object->scriptProperty().script(), QString("true"));
+    }
 }
 
 // Check that default property assignments are correctly spliced into explicit 
@@ -1133,8 +1217,6 @@ void tst_qdeclarativelanguage::testType(const QString& qml, const QString& type,
     }
 }
 
-QML_DECLARE_TYPE(TestType)
-QML_DECLARE_TYPE(TestType2)
 
 // Import tests (QT-558)
 
@@ -1230,14 +1312,14 @@ void tst_qdeclarativelanguage::importsBuiltin_data()
         << "import com.nokia.Test 1.11\n"
            "import com.nokia.Test 1.12\n"
            "Test {}"
-        << "TestType2"
-        << "";
+        << (!qmlCheckTypes()?"TestType2":"")
+        << (!qmlCheckTypes()?"":"Test is ambiguous. Found in com/nokia/Test in version 1.12 and 1.11");
     QTest::newRow("multiversion 2")
         << "import com.nokia.Test 1.11\n"
            "import com.nokia.Test 1.12\n"
            "OldTest {}"
-        << "TestType"
-        << "";
+        << (!qmlCheckTypes()?"TestType":"")
+        << (!qmlCheckTypes()?"":"OldTest is ambiguous. Found in com/nokia/Test in version 1.12 and 1.11");
     QTest::newRow("qualified multiversion 3")
         << "import com.nokia.Test 1.0 as T0\n"
            "import com.nokia.Test 1.8 as T8\n"
@@ -1285,12 +1367,12 @@ void tst_qdeclarativelanguage::importsLocal_data()
     QTest::newRow("local import QTBUG-7721 A")
         << "subdir.Test {}" // no longer allowed (QTBUG-7721)
         << ""
-        << "subdir.Test is not a type";
+        << "subdir.Test - subdir is not a namespace";
     QTest::newRow("local import QTBUG-7721 B")
         << "import \"subdir\" as X\n"
            "X.subsubdir.SubTest {}" // no longer allowed (QTBUG-7721)
         << ""
-        << "X.subsubdir.SubTest is not a type";
+        << "X.subsubdir.SubTest - nested namespaces not allowed";
     QTest::newRow("local import as")
         << "import \"subdir\" as T\n"
            "T.Test {}"
@@ -1305,8 +1387,8 @@ void tst_qdeclarativelanguage::importsLocal_data()
         << "import \"subdir\"\n"
            "import com.nokia.Test 1.0\n"
            "Test {}"
-        << "TestType"
-        << "";
+        << (!qmlCheckTypes()?"TestType":"")
+        << (!qmlCheckTypes()?"":"Test is ambiguous. Found in com/nokia/Test and in subdir");
 }
 
 void tst_qdeclarativelanguage::importsLocal()
@@ -1395,12 +1477,12 @@ void tst_qdeclarativelanguage::importsInstalled_data()
 
     // import installed
     QTest::newRow("installed import 0")
-        << "import com.nokia.installedtest 0.0\n"
+        << "import com.nokia.installedtest0 0.0\n"
            "InstalledTestTP {}"
         << "QDeclarativeRectangle"
         << "";
     QTest::newRow("installed import 0 as TP")
-        << "import com.nokia.installedtest 0.0 as TP\n"
+        << "import com.nokia.installedtest0 0.0 as TP\n"
            "TP.InstalledTestTP {}"
         << "QDeclarativeRectangle"
         << "";
@@ -1419,6 +1501,11 @@ void tst_qdeclarativelanguage::importsInstalled_data()
            "InstalledTest {}"
         << "QDeclarativeText"
         << "";
+    QTest::newRow("installed import minor version not available") // QTBUG-11936
+        << "import com.nokia.installedtest 0.1\n"
+           "InstalledTest {}"
+        << ""
+        << "module \"com.nokia.installedtest\" version 0.1 is not installed";
     QTest::newRow("installed import minor version not available") // QTBUG-9627
         << "import com.nokia.installedtest 1.10\n"
            "InstalledTest {}"
@@ -1451,46 +1538,52 @@ void tst_qdeclarativelanguage::importsOrder_data()
     QTest::addColumn<QString>("type");
     QTest::addColumn<QString>("error");
 
+    QTest::newRow("double import") <<
+           "import com.nokia.installedtest 1.4\n"
+           "import com.nokia.installedtest 1.4\n"
+           "InstalledTest {}"
+           << (!qmlCheckTypes()?"QDeclarativeText":"")
+           << (!qmlCheckTypes()?"":"InstalledTest is ambiguous. Found in lib/com/nokia/installedtest in version 1.4 and 1.4");
     QTest::newRow("installed import overrides 1") <<
            "import com.nokia.installedtest 1.0\n"
            "import com.nokia.installedtest 1.4\n"
            "InstalledTest {}"
-        << "QDeclarativeText"
-        << "";
+           << (!qmlCheckTypes()?"QDeclarativeText":"")
+           << (!qmlCheckTypes()?"":"InstalledTest is ambiguous. Found in lib/com/nokia/installedtest in version 1.4 and 1.0");
     QTest::newRow("installed import overrides 2") <<
            "import com.nokia.installedtest 1.4\n"
            "import com.nokia.installedtest 1.0\n"
            "InstalledTest {}"
-        << "QDeclarativeRectangle"
-        << "";
+           << (!qmlCheckTypes()?"QDeclarativeRectangle":"")
+           << (!qmlCheckTypes()?"":"InstalledTest is ambiguous. Found in lib/com/nokia/installedtest in version 1.0 and 1.4");
     QTest::newRow("installed import re-overrides 1") <<
            "import com.nokia.installedtest 1.4\n"
            "import com.nokia.installedtest 1.0\n"
            "import com.nokia.installedtest 1.4\n"
            "InstalledTest {}"
-        << "QDeclarativeText"
-        << "";
+           << (!qmlCheckTypes()?"QDeclarativeText":"")
+           << (!qmlCheckTypes()?"":"InstalledTest is ambiguous. Found in lib/com/nokia/installedtest in version 1.4 and 1.0");
     QTest::newRow("installed import re-overrides 2") <<
            "import com.nokia.installedtest 1.4\n"
            "import com.nokia.installedtest 1.0\n"
            "import com.nokia.installedtest 1.4\n"
            "import com.nokia.installedtest 1.0\n"
            "InstalledTest {}"
-        << "QDeclarativeRectangle"
-        << "";
+           << (!qmlCheckTypes()?"QDeclarativeRectangle":"")
+           << (!qmlCheckTypes()?"":"InstalledTest is ambiguous. Found in lib/com/nokia/installedtest in version 1.0 and 1.4");
 
     QTest::newRow("installed import versus builtin 1") <<
            "import com.nokia.installedtest 1.5\n"
            "import Qt 4.7\n"
            "Rectangle {}"
-        << "QDeclarativeRectangle"
-        << "";
+           << (!qmlCheckTypes()?"QDeclarativeRectangle":"")
+           << (!qmlCheckTypes()?"":"Rectangle is ambiguous. Found in Qt and in lib/com/nokia/installedtest");
     QTest::newRow("installed import versus builtin 2") <<
            "import Qt 4.7\n"
            "import com.nokia.installedtest 1.5\n"
            "Rectangle {}"
-        << "QDeclarativeText"
-        << "";
+           << (!qmlCheckTypes()?"QDeclarativeText":"")
+           << (!qmlCheckTypes()?"":"Rectangle is ambiguous. Found in lib/com/nokia/installedtest and in Qt");
     QTest::newRow("namespaces cannot be overridden by types 1") <<
            "import Qt 4.7 as Rectangle\n"
            "import com.nokia.installedtest 1.5\n"
@@ -1510,8 +1603,8 @@ void tst_qdeclarativelanguage::importsOrder_data()
     QTest::newRow("local last 2") <<
            "import com.nokia.installedtest 1.0\n"
            "LocalLast {}"
-        << "QDeclarativeRectangle"
-        << ""; // i.e. from com.nokia.installedtest, not data/LocalLast.qml
+           << (!qmlCheckTypes()?"QDeclarativeRectangle":"")// i.e. from com.nokia.installedtest, not data/LocalLast.qml
+           << (!qmlCheckTypes()?"":"LocalLast is ambiguous. Found in lib/com/nokia/installedtest and in local directory");
 }
 
 void tst_qdeclarativelanguage::importsOrder()

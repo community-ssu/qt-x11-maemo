@@ -255,7 +255,6 @@ qreal QDeclarativeTimeLinePrivate::value(const Op &op, int time, qreal base, boo
 /*!
     \internal
     \class QDeclarativeTimeLine
-    \ingroup group_animation
     \brief The QDeclarativeTimeLine class provides a timeline for controlling animations.
 
     QDeclarativeTimeLine is similar to QTimeLine except:
@@ -387,7 +386,10 @@ void QDeclarativeTimeLine::set(QDeclarativeTimeLineValue &timeLineValue, qreal v
 */
 int QDeclarativeTimeLine::accel(QDeclarativeTimeLineValue &timeLineValue, qreal velocity, qreal acceleration)
 {
-    if ((velocity > 0.0f) ==  (acceleration > 0.0f))
+    if (acceleration == 0.0f)
+        return -1;
+
+    if ((velocity > 0.0f) == (acceleration > 0.0f))
         acceleration = acceleration * -1.0f;
 
     int time = static_cast<int>(-1000 * velocity / acceleration);
@@ -410,13 +412,16 @@ int QDeclarativeTimeLine::accel(QDeclarativeTimeLineValue &timeLineValue, qreal 
 */
 int QDeclarativeTimeLine::accel(QDeclarativeTimeLineValue &timeLineValue, qreal velocity, qreal acceleration, qreal maxDistance)
 {
-    Q_ASSERT(acceleration >= 0.0f && maxDistance >= 0.0f);
+    if (maxDistance == 0.0f || acceleration == 0.0f)
+        return -1;
+
+    Q_ASSERT(acceleration > 0.0f && maxDistance > 0.0f);
 
     qreal maxAccel = (velocity * velocity) / (2.0f * maxDistance);
     if (maxAccel > acceleration)
         acceleration = maxAccel;
 
-    if ((velocity > 0.0f) ==  (acceleration > 0.0f))
+    if ((velocity > 0.0f) == (acceleration > 0.0f))
         acceleration = acceleration * -1.0f;
 
     int time = static_cast<int>(-1000 * velocity / acceleration);
@@ -438,6 +443,7 @@ int QDeclarativeTimeLine::accelDistance(QDeclarativeTimeLineValue &timeLineValue
 {
     if (distance == 0.0f || velocity == 0.0f)
         return -1;
+
     Q_ASSERT((distance >= 0.0f) == (velocity >= 0.0f));
 
     int time = static_cast<int>(1000 * (2.0f * distance) / velocity);
@@ -518,7 +524,7 @@ int QDeclarativeTimeLine::duration() const
 
     Following operations on \a timeLineValue in this timeline will be scheduled after
     all the currently scheduled actions on \a syncTo are complete.  In
-    psuedo-code this is equivalent to:
+    pseudo-code this is equivalent to:
     \code
     QDeclarativeTimeLine::pause(timeLineValue, min(0, length_of(syncTo) - length_of(timeLineValue)))
     \endcode
@@ -543,7 +549,7 @@ void QDeclarativeTimeLine::sync(QDeclarativeTimeLineValue &timeLineValue, QDecla
     Synchronize the end point of \a timeLineValue to the endpoint of the longest
     action cursrently scheduled in the timeline.
 
-    In psuedo-code, this is equivalent to:
+    In pseudo-code, this is equivalent to:
     \code
     QDeclarativeTimeLine::pause(timeLineValue, length_of(timeline) - length_of(timeLineValue))
     \endcode
@@ -868,7 +874,6 @@ void QDeclarativeTimeLine::remove(QDeclarativeTimeLineObject *v)
 /*!
     \internal
     \class QDeclarativeTimeLineValue
-    \ingroup group_animation
     \brief The QDeclarativeTimeLineValue class provides a value that can be modified by QDeclarativeTimeLine.
 */
 

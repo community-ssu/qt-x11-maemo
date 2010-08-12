@@ -250,6 +250,10 @@ void QSizeGripPrivate::init()
     m_corner = q->isLeftToRight() ? Qt::BottomRightCorner : Qt::BottomLeftCorner;
     gotMousePress = false;
 
+#ifdef Q_WS_MAEMO_5
+    // the size grip is never visible on Maemo 5
+    q->setVisible(false);
+#endif
 #if !defined(QT_NO_CURSOR) && !defined(Q_WS_MAC)
     q->setCursor(m_corner == Qt::TopLeftCorner || m_corner == Qt::BottomRightCorner
                  ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);

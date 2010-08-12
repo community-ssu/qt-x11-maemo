@@ -129,13 +129,28 @@ QNetworkReply *HelpNetworkAccessManager::createRequest(Operation /*op*/,
     const QNetworkRequest &request, QIODevice* /*outgoingData*/)
 {
     TRACE_OBJ
-    const QUrl &url = request.url();
-    const QString &mimeType = AbstractHelpViewer::mimeFromUrl(url.toString());
-    
+    QString url = request.url().toString();
     HelpEngineWrapper &helpEngine = HelpEngineWrapper::instance();
+
+    // TODO: For some reason the url to load is already wrong (passed from webkit)
+    // though the css file and the references inside should work that way. One 
+    // possible problem might be that the css is loaded at the same level as the
+    // html, thus a path inside the css like (../images/foo.png) might cd out of
+    // the virtual folder
+    if (!helpEngine.findFile(url).isValid()) {
+        if (url.startsWith(AbstractHelpViewer::DocPath)) {
+            QUrl newUrl = request.url();
+            if (!newUrl.path().startsWith(QLatin1String("/qdoc/"))) {
+                newUrl.setPath(QLatin1String("qdoc") + newUrl.path());
+                url = newUrl.toString();
+            }
+        }
+    }
+
+    const QString &mimeType = AbstractHelpViewer::mimeFromUrl(url);
     const QByteArray &data = helpEngine.findFile(url).isValid()
         ? helpEngine.fileData(url)
-        : AbstractHelpViewer::PageNotFoundMessage.arg(url.toString()).toUtf8();
+        : AbstractHelpViewer::PageNotFoundMessage.arg(url).toUtf8();
     return new HelpNetworkReply(request, data, mimeType.isEmpty()
         ? QLatin1String("application/octet-stream") : mimeType);
 }
@@ -157,6 +172,7 @@ private:
     bool closeNewTabIfNeeded;
 
     friend class HelpViewer;
+    QUrl m_loadingUrl;
     Qt::MouseButtons m_pressedButtons;
     Qt::KeyboardModifiers m_keyboardModifiers;
 };
@@ -217,6 +233,11 @@ bool HelpPage::acceptNavigationRequest(QWebFrame *,
             return false;
     }
 
+    m_loadingUrl = url; // because of async page loading, we will hit some kind
+    // of race condition while using a remote command, like a combination of
+    // SetSource; SyncContent. SetSource would be called and SyncContents shortly
+    // afterwards, but the page might not have finished loading and the old url
+    // would be returned.
     return true;
 }
 
@@ -253,7 +274,9 @@ HelpViewer::HelpViewer(CentralWidget *parent, qreal zoom)
     connect(page(), SIGNAL(linkHovered(QString,QString,QString)), this,
         SIGNAL(highlighted(QString)));
     connect(this, SIGNAL(urlChanged(QUrl)), this, SIGNAL(sourceChanged(QUrl)));
+    connect(this, SIGNAL(loadStarted()), this, SLOT(setLoadStarted()));
     connect(this, SIGNAL(loadFinished(bool)), this, SLOT(setLoadFinished(bool)));
+    connect(page(), SIGNAL(printRequested(QWebFrame*)), this, SIGNAL(printRequested()));
 
     setFont(viewerFont());
     setTextSizeMultiplier(zoom == 0.0 ? 1.0 : zoom);
@@ -317,10 +340,19 @@ bool HelpViewer::handleForwardBackwardMouseButtons(QMouseEvent *e)
     return false;
 }
 
+QUrl HelpViewer::source() const
+{
+    HelpPage *currentPage = static_cast<HelpPage*> (page());
+    if (currentPage && !hasLoadFinished()) {
+        // see HelpPage::acceptNavigationRequest(...)
+        return currentPage->m_loadingUrl;
+    }
+    return url();
+}
+
 void HelpViewer::setSource(const QUrl &url)
 {
     TRACE_OBJ
-    loadFinished = false;
     load(url.toString() == QLatin1String("help") ? LocalHelpFile : url);
 }
 
@@ -378,6 +410,11 @@ void HelpViewer::mousePressEvent(QMouseEvent *event)
         currentPage->m_keyboardModifiers = event->modifiers();
     }
     QWebView::mousePressEvent(event);
+}
+
+void HelpViewer::setLoadStarted()
+{
+    loadFinished = false;
 }
 
 void HelpViewer::setLoadFinished(bool ok)

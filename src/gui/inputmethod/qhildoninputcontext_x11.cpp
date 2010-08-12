@@ -47,14 +47,13 @@
 #include "qlineedit.h"
 #include "qtextedit.h"
 #include "qtextbrowser.h"
-#include "kernel/qevent_p.h"       //QKeyEventEx
-#include "kernel/qapplication_p.h" //QApplicationPrivate::areXInputEventsUsed()
 #include "qinputcontext.h"
 #include "qtextcodec.h"
 #include "qtextboundaryfinder.h"
 #include <private/qkeymapper_p.h>
 
 #include "qgraphicsview.h"
+#include "qtimer.h"
 #ifndef QT_NO_GRAPHICSVIEW
 #include "qgraphicsitem.h"
 #include "qgraphicsproxywidget.h"
@@ -63,6 +62,8 @@
 #endif
 
 #ifdef Q_WS_MAEMO_5
+
+#define DEFAULT_LONG_PRESS_TIMEOUT 600
 
 #define GDK_ISO_ENTER  0xfe34
 #define COMPOSE_KEY    Qt::Key_Multi_key   // "Ch" key
@@ -73,21 +74,23 @@
 #define STATE_SHIFT_MASK    1 << 0
 
 //Keyboard layout levels
+#define BASE_LEVEL 0
 #define NUMERIC_LEVEL 2
 #define LOCKABLE_LEVEL 4
 
 
 extern bool qt_sendSpontaneousEvent(QObject*, QEvent*); //qapplication_x11.cpp
 
-#define HIM_DEBUG
+#ifdef QT_BUILD_INTERNAL
+#  define HIM_DEBUG
+#endif
 
+#ifdef HIM_DEBUG
 static inline bool qHimDebugEnabled()
 {
     static const bool debug = !qgetenv("QT_HIM_DEBUG").isEmpty();
     return debug;
 }
-
-#ifdef HIM_DEBUG
 #  define qHimDebug  if (!qHimDebugEnabled()) {} else qDebug
 #else
 #  define qHimDebug  while (false) qDebug
@@ -96,7 +99,7 @@ static inline bool qHimDebugEnabled()
 static const char *debugNameForCommunicationId(HildonIMCommunication id)
 {
 #ifdef HIM_DEBUG
-    static const char * const mapping[] = {
+    static const char *const mapping[] = {
         "HILDON_IM_CONTEXT_HANDLE_ENTER",
         "HILDON_IM_CONTEXT_HANDLE_TAB",
         "HILDON_IM_CONTEXT_HANDLE_BACKSPACE",
@@ -117,11 +120,17 @@ static const char *debugNameForCommunicationId(HildonIMCommunication id)
         "HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL",
         "HILDON_IM_CONTEXT_WIDGET_CHANGED",
         "HILDON_IM_CONTEXT_OPTION_CHANGED",
-        "HILDON_IM_CONTEXT_CLEAR_STICKY",
         "HILDON_IM_CONTEXT_ENTER_ON_FOCUS",
         "HILDON_IM_CONTEXT_SPACE_AFTER_COMMIT",
-        "HILDON_IM_CONTEXT_NO_SPACE_AFTER_COMMIT"
+        "HILDON_IM_CONTEXT_NO_SPACE_AFTER_COMMIT",
+        "HILDON_IM_CONTEXT_SHIFT_LOCKED",
+        "HILDON_IM_CONTEXT_SHIFT_UNLOCKED",
+        "HILDON_IM_CONTEXT_LEVEL_LOCKED",
+        "HILDON_IM_CONTEXT_LEVEL_UNLOCKED",
+        "HILDON_IM_CONTEXT_SHIFT_UNSTICKY",
+        "HILDON_IM_CONTEXT_LEVEL_UNSTICKY"
     };
+
     if (unsigned(id) < (sizeof(mapping) / sizeof(mapping[0]))) {
         return mapping[id];
     } else {
@@ -185,9 +194,9 @@ void QHIMProxyWidget::widgetWasDestroyed()
 
 /*! XkbLookupKeySym ( X11->display, event->nativeScanCode(), HILDON_IM_SHIFT_STICKY_MASK, &mods_rtrn, sym_rtrn)
  */
-static QString translateKeycodeAndState(KeyCode key, uint state, quint32 &keysym){
+static QString translateKeycodeAndState(KeyCode key, uint state, KeySym &keysym){
     uint mods;
-    KeySym *ks = reinterpret_cast<KeySym*>(&keysym);
+    KeySym *ks = &keysym;
     if ( XkbLookupKeySym ( X11->display, key, state, &mods, ks) )
         return QKeyMapperPrivate::maemo5TranslateKeySym(*ks);
     else
@@ -269,38 +278,32 @@ static void sendKeyEvent(QWidget *widget, QEvent::Type type, uint state, uint ke
     XSync( X11->display, false );
 }
 
-static quint32 dead_key_to_unicode_combining_character(int /*qtkeycode*/)
+static void deadKeyToUnicodeCombiningChar(int qtkeycode, QChar &combiningChar, QChar &plainChar)
 {
-  quint32 combining = 0; //Unicode Hex value
+    plainChar = combiningChar = QChar();
 
-#if 0
-  //TODO Diablo - Not required in Fremantle
-  switch (qtkeycode)
-  {
-    case Qt::Key_Dead_Grave:            combining = 0x0300; break;
-    case Qt::Key_Dead_Acute:            combining = 0x0301; break;
-    case Qt::Key_Dead_Circumflex:       combining = 0x0302; break;
-    case Qt::Key_Dead_Tilde:            combining = 0x0303; break;
-    case Qt::Key_Dead_Macron:           combining = 0x0304; break;
-    case Qt::Key_Dead_Breve:            combining = 0x032e; break;
-    case Qt::Key_Dead_Abovedot:         combining = 0x0307; break;
-    case Qt::Key_Dead_Diaeresis:        combining = 0x0308; break;
-    case Qt::Key_Dead_Abovering:        combining = 0x030a; break;
-    case Qt::Key_Dead_Doubleacute:      combining = 0x030b; break;
-    case Qt::Key_Dead_Caron:            combining = 0x030c; break;
-    case Qt::Key_Dead_Cedilla:          combining = 0x0327; break;
-    case Qt::Key_Dead_Ogonek:           combining = 0x0328; break;
-    case Qt::Key_Dead_Iota:             combining = 0; break; /* Cannot be combined */
-    case Qt::Key_Dead_Voiced_Sound:     combining = 0; break; /* Cannot be combined */
-    case Qt::Key_Dead_Semivoiced_Sound: combining = 0; break; /* Cannot be combined */
-    case Qt::Key_Dead_Belowdot:         combining = 0x0323; break;
-    case Qt::Key_Dead_Hook:             combining = 0x0309; break;
-    case Qt::Key_Dead_Horn:             combining = 0x031b; break;
-    default: combining = 0; break; /* Unknown dead key */
-  }
-#endif
-
-  return combining;
+    switch (qtkeycode) {
+        case Qt::Key_Dead_Grave:            plainChar = QChar(0x0060); combiningChar = QChar(0x0300); break;
+        case Qt::Key_Dead_Acute:            plainChar = QChar(0x00b4); combiningChar = QChar(0x0301); break;
+        case Qt::Key_Dead_Circumflex:       plainChar = QChar(0x005e); combiningChar = QChar(0x0302); break;
+        case Qt::Key_Dead_Tilde:            plainChar = QChar(0x007e); combiningChar = QChar(0x0303); break;
+        case Qt::Key_Dead_Macron:           plainChar = QChar(0x00af); combiningChar = QChar(0x0304); break;
+        case Qt::Key_Dead_Breve:            plainChar = QChar(0x02d8); combiningChar = QChar(0x0306); break;
+        case Qt::Key_Dead_Abovedot:         plainChar = QChar(0x02d9); combiningChar = QChar(0x0307); break;
+        case Qt::Key_Dead_Diaeresis:        plainChar = QChar(0x00a8); combiningChar = QChar(0x0308); break;
+        case Qt::Key_Dead_Abovering:        plainChar = QChar(0x00b0); combiningChar = QChar(0x030a); break;
+        case Qt::Key_Dead_Doubleacute:      plainChar = QChar(0x0022); combiningChar = QChar(0x030b); break;
+        case Qt::Key_Dead_Caron:            plainChar = QChar(0x02c7); combiningChar = QChar(0x030c); break;
+        case Qt::Key_Dead_Cedilla:          plainChar = QChar(0x00b8); combiningChar = QChar(0x0327); break;
+        case Qt::Key_Dead_Ogonek:           plainChar = QChar(0x02db); combiningChar = QChar(0x0328); break;
+        case Qt::Key_Dead_Iota:             break; // Cannot be combined
+        case Qt::Key_Dead_Voiced_Sound:     break; // Cannot be combined
+        case Qt::Key_Dead_Semivoiced_Sound: break; // Cannot be combined
+        case Qt::Key_Dead_Belowdot:         plainChar = QChar(0x02d4); combiningChar = QChar(0x0323); break;
+        case Qt::Key_Dead_Hook:             plainChar = QChar(0x02c0); combiningChar = QChar(0x0309); break;
+        case Qt::Key_Dead_Horn:             combiningChar = QChar(0x031b); break; // no plain char
+        default:                            break; // unknown dead key
+    }
 }
 
 /*! Sends the key as a spontaneous event.
@@ -312,18 +315,24 @@ static void sendKey(QWidget *keywidget, int qtCode)
     KeySym keysym = NoSymbol;
     int keycode;
 
-    switch (qtCode){
-        case Qt::Key_Enter:
-            keycode = 36;
+    switch (qtCode) {
+    case Qt::Key_Enter:
+        keycode = 36;
         break;
-        case Qt::Key_Tab:
-            keycode = 66;
+    case Qt::Key_Tab:
+        keycode = 66;
         break;
-        case Qt::Key_Backspace:
-            keycode = 22;
+    case Qt::Key_Backspace:
+        keycode = 22;
         break;
-        default:
-        qWarning("keycode not allowed");
+    case Qt::Key_Left:
+        keycode = 116;
+        break;
+    case Qt::Key_Right:
+        keycode = 114;
+        break;
+    default:
+        qHimDebug("HIM: sendKey() keycode %d not allowed", qtCode);
         return;
     }
 
@@ -333,9 +342,8 @@ static void sendKey(QWidget *keywidget, int qtCode)
     qt_sendSpontaneousEvent(keywidget, &click);
 
     // in case the widget was destroyed when the key went down
-    if (guard.isNull()){
+    if (guard.isNull())
         return;
-    }
 
     QKeyEventEx release(QEvent::KeyRelease, qtCode, Qt::NoModifier , QString(), false, 1, keycode, keysym, 0);
     qt_sendSpontaneousEvent(keywidget, &release);
@@ -378,14 +386,19 @@ KeySym getKeySymForLevel(int keycode, int level ){
 
 QHildonInputContext::QHildonInputContext(QObject* parent)
     : QInputContext(parent),
-      timerId(-1), mask(0), options(0),
+      mask(0), options(0),
       triggerMode(HILDON_IM_TRIGGER_NONE),
       commitMode(HILDON_IM_COMMIT_REDIRECT),
       lastCommitMode(HILDON_IM_COMMIT_REDIRECT),
       inputMode(HILDON_GTK_INPUT_MODE_FULL),
       textCursorPosOnPress(0), autoUpper(false),
-      lastInternalChange(false), spaceAfterCommit(false)
+      lastInternalChange(false), spaceAfterCommit(false),
+      lastKeyWidget(0), lastQtKeyCode(Qt::Key_unknown)
 {
+    longPressTimer = new QTimer(this);
+    longPressTimer->setInterval(DEFAULT_LONG_PRESS_TIMEOUT);
+    longPressTimer->setSingleShot(true);
+    connect(longPressTimer, SIGNAL(timeout()), this, SLOT(longPressDetected()));
 }
 
 QHildonInputContext::~QHildonInputContext()
@@ -405,11 +418,13 @@ QString QHildonInputContext::language()
 }
 
 /*! \internal
- *  Resolves the focus for a widget inside a QGraphicsView.
- *  Returns the Widget really holding the focus in this case.
+ *  Resolves the focus for a widget inside a QGraphicsProxyWidget.
+ *  Returns that widget (holding the focus) or 0 otherwise.
  */
-QWidget *resolveFocusWidget(QWidget *w)
+QWidget *resolveFocusWidget(QWidget *testw)
 {
+    QWidget *w = testw;
+
 #ifndef QT_NO_GRAPHICSVIEW
     while (QGraphicsView *view = qobject_cast<QGraphicsView *>(w)) {
 
@@ -428,12 +443,12 @@ QWidget *resolveFocusWidget(QWidget *w)
     }
 #endif
 
-    return w;
+    return (w == testw) ? 0 : w;
 }
 
 QWidget *QHildonInputContext::focusWidget() const
 {
-    return realFocus ? realFocus : lastFocus;
+    return QInputContext::focusWidget() ? QInputContext::focusWidget() : lastFocus.data();
 }
 
 /*!\internal
@@ -443,10 +458,13 @@ void QHildonInputContext::reset()
 {
     qHimDebug() << "HIM: reset()";
 
-    if (realFocus)
-        sendHildonCommand(HILDON_IM_CLEAR, realFocus);
+    if (QInputContext::focusWidget())
+        sendHildonCommand(HILDON_IM_CLEAR, QInputContext::focusWidget());
 
     cancelPreedit();
+    longPressKeyEvent.reset(0);
+    longPressTimer->stop();
+    updateInputMethodHints();
 
     //Reset internals
     mask = 0;
@@ -464,61 +482,80 @@ void QHildonInputContext::setFocusWidget(QWidget *w)
     // it is also activated, which essentially steals our focus.
     // The same happens for the symbol picker.
     // This is a bug in the HIM, that we try to work around here.
-    lastFocus = realFocus;
+    lastFocus = QInputContext::focusWidget();
 
     // Another work around for the GraphicsView.
     // In case of a Widget inside a GraphicsViewProxyWidget we need to remember
     // that it had the focus
     realFocus = resolveFocusWidget(w);
 
-    if (realFocus) {
-        Qt::InputMethodHints hints = realFocus->inputMethodHints();
+    QInputContext::setFocusWidget(w);
+
+    updateInputMethodHints();
+    if (w)
+        sendHildonCommand(HILDON_IM_SETCLIENT, w);
+
+    qHimDebug() << "HIM: setFocusWidget: " << w << " (real: " << realFocus << " / last: " << lastFocus << ")";
+}
+
+void QHildonInputContext::updateInputMethodHints()
+{
+    if (QInputContext::focusWidget()) {
+        Qt::InputMethodHints hints = QInputContext::focusWidget()->inputMethodHints();
 
         // restrictions
         if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhDialableCharactersOnly) {
             inputMode = HILDON_GTK_INPUT_MODE_TELE;
         } else if (((hints & Qt::ImhExclusiveInputMask) == (Qt::ImhDigitsOnly | Qt::ImhUppercaseOnly)) ||
                    ((hints & Qt::ImhExclusiveInputMask) == (Qt::ImhDigitsOnly | Qt::ImhLowercaseOnly))) {
-            inputMode = HILDON_GTK_INPUT_MODE_HEXA;
+            inputMode = HILDON_GTK_INPUT_MODE_ALPHA;
         } else if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhDigitsOnly) {
             inputMode = HILDON_GTK_INPUT_MODE_NUMERIC;
-        } else if ((hints & Qt::ImhExclusiveInputMask) == Qt::ImhFormattedNumbersOnly) {
+        } else if (((hints & Qt::ImhExclusiveInputMask) == Qt::ImhFormattedNumbersOnly) ||
+                   ((hints & Qt::ImhExclusiveInputMask) == (Qt::ImhFormattedNumbersOnly | Qt::ImhDigitsOnly))) {
             inputMode = HILDON_GTK_INPUT_MODE_NUMERIC | HILDON_GTK_INPUT_MODE_SPECIAL;
         } else {
             inputMode = HILDON_GTK_INPUT_MODE_FULL;
         }
+
+        bool isAutoCapable = (hints & (Qt::ImhExclusiveInputMask |
+                                       Qt::ImhNoAutoUppercase)) == 0;
+        bool isPredictive = (hints & (Qt::ImhDigitsOnly |
+                                      Qt::ImhFormattedNumbersOnly |
+                                      Qt::ImhUppercaseOnly |
+                                      Qt::ImhLowercaseOnly |
+                                      Qt::ImhDialableCharactersOnly |
+                                      Qt::ImhNoPredictiveText)) == 0;
 
         // behavior flags
         if (hints & Qt::ImhHiddenText) {
             inputMode |= HILDON_GTK_INPUT_MODE_INVISIBLE;
         } else {
             // no auto upper case or predictive text for passwords
-            if (!(hints & Qt::ImhNoAutoUppercase))
+            if (isAutoCapable)
                 inputMode |= HILDON_GTK_INPUT_MODE_AUTOCAP;
-            if (!(hints & Qt::ImhNoPredictiveText))
+            if (isPredictive)
                 inputMode |= HILDON_GTK_INPUT_MODE_DICTIONARY;
         }
 
         // multi-line support
         // TODO: this really needs to fixed in Qt
-        if (qobject_cast<QTextEdit *>(realFocus) || qobject_cast<QPlainTextEdit *>(realFocus))
+        QWidget *testmulti = realFocus ? realFocus.data() : QInputContext::focusWidget();
+
+        if (qobject_cast<QTextEdit *>(testmulti) || qobject_cast<QPlainTextEdit *>(testmulti))
             inputMode |= HILDON_GTK_INPUT_MODE_MULTILINE;
 
-        qHimDebug("Mapped hint: 0x%x to mode: 0x%x", int(hints), int(inputMode));
+        qHimDebug("HIM: Mapped hint: 0x%x to mode: 0x%x", int(hints), int(inputMode));
     } else {
         inputMode = 0;
     }
-
-    QInputContext::setFocusWidget(w);
-
-    qHimDebug() << "HIM: setFocusWidget: " << w << " (real: " << realFocus << " / last: " << lastFocus << ")";
 }
 
 bool QHildonInputContext::filterEvent(const QEvent *event)
 {
-     QWidget *w = realFocus;
-     if (!w)
-         return false;
+    QWidget *w = QInputContext::focusWidget();
+    if (!w)
+        return false;
 
     switch (event->type()){
     case QEvent::RequestSoftwareInputPanel:{
@@ -527,7 +564,7 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
 
         // workaround for a very weird interaction between QLineEdit (which
         // changes its internal editing:yes/no state on focus out) and the
-        // Hildon fullscreen keyboard, which steals the focus from the
+        // Hildon fullscreen keyboard, whiccheckh steals the focus from the
         // application (NOT when it shows up, but as only soon as the user
         // clicks on any button within the keyboard)
         if (QLineEdit *le = qobject_cast<QLineEdit *>(w)) {
@@ -535,13 +572,13 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
                 le->clear();
         }
 
-        sendHildonCommand(HILDON_IM_SETNSHOW, realFocus);
+        QTimer::singleShot(0, this, SLOT(showSoftKeyboard()));
         return true;
     }
     case QEvent::KeyPress:
     case QEvent::KeyRelease:
         triggerMode = HILDON_IM_TRIGGER_KEYBOARD;
-        return filterKeyPress(w, static_cast<const QKeyEvent *>(event));
+        return filterKey(w, static_cast<const QKeyEvent *>(event), false);
 
     default:
         break;
@@ -549,10 +586,27 @@ bool QHildonInputContext::filterEvent(const QEvent *event)
     return QInputContext::filterEvent(event);
 }
 
-//TODO
+void QHildonInputContext::showSoftKeyboard()
+{
+    // Hacky fix for the misbehaving QGraphicsProxyWidget:
+    // we do not get any notification if the input focus changes to another
+    // widget inside a single QGraphicsProxyWidget
+    QWidget *newFocus = resolveFocusWidget(QInputContext::focusWidget());
+    if (realFocus && (newFocus != realFocus)) {
+        cancelPreedit();
+        longPressKeyEvent.reset(0);
+        longPressTimer->stop();
+        realFocus = newFocus;
+        updateInputMethodHints();
+    }
+    sendHildonCommand(HILDON_IM_SETNSHOW, QInputContext::focusWidget());
+}
+
 void QHildonInputContext::update()
 {
     qHimDebug() << "HIM: update(): lastInternalChange =" << lastInternalChange;
+    updateInputMethodHints();
+    sendInputMode();
 
     if (lastInternalChange) {
         //Autocase update
@@ -561,58 +615,129 @@ void QHildonInputContext::update()
     }
 }
 
-/*! \internal
-Filters spontaneous keyevents then elaborates them and updates the Hildon Main UI
- *  via XMessages. In some cases it creates and posts a new keyevent
- *  as no spontaneous event.
- */
-bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *event){
+// an evil hack to quickly make a KeyRelease from a KeyPress event
+class MyKeyEventEx : public QKeyEventEx {
+public:
+    void release()
+    {
+        t = QEvent::KeyRelease;
+    }
+};
 
-    //Avoid to filter events generated by this function.
-    // Also ignore non-extended events, since we can't handle those below.
-    if (!event->spontaneous() || !event->hasExtendedInfo())
+void QHildonInputContext::longPressDetected()
+{
+    qHimDebug("HIM: longPressDetected");
+
+    if (longPressKeyEvent.isNull() || !lastKeyWidget)
+        return;
+
+    int oldMask = mask;
+
+    if (mask & HILDON_IM_LEVEL_LOCK_MASK)
+        mask &= ~(HILDON_IM_LEVEL_LOCK_MASK | HILDON_IM_LEVEL_STICKY_MASK);
+    else
+        mask |= HILDON_IM_LEVEL_STICKY_MASK;
+
+    cancelPreedit();
+
+    MyKeyEventEx *ke = static_cast<MyKeyEventEx *>(longPressKeyEvent.data());
+    filterKey(lastKeyWidget, ke, true);
+    ke->release();
+    filterKey(lastKeyWidget, ke, true);
+
+    qHimDebug() << "HIM: lastCommitString.lenght() == " << lastCommitString.length();
+    if (!lastCommitString.isEmpty()) {
+        qHimDebug() << "HIM: sending Left/Backspace/Right";
+        sendKey(lastKeyWidget, Qt::Key_Left);
+        sendKey(lastKeyWidget, Qt::Key_Backspace);
+        sendKey(lastKeyWidget, Qt::Key_Right);
+    }
+
+    longPressKeyEvent.reset(0);
+    mask = oldMask;
+}
+
+/*! \internal
+ * Filters spontaneous keyevents then elaborates them and updates the Hildon Main UI
+ * via XMessages. In some cases it creates and posts a new keyevent
+ * as no spontaneous event.
+ */
+bool QHildonInputContext::filterKey(QWidget *keywidget, const QKeyEvent *event, bool isLongPress)
+{
+    // Ignore non-extended events, since we can't handle those below.
+    if (!event->hasExtendedInfo())
         return false;
 
     const quint32 state = event->nativeModifiers();
     const quint32 keycode = event->nativeScanCode();
-    quint32 keysym= event->nativeVirtualKey();
+    KeySym keysym = static_cast<KeySym>(event->nativeVirtualKey());
     const int qtkeycode = event->key();
+    Qt::InputMethodHints hints = QInputContext::focusWidget()->inputMethodHints();
+    Qt::KeyboardModifiers modifiers = event->modifiers();
+    bool isAutoRepeat = false;
+    QString commitString;
 
-    //qHimDebug("HIM: filterKeyPress Mask: %x state: %x options: %x keycode: %d keysym: %x QtKey: %x",
-    //          mask, state, options, keycode, keysym, qtkeycode);
+    if (event->type() == QEvent::KeyPress)
+        lastCommitString.clear();
 
-    //Drop auto repeated keys for COMPOSE_KEY
-    if (qtkeycode == COMPOSE_KEY && event->isAutoRepeat()){
-        return true;
+    // All QKeyEvents sent to QInputContext::filterEvent() are always
+    // non-auto-repeated (even though the REAL QKeyEvents that get sent to
+    // the widgets afterwards may have the auto-repeat flag correctly set). 
+    // The workaround is to check if a X11 Press event for the same key code
+    // is already queued when a Release is received.  (Qt has a much better
+    // version of this algorithm in qkeymapper_x11.cpp, but this code here
+    // is sufficient for the N900's X11 server)
+    if (!isLongPress) {
+        static quint32 lastRepeatedKeycode = 0;
+
+        if (event->type() == QEvent::KeyRelease) {
+            XEvent xevent;
+            lastRepeatedKeycode = 0;
+
+            if (XCheckTypedWindowEvent(X11->display, keywidget->effectiveWinId(), XKeyPress, &xevent)) {
+                if (xevent.xkey.keycode == keycode) {
+                    isAutoRepeat = true;
+                    lastRepeatedKeycode = keycode;
+                }
+                XPutBackEvent(X11->display, &xevent);
+            }
+        } else if (event->type() == QEvent::KeyPress) {
+            if (lastRepeatedKeycode && (lastRepeatedKeycode == keycode))
+                isAutoRepeat = true;
+        }
     }
+    qHimDebug("HIM: filterKey (%s) Auto: %d, Mask: %x state: %x options: %x keycode: %d keysym: %x QtKey: %x Text: \"%s\" (%d)",
+              (event->type() == QEvent::KeyPress ? "press  " : "release"), isAutoRepeat, mask, state, options,
+              keycode, (quint32) keysym, qtkeycode, qPrintable(event->text()), event->text().length());
 
-    //TODO MOVE
-    static QWidget* lastKeywidget = 0;
-    static int lastQtkeycode = 0;
-    static qint32 combiningChar = 0; //Unicode rappresentation of the dead key.
-
-    QString commitString; //String to commit to the Key Widget
-
-    //Reset static vars when the widget change.
-    if (keywidget != lastKeywidget){
+    // Reset static vars when the widget changes
+    if (keywidget != lastKeyWidget){
         mask = 0;
-        lastKeywidget = keywidget;
-        lastQtkeycode = 0;
-        combiningChar = 0;
+        lastKeyWidget = keywidget;
+        lastQtKeyCode = 0;
+        combiningChar = plainCombiningChar = QChar();
     }
 
+    if (!isAutoRepeat && !isLongPress) {
+        longPressTimer->stop();
+        longPressKeyEvent.reset(0);
+    }
+
+    // Drop auto repeated keys for COMPOSE_KEY
+    if (qtkeycode == COMPOSE_KEY && isAutoRepeat)
+        return true;
     if (!qtkeycode)
         return true;
 
     //1. A dead key will not be immediately commited, but combined with the next key
-    if (qtkeycode >= Qt::Key_Dead_Grave && qtkeycode <= Qt::Key_Dead_Horn)
+    if ((qtkeycode >= Qt::Key_Dead_Grave && qtkeycode <= Qt::Key_Dead_Horn) && (event->type() == QEvent::KeyPress))
         mask |= HILDON_IM_DEAD_KEY_MASK;
     else
         mask &= ~HILDON_IM_DEAD_KEY_MASK;
 
-    if (mask & HILDON_IM_DEAD_KEY_MASK && combiningChar == 0)
+    if (mask & HILDON_IM_DEAD_KEY_MASK && combiningChar.isNull())
     {
-        combiningChar = dead_key_to_unicode_combining_character(qtkeycode);//### WORKS? IMPROVE?
+        deadKeyToUnicodeCombiningChar(qtkeycode, combiningChar, plainCombiningChar);
         return true;
     }
 
@@ -631,81 +756,118 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     // 3 Sticky and locking keys initialization
     if (event->type() == QEvent::KeyRelease)
     {
-        if (qtkeycode == Qt::Key_Shift )
-        {
-            setMaskState(&mask,
-                         HILDON_IM_SHIFT_LOCK_MASK,
-                         HILDON_IM_SHIFT_STICKY_MASK,
-                         lastQtkeycode == Qt::Key_Shift);
-        }else if (qtkeycode == LEVEL_KEY){
+        if (qtkeycode == LEVEL_KEY){
             setMaskState(&mask,
                          HILDON_IM_LEVEL_LOCK_MASK,
                          HILDON_IM_LEVEL_STICKY_MASK,
-                         lastQtkeycode == LEVEL_KEY);
+                         lastQtKeyCode == LEVEL_KEY);
+        }
+        else if (qtkeycode == Qt::Key_Shift ){
+            setMaskState(&mask,
+                         HILDON_IM_SHIFT_LOCK_MASK,
+                         HILDON_IM_SHIFT_STICKY_MASK,
+                         lastQtKeyCode == Qt::Key_Shift);
         }
     }
 
-    //Update lastQtkeycode.
-    lastQtkeycode=qtkeycode;
+    lastQtKeyCode = qtkeycode;
 
     if (qtkeycode == Qt::Key_Tab){
         commitString = QLatin1String("\t");
     }
 
+    // Invert the level key when in tele or special mode
+    bool invertLevelKey = false;
+    if ((inputMode & HILDON_GTK_INPUT_MODE_FULL) != HILDON_GTK_INPUT_MODE_FULL)
+        invertLevelKey = (inputMode & HILDON_GTK_INPUT_MODE_ALPHA) == 0  &&
+                         (inputMode & HILDON_GTK_INPUT_MODE_HEXA)  == 0  &&
+                         ((inputMode & HILDON_GTK_INPUT_MODE_TELE) ||
+                         (inputMode & HILDON_GTK_INPUT_MODE_SPECIAL));
+    bool isShifted = (mask & (HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK)) || (state & STATE_SHIFT_MASK);
+    bool isLeveled = (mask & (HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK)) || (state & STATE_LEVEL_MASK);
+
     /* 5. When the level key is in sticky or locked state, translate the
      *    keyboard state as if that level key was being held down.
      */
-    if ((mask & (HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK)) ||
-        (state & STATE_LEVEL_MASK)) {
-        commitString = translateKeycodeAndState(keycode, STATE_LEVEL_MASK, keysym);
-    }
-
     /* If the input mode is strictly numeric and the digits are level
      *  shifted on the layout, it's not necessary for the level key to
      *  be pressed at all.
      */
-    else if ((options & HILDON_IM_AUTOLEVEL_NUMERIC) &&
-             ((inputMode & HILDON_GTK_INPUT_MODE_FULL) == HILDON_GTK_INPUT_MODE_NUMERIC)) {
-        KeySym ks = getKeySymForLevel(keycode, NUMERIC_LEVEL);
-        QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
+    if (invertLevelKey || ((options & HILDON_IM_AUTOLEVEL_NUMERIC) &&
+        ((inputMode & HILDON_GTK_INPUT_MODE_FULL) == HILDON_GTK_INPUT_MODE_NUMERIC))) {
 
-        if (!string.isEmpty()) {
-            keysym = ks;
-            commitString = string;
+        /* the level key is inverted
+        when level or shift key is pressed use normal level
+        otherwise use numeric level*/
+        if (!isLeveled) {
+            KeySym ks = getKeySymForLevel(keycode, NUMERIC_LEVEL);
+            QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
+            if (!string.isEmpty()) {
+                keysym = ks;
+                commitString = string;
+            }
+        } else {
+            KeySym ks = getKeySymForLevel(keycode, BASE_LEVEL);
+            QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
+            if (!string.isEmpty()) {
+                keysym = ks;
+                commitString = string;
+            }
         }
     }
     /* The input is forced to a predetermined level
      */
+    else if (isLeveled) {
+        commitString = translateKeycodeAndState(keycode, STATE_LEVEL_MASK, keysym);
+    }
     else if (options & HILDON_IM_LOCK_LEVEL)
     {
         KeySym ks = getKeySymForLevel(keycode, LOCKABLE_LEVEL);
         QString string = QKeyMapperPrivate::maemo5TranslateKeySym(ks);
 
-        if (!string.isEmpty()){
-            keysym = ks;
-            commitString = string;
+        qHimDebug("HIM: LOCK_LEVEL: mapped to KeySym: %x Text (%d): \"%s\" (%04x)", int(ks), string.length(), string.toUtf8().constData(), string.length() ? string[0].unicode() : 0xffff);
+
+        if (ks && !string.isEmpty() && string.at(0).unicode()) {
+            KeySym lower = NoSymbol;
+            KeySym upper = NoSymbol;
+            XConvertCase(ks, &lower, &upper);
+
+            if (string.at(0).isPrint()) {
+                if (isShifted) {
+                    commitString = string.toUpper();
+                    keysym = upper;
+                } else {
+                    commitString = string.toLower();
+                    keysym = lower;
+                }
+            }
         }
     }
+    // 6. Shift lock or holding the shift down forces uppercase, ignoring autocap
+    else if (isShifted) {
+        commitString = translateKeycodeAndState(keycode, STATE_SHIFT_MASK, keysym);
+    }
+
     /* Hardware keyboard autocapitalization  */
-    if (autoUpper && inputMode & HILDON_GTK_INPUT_MODE_AUTOCAP)
+    if (autoUpper && (inputMode & HILDON_GTK_INPUT_MODE_AUTOCAP))
     {
-        qHimDebug() << "AutoCAP";
+        qHimDebug() << "HIM: Auto-cap";
         QChar currentChar;
         KeySym lower = NoSymbol;
         KeySym upper = NoSymbol;
 
-        if (commitString.isEmpty()){
+        if (commitString.isEmpty()) {
             QString ks = QKeyMapperPrivate::maemo5TranslateKeySym(keysym);
             if (!ks.isEmpty())
                 currentChar = ks.at(0);
-        }else{
+        } else {
             currentChar = commitString.at(0);
         }
 
         XConvertCase(keysym, &lower, &upper);
 
-        if (currentChar.isPrint()){
-            if (state & STATE_SHIFT_MASK){
+        if (currentChar.isPrint()) {
+            if (state & STATE_SHIFT_MASK) {
                 currentChar = currentChar.toLower();
                 keysym = lower;
             } else {
@@ -715,41 +877,6 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
             commitString = QString(currentChar); //sent to the widget
         }
     }
-
-    //6. Shift lock or holding the shift down forces uppercase, ignoring autocap
-    if (mask & HILDON_IM_SHIFT_LOCK_MASK || state & STATE_SHIFT_MASK)
-    {
-        KeySym lower = NoSymbol;
-        KeySym upper = NoSymbol;
-        XConvertCase(keysym, &lower, &upper);
-        QString tempStr = QKeyMapperPrivate::maemo5TranslateKeySym(upper);
-        if (!tempStr.isEmpty())
-            commitString = tempStr.at(0);
-    }else if (mask & HILDON_IM_SHIFT_STICKY_MASK){
-        KeySym lower = NoSymbol;
-        KeySym upper = NoSymbol;
-        QString tempStr = QKeyMapperPrivate::maemo5TranslateKeySym(keysym);
-        QChar currentChar;
-        if (!tempStr.isEmpty()){
-          currentChar = tempStr.at(0);
-
-            /* Simulate shift key being held down in sticky state for non-printables  */
-            if ( currentChar.isPrint() ){
-                /*  For printable characters sticky shift negates the case,
-                 *  including any autocapitalization changes
-                 */
-                if ( currentChar.isUpper() ){
-                    currentChar = currentChar.toLower();
-                    lower = lower;
-                }else{
-                    currentChar = currentChar.toUpper();
-                    upper = upper;
-                }
-                commitString = QString(currentChar); //sent to the widget
-            }
-        }
-    }
-
     //F. word completion manipulation (for fremantle)
     if (event->type() == QEvent::KeyPress &&
         lastCommitMode == HILDON_IM_COMMIT_PREEDIT &&
@@ -804,9 +931,9 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
 
     if (event->type() == QEvent::KeyRelease || state & STATE_CONTROL_MASK)
     {
-        //QString debug = QLatin1String("Sending state=0x%1 keysym=0x%2 keycode=%3");
-        //LOGMESSAGE2(" - ", debug.arg(state,0,16).arg(keysym,0,16).arg(keycode));
-
+        //Prevent Symbol Picker for following hints
+        if ((hints & (Qt::ImhFormattedNumbersOnly | Qt::ImhDigitsOnly | Qt::ImhDialableCharactersOnly)))
+            return false;
         sendKeyEvent(keywidget, event->type(), state, keysym, keycode);
         return false;
     }
@@ -815,28 +942,22 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
     /* 8. Pressing a dead key twice, or if followed by a space, inputs
      *    the dead key's character representation
      */
-    if ((mask & HILDON_IM_DEAD_KEY_MASK || qtkeycode == Qt::Key_Space) && combiningChar)
+    if ((mask & HILDON_IM_DEAD_KEY_MASK || qtkeycode == Qt::Key_Space) && !combiningChar.isNull())
     {
-        qint32 last;
-        last = dead_key_to_unicode_combining_character (qtkeycode);
-        if ((last == combiningChar) || qtkeycode == Qt::Key_Space)
-        {
-            commitString = QString(combiningChar);
-        }else{
+        QChar thisChar, dummy;
+        deadKeyToUnicodeCombiningChar(qtkeycode, thisChar, dummy);
+        if ((thisChar == combiningChar) || qtkeycode == Qt::Key_Space)
+            commitString = QString(plainCombiningChar);
+        else
             commitString = QString::fromUtf8(XKeysymToString(keysym));
-        }
-        combiningChar = 0;
-    }else{
+        combiningChar = plainCombiningChar = QChar();
+    } else {
         /* Regular keypress */
-        if (mask & HILDON_IM_COMPOSE_MASK)
-        {
+        if (mask & HILDON_IM_COMPOSE_MASK) {
             sendKeyEvent(keywidget, event->type(),state, keysym, keycode);
             return true;
-        }else{
-            if ( commitString.isEmpty() && qtkeycode != Qt::Key_Backspace){
-                //LOGMESSAGE3(" - ", "text sent to IM", event->text())
-                commitString = QString(event->text());
-            }
+        } else if (commitString.isEmpty() && qtkeycode != Qt::Key_Backspace) {
+            commitString = event->text();
         }
     }
 
@@ -851,36 +972,88 @@ bool QHildonInputContext::filterKeyPress(QWidget *keywidget, const QKeyEvent *ev
         commitString = QString();
     }
 
-    if (!commitString.isEmpty()){
+    // Shift-Backspace is translated to Shift-Delete, which does not work...
+    if (qtkeycode == Qt::Key_Delete && (modifiers & Qt::ShiftModifier)) {
+        modifiers &= ~Qt::ShiftModifier;
+        commitString.clear();
+    }
+
+    // sanity check
+    if (commitString.length() == 1 && commitString.at(0) == QChar(0))
+        commitString.clear();
+
+    // check for input mode restrictions
+    if (!commitString.isEmpty() && (hints & Qt::ImhExclusiveInputMask)) {
+        for (int i = 0; i < commitString.length(); ++i) {
+            QChar c = commitString.at(i);
+            bool ok = false;
+
+            if (hints & Qt::ImhDigitsOnly)
+                ok |= c.isDigit() || c == QLatin1Char('-');
+            if (hints & Qt::ImhFormattedNumbersOnly)
+                ok |= c.isDigit() || QString::fromLatin1("-.,").contains(c, Qt::CaseSensitive);
+            if (hints & Qt::ImhUppercaseOnly)
+                ok |= c.isLetter() && c.isUpper();
+            if (hints & Qt::ImhLowercaseOnly)
+                ok |= c.isLetter() && c.isLower();
+            if (hints & Qt::ImhDialableCharactersOnly)
+                ok |= c.isDigit() || QString::fromLatin1("#*+pP").contains(c, Qt::CaseSensitive);
+            if (hints & Qt::ImhEmailCharactersOnly)
+                ok = c.isPrint();
+            if (hints & Qt::ImhUrlCharactersOnly)
+                ok = c.isPrint();
+
+            if (!ok) {
+                cancelPreedit();
+                return true;
+            }
+        }
+    }
+
+    if (!commitString.isEmpty()) {
         //entering a new character cleans the preedit buffer
         cancelPreedit();
 
         /* Pressing a dead key followed by a regular key combines to form
          * an accented character
          */
-        if (combiningChar){ //FIXME
+        if (!combiningChar.isNull()) {
             commitString.append(combiningChar);//This will be sent to the widget
-            const char *charStr = qPrintable(commitString);
-            keysym = XStringToKeysym(charStr); //This will be sent to the IM
+            commitString = commitString.normalized(QString::NormalizationForm_C);
+            keysym = XStringToKeysym(qPrintable(commitString)); //This will be sent to the IM
         }
 
-        //Create the new event with the elaborate information,
-        //then it adds the event to the events queue
-        {
-            QEvent::Type type = event->type();
-            Qt::KeyboardModifiers modifiers= event->modifiers();
-            //WARNING the qt keycode has not been updated!!
-            QKeyEventEx *ke= new QKeyEventEx(type, keycode, modifiers, commitString, false, commitString.size(), keycode, keysym, state);
-            QCoreApplication::postEvent(keywidget,ke);
+        if (!commitString.isEmpty() && isAutoRepeat)
+            return true;
+
+        // Create the new event with the elaborate information,
+        // then it adds the event to the events queue
+
+        qHimDebug() << "HIM: Commiting: \"" << qPrintable(commitString) << "\" (" << commitString.length() << ") ... first: " << (commitString.isEmpty() ? 0 : commitString.at(0).unicode());
+        lastCommitString = commitString;
+
+        QKeyEventEx *ke = new QKeyEventEx(event->type(), qtkeycode, modifiers, commitString, false, commitString.size(), keycode, keysym, state);
+        if (isLongPress) {
+            QCoreApplication::sendEvent(keywidget, ke);
+            delete ke;
+        } else {
+            QCoreApplication::postEvent(keywidget, ke);
+        }
+
+        // start long-press timer
+        if ((event->type() == QEvent::KeyPress) && qtkeycode && !isLongPress) {
+            qHimDebug() << "HIM: starting long-press timer";
+            longPressKeyEvent.reset(new QKeyEventEx(event->type(), event->key(), modifiers, event->text(), false, event->text().length(), keycode, event->nativeVirtualKey(), state));
+            longPressTimer->start();
         }
 
         //Send the new keysym
         sendKeyEvent(keywidget, event->type(), state, keysym, keycode);
-#if 0
+
         /* Non-printable characters invalidate any previous dead keys */
         if (qtkeycode != Qt::Key_Shift)
-            combiningChar=0;
-#endif
+            combiningChar = plainCombiningChar = QChar();
+
         lastInternalChange = true;
         return true;
     } else {
@@ -990,11 +1163,11 @@ bool QHildonInputContext::x11FilterEvent(QWidget *keywidget, XEvent *event)
         case HILDON_IM_CONTEXT_REQUEST_SURROUNDING:
             sendSurrounding(false);
             return true;
-        case HILDON_IM_CONTEXT_CLEAR_STICKY:
-            mask &= ~(HILDON_IM_SHIFT_STICKY_MASK |
-                      HILDON_IM_SHIFT_LOCK_MASK |
-                      HILDON_IM_LEVEL_STICKY_MASK |
-                      HILDON_IM_LEVEL_LOCK_MASK);
+        case HILDON_IM_CONTEXT_LEVEL_UNSTICKY:
+            mask &= ~(HILDON_IM_LEVEL_STICKY_MASK | HILDON_IM_LEVEL_LOCK_MASK);
+            return true;
+        case HILDON_IM_CONTEXT_SHIFT_UNSTICKY:
+            mask &= ~(HILDON_IM_SHIFT_STICKY_MASK | HILDON_IM_SHIFT_LOCK_MASK);
             return true;
         case HILDON_IM_CONTEXT_CANCEL_PREEDIT:
             cancelPreedit();
@@ -1009,6 +1182,10 @@ bool QHildonInputContext::x11FilterEvent(QWidget *keywidget, XEvent *event)
 
         case HILDON_IM_CONTEXT_WIDGET_CHANGED:
         case HILDON_IM_CONTEXT_ENTER_ON_FOCUS:
+        case HILDON_IM_CONTEXT_SHIFT_LOCKED:
+        case HILDON_IM_CONTEXT_SHIFT_UNLOCKED:
+        case HILDON_IM_CONTEXT_LEVEL_LOCKED:
+        case HILDON_IM_CONTEXT_LEVEL_UNLOCKED:
             // ignore
             return true;
 
@@ -1025,6 +1202,17 @@ bool QHildonInputContext::x11FilterEvent(QWidget *keywidget, XEvent *event)
 
         HildonIMSurroundingMessage *msg = reinterpret_cast<HildonIMSurroundingMessage*>(&event->xclient.data);
         setClientCursorLocation(msg->offset_is_relative, msg->cursor_offset );
+        return true;
+    } else if (event->xclient.message_type == ATOM(_HILDON_IM_LONG_PRESS_SETTINGS)) {
+        qHimDebug() << "HIM: x11FilterEvent( _HILDON_IM_LONG_PRESS_SETTINGS )";
+
+        HildonIMLongPressSettingsMessage *msg = reinterpret_cast<HildonIMLongPressSettingsMessage *>(&event->xclient.data);
+        if (msg->enable_long_press) {
+            longPressTimer->setInterval((msg->long_press_timeout > 0) ? msg->long_press_timeout : DEFAULT_LONG_PRESS_TIMEOUT);
+        } else {
+            longPressTimer->stop();
+            longPressTimer->setInterval(0);
+        }
         return true;
     }
     return false;
@@ -1131,6 +1319,8 @@ void QHildonInputContext::cancelPreedit()
 
     QInputMethodEvent e;
     QApplication::sendEvent(w, &e);
+    if (realFocus)
+        QApplication::sendEvent(realFocus, &e);
 }
 
 void QHildonInputContext::sendHildonCommand(HildonIMCommand cmd, QWidget *widget)
@@ -1158,9 +1348,6 @@ void QHildonInputContext::sendHildonCommand(HildonIMCommand cmd, QWidget *widget
         qWarning() << "Invalid Hildon Command:" << cmd;
         return;
     }
-
-    if (cmd == HILDON_IM_HIDE && timerId != -1)
-        killTimer(timerId);
 
     if (cmd == HILDON_IM_SETCLIENT || cmd == HILDON_IM_SETNSHOW)
         sendInputMode();
@@ -1195,7 +1382,10 @@ void QHildonInputContext::checkSentenceStart()
 {
     qHimDebug() << "HIM: checkSentenceStart()";
 
-    QWidget *w = focusWidget();
+    if (!(options & HILDON_IM_AUTOCASE))
+        return;
+
+    QWidget *w = QInputContext::focusWidget();
     if (!w)
         return;
 
@@ -1206,13 +1396,13 @@ void QHildonInputContext::checkSentenceStart()
         // is not defined, and the plugin sets the mode appropriate for the language */
         if (inputMode & HILDON_GTK_INPUT_MODE_ALPHA) {
             autoUpper = false;
-            sendHildonCommand(HILDON_IM_LOW, w);
+            sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
         }
         return;
     } else if (inputMode & HILDON_GTK_INPUT_MODE_INVISIBLE) {
         // no autocap for passwords
         autoUpper = false;
-        sendHildonCommand(HILDON_IM_LOW, w);
+        sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
     }
 
     int cpos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
@@ -1237,15 +1427,13 @@ void QHildonInputContext::checkSentenceStart()
     // not very nice, but QTextBoundaryFinder doesn't really work here
     static const QString punctuation = QLatin1String(".!?\xa1\xbf"); // spanish inverted ! and ?
 
-    if (!cpos || analyze.length() == spaces) {
+    if (!cpos || analyze.length() == spaces ||
+        (spaces && punctuation.contains(analyze.at(analyze.length() - spaces - 1)))) {
         autoUpper = true;
-        sendHildonCommand(HILDON_IM_UPP, w);
-    } else if (spaces && punctuation.contains(analyze.at(analyze.length() - spaces - 1))) {
-        autoUpper = options & HILDON_IM_AUTOCASE;
-        sendHildonCommand(HILDON_IM_UPP, w);
+        sendHildonCommand(HILDON_IM_SHIFT_STICKY, w);
     } else {
         autoUpper = false;
-        sendHildonCommand(HILDON_IM_LOW, w);
+        sendHildonCommand(HILDON_IM_SHIFT_UNSTICKY, w);
     }
 }
 
@@ -1338,33 +1526,6 @@ void QHildonInputContext::sendSurrounding(bool sendAllContents)
 }
 
 
-/*! \internal
-Notify IM of any input mode changes
- */
-void QHildonInputContext::inputModeChanged()
-{
-    qHimDebug() << "HIM: inputModeChanged()";
-
-#if 0
-  //TODO
-  if ((input_mode & HILDON_GTK_INPUT_MODE_ALPHA) == 0  &&
-      (input_mode & HILDON_GTK_INPUT_MODE_HEXA)  == 0  &&
-      ( (input_mode & HILDON_GTK_INPUT_MODE_NUMERIC) != 0 ||
-        (input_mode & HILDON_GTK_INPUT_MODE_TELE)    != 0))
-  {
-    self->mask = HILDON_IM_LEVEL_LOCK_MASK | HILDON_IM_LEVEL_STICKY_MASK;
-  }
-  else
-  {
-    self->mask &= ~HILDON_IM_LEVEL_LOCK_MASK;
-    self->mask &= ~HILDON_IM_LEVEL_STICKY_MASK;
-  }
-#endif
-  /* Notify IM of any input mode changes in cases where the UI is
-     already visible. */
-  sendInputMode();
-}
-
 void QHildonInputContext::sendInputMode()
 {
     qHimDebug() << "HIM: sendInputMode";
@@ -1446,9 +1607,9 @@ void QHildonInputContext::setMaskState(int *mask,
     {
         /* Pressing the key while already locked clears the state */
         if (lock_mask & HILDON_IM_SHIFT_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_SHIFT_UNLOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_SHIFT_UNLOCKED, QInputContext::focusWidget());
         else if (lock_mask & HILDON_IM_LEVEL_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_MOD_UNLOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_MOD_UNLOCKED, QInputContext::focusWidget());
 
         *mask &= ~(lock_mask | sticky_mask);
     } else if (*mask & sticky_mask) {
@@ -1456,9 +1617,9 @@ void QHildonInputContext::setMaskState(int *mask,
         *mask |= lock_mask;
 
         if (lock_mask & HILDON_IM_SHIFT_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_SHIFT_LOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_SHIFT_LOCKED, QInputContext::focusWidget());
         else if (lock_mask & HILDON_IM_LEVEL_LOCK_MASK)
-            sendHildonCommand(HILDON_IM_MOD_LOCKED, realFocus);
+            sendHildonCommand(HILDON_IM_MOD_LOCKED, QInputContext::focusWidget());
     }else if (was_press_and_release){
         /* Pressing the key for the first time stickies the key for one character,
          * but only if no characters were entered while holding the key down */

@@ -6,35 +6,21 @@
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** $QT_BEGIN_LICENSE:FDL$
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in a
+** written agreement between you and Nokia.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of this
+** file.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -62,7 +48,7 @@
   \endcode
 
   For more information on the Qt Declarative module, see the
-  \l{declarativeui.html}{Declarative UI} documentation.
+  \l{declarativeui.html}{Qt Quick} documentation.
 */
 
 
@@ -70,9 +56,7 @@
   \macro QML_DECLARE_TYPE()
   \relates QDeclarativeEngine
 
-  Declares a C++ type to be usable in the QML system. In addition
-  to this, a type must also be registered with the QML system using
-  qmlRegisterType().
+  Equivalent to  Q_DECLARE_METATYPE(TYPE) and Q_DECLARE_METATYPE(QDeclarativeListProperty<TYPE>)
 */
 
 
@@ -81,19 +65,85 @@
   \relates QDeclarativeEngine
 
   This template function registers the C++ type in the QML system with
-  the name \a qmlName. in the library imported from \a uri having the
+  the name \a qmlName, in the library imported from \a uri having the
   version number composed from \a versionMajor and \a versionMinor.
-  The type should also haved been declared with the QML_DECLARE_TYPE() macro.
 
   Returns the QML type id.
 
-  Example: Register the C++ class \c MinehuntGame as the QML type
-  named \c Game for version 0.1 in the import library \c MinehuntCore:
+  For example, this registers a C++ class \c MySliderItem as a QML type
+  named \c Slider for version 1.0 of a \l{QML Modules}{module} called
+  "com.mycompany.qmlcomponents":
 
   \code
-  qmlRegisterType<MinehuntGame>("MinehuntCore", 0, 1, "Game");
+  qmlRegisterType<MySliderItem>("com.mycompany.qmlcomponents", 1, 0, "Slider");
   \endcode
 
+  Once this is registered, the type can be used in QML by importing the 
+  specified module name and version number:
+
+  \qml
+  imoprt com.mycompany.qmlcomponents 1.0
+
+  Slider { ... }
+  \endqml
+
+  Note that it's perfectly reasonable for a library to register types to older versions
+  than the actual version of the library. Indeed, it is normal for the new library to allow
+  QML written to previous versions to continue to work, even if more advanced versions of
+  some of its types are available.
+*/
+
+/*!
+  \fn int qmlRegisterUncreatableType(const char *uri, int versionMajor, int versionMinor, const char *qmlName, const QString& message)
+  \relates QDeclarativeEngine
+
+  This template function registers the C++ type in the QML system with
+  the name \a qmlName, in the library imported from \a uri having the
+  version number composed from \a versionMajor and \a versionMinor.
+
+  While the type has a name and a type, it cannot be created, and the
+  given error \a message will result if creation is attempted.
+
+  This is useful where the type is only intended for providing attached properties or enum values.
+
+  Returns the QML type id.
+
+  \sa qmlRegisterTypeNotAvailable()
+*/
+
+/*!
+  \fn int qmlRegisterTypeNotAvailable(const char *uri, int versionMajor, int versionMinor, const char *qmlName, const QString& message)
+  \relates QDeclarativeEngine
+
+  This function registers a type in the QML system with the name \a qmlName, in the library imported from \a uri having the
+  version number composed from \a versionMajor and \a versionMinor, but any attempt to instantiate the type
+  will produce the given error \a message.
+
+  Normally, the types exported by a module should be fixed. However, if a C++ type is not available, you should
+  at least "reserve" the QML type name, and give the user of your module a meaningful error message.
+
+  Returns the QML type id.
+
+  Example:
+
+  \code
+  #ifdef NO_GAMES_ALLOWED
+  qmlRegisterTypeNotAvailable("MinehuntCore", 0, 1, "Game", "Get back to work, slacker!");
+  #else
+  qmlRegisterType<MinehuntGame>("MinehuntCore", 0, 1, "Game");
+  #endif
+  \endcode
+
+  This will cause any QML which uses this module and attempts to use the type to produce an error message:
+  \code
+fun.qml: Get back to work, slacker!
+     Game {
+     ^
+  \endcode
+
+  Without this, a generic "Game is not a type" message would be given.
+
+  \sa qmlRegisterUncreatableType()
 */
 
 /*!
@@ -114,7 +164,6 @@
 
   This template function registers the C++ type in the QML system
   under the name \a typeName.
-  The type should also haved been declared with the QML_DECLARE_TYPE() macro.
 
 
   Returns the QML type id.

@@ -160,8 +160,6 @@ namespace QDeclarativeParser
         Property *defaultProperty;
         QHash<QByteArray, Property *> properties;
 
-        QList<Object *> scriptBlockObjects;
-
         // Output of the compilation phase (these properties continue to exist
         // in either the defaultProperty or properties members too)
         void addValueProperty(Property *);
@@ -190,7 +188,6 @@ namespace QDeclarativeParser
             QList<int> lineNumbers;
             QList<Pragmas> pragmas;
         };
-        QList<ScriptBlock> scripts;
 
         // The bytes to cast instances by to get to the QDeclarativeParserStatus 
         // interface.  -1 indicates the type doesn't support this interface.
@@ -310,8 +307,8 @@ namespace QDeclarativeParser
         };
         Type type;
 
-        // ### Temporary
-        QString primitive() const { return value.asScript(); }
+        // ### Temporary (for id only)
+        QString primitive() const { return value.isString() ? value.asString() : value.asScript(); }
 
         // Primitive value
         Variant value;

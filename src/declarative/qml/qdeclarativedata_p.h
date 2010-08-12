@@ -75,7 +75,7 @@ public:
         : ownMemory(true), ownContext(false), indestructible(true), explicitIndestructibleSet(false), 
           context(0), outerContext(0), bindings(0), nextContextObject(0), prevContextObject(0), bindingBitsSize(0), 
           bindingBits(0), lineNumber(0), columnNumber(0), deferredComponent(0), deferredIdx(0), 
-          attachedProperties(0), scriptValue(0), propertyCache(0), guards(0) { 
+          attachedProperties(0), scriptValue(0), objectDataRefCount(0), propertyCache(0), guards(0) { 
           init(); 
       }
 
@@ -128,6 +128,7 @@ public:
     // ### Can we make this QScriptValuePrivate so we incur no additional allocation
     // cost?
     QScriptValue *scriptValue;
+    quint32 objectDataRefCount;
     QDeclarativePropertyCache *propertyCache;
 
     QDeclarativeGuard<QObject> *guards;
@@ -151,11 +152,11 @@ public:
 template<class T>
 void QDeclarativeGuard<T>::addGuard()
 {
-    if (QObjectPrivate::get(o)->wasDeleted) {
-        if (prev) remGuard();
+    Q_ASSERT(!prev);
+
+    if (QObjectPrivate::get(o)->wasDeleted) 
         return;
-    }
-   
+
     QDeclarativeData *data = QDeclarativeData::get(o, true);
     next = data->guards;
     if (next) reinterpret_cast<QDeclarativeGuard<T> *>(next)->prev = &next;
@@ -166,6 +167,8 @@ void QDeclarativeGuard<T>::addGuard()
 template<class T>
 void QDeclarativeGuard<T>::remGuard()
 {
+    Q_ASSERT(prev);
+
     if (next) reinterpret_cast<QDeclarativeGuard<T> *>(next)->prev = prev;
     *prev = next;
     next = 0;

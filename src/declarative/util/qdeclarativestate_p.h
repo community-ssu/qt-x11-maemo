@@ -84,16 +84,19 @@ public:
     void deleteFromBinding();
 };
 
-class QDeclarativeActionEvent
+class Q_AUTOTEST_EXPORT QDeclarativeActionEvent
 {
 public:
     virtual ~QDeclarativeActionEvent();
     virtual QString typeName() const;
 
-    virtual void execute();
+    enum Reason { ActualChange, FastForward };
+
+    virtual void execute(Reason reason = ActualChange);
     virtual bool isReversable();
-    virtual void reverse();
+    virtual void reverse(Reason reason = ActualChange);
     virtual void saveOriginals() {}
+    virtual bool needsCopy() { return false; }
     virtual void copyOriginals(QDeclarativeActionEvent *) {}
 
     virtual bool isRewindable() { return isReversable(); }
@@ -143,6 +146,7 @@ public:
 
     QString name() const;
     void setName(const QString &);
+    bool isNamed() const;
 
     /*'when' is a QDeclarativeBinding to limit state changes oscillation
      due to the unpredictable order of evaluation of bound expressions*/

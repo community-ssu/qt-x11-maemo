@@ -145,13 +145,13 @@ Item {
 */
 
 /*!
-    \qmlproperty enum MouseEvent::button
+    \qmlproperty enumeration MouseEvent::button
 
     This property holds the button that caused the event.  It can be one of:
     \list
     \o Qt.LeftButton
     \o Qt.RightButton
-    \o Qt.MidButton
+    \o Qt.MiddleButton
     \endlist
 */
 
@@ -174,7 +174,7 @@ Item {
     \list
     \o Qt.LeftButton
     \o Qt.RightButton
-    \o Qt.MidButton
+    \o Qt.MiddleButton
     \endlist
 */
 

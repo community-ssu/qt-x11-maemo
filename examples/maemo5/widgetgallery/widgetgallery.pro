@@ -15,7 +15,7 @@ maemo5:SOURCES += maemo5.cpp
 maemo5:QT += maemo5
 
 contains(QT_CONFIG, webkit) {
-    QT += webkit multimedia
+    QT += webkit multimedia network opengl
 } else {
     DEFINES += QT_NO_WEBKIT
 }

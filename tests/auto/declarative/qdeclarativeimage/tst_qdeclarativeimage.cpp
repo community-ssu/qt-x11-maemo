@@ -51,9 +51,14 @@
 #include <private/qdeclarativeimagebase_p.h>
 #include <private/qdeclarativeloader_p.h>
 #include <QtDeclarative/qdeclarativecontext.h>
+#include <QtDeclarative/qdeclarativeexpression.h>
 
 #include "../shared/testhttpserver.h"
 
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
 
 #define SERVER_PORT 14451
 #define SERVER_ADDR "http://127.0.0.1:14451"
@@ -83,11 +88,14 @@ private slots:
     void resized();
     void preserveAspectRatio();
     void smooth();
-    void pixmap();
     void svg();
     void big();
+    void tiling_QTBUG_6716();
 
 private:
+    template<typename T>
+    T *findItem(QGraphicsObject *parent, const QString &id, int index=-1);
+
     QDeclarativeEngine engine;
 };
 
@@ -115,8 +123,8 @@ void tst_qdeclarativeimage::noSource()
 void tst_qdeclarativeimage::imageSource_data()
 {
     QTest::addColumn<QString>("source");
-    QTest::addColumn<qreal>("width");
-    QTest::addColumn<qreal>("height");
+    QTest::addColumn<double>("width");
+    QTest::addColumn<double>("height");
     QTest::addColumn<bool>("remote");
     QTest::addColumn<bool>("async");
     QTest::addColumn<QString>("error");
@@ -124,21 +132,22 @@ void tst_qdeclarativeimage::imageSource_data()
     QTest::newRow("local") << QUrl::fromLocalFile(SRCDIR "/data/colors.png").toString() << 120.0 << 120.0 << false << false << "";
     QTest::newRow("local async") << QUrl::fromLocalFile(SRCDIR "/data/colors1.png").toString() << 120.0 << 120.0 << false << true << "";
     QTest::newRow("local not found") << QUrl::fromLocalFile(SRCDIR "/data/no-such-file.png").toString() << 0.0 << 0.0 << false
-        << false << "QML Image (file::2:1) Cannot open: " + QUrl::fromLocalFile(SRCDIR "/data/no-such-file.png").toString();
+        << false << "file::2:1: QML Image: Cannot open: " + QUrl::fromLocalFile(SRCDIR "/data/no-such-file.png").toString();
     QTest::newRow("local async not found") << QUrl::fromLocalFile(SRCDIR "/data/no-such-file-1.png").toString() << 0.0 << 0.0 << false
-        << true << "QML Image (file::2:1) Cannot open: " + QUrl::fromLocalFile(SRCDIR "/data/no-such-file-1.png").toString();
+        << true << "file::2:1: QML Image: Cannot open: " + QUrl::fromLocalFile(SRCDIR "/data/no-such-file-1.png").toString();
     QTest::newRow("remote") << SERVER_ADDR "/colors.png" << 120.0 << 120.0 << true << false << "";
+    QTest::newRow("remote redirected") << SERVER_ADDR "/oldcolors.png" << 120.0 << 120.0 << true << false << "";
     QTest::newRow("remote svg") << SERVER_ADDR "/heart.svg" << 550.0 << 500.0 << true << false << "";
     QTest::newRow("remote not found") << SERVER_ADDR "/no-such-file.png" << 0.0 << 0.0 << true
-        << false << "QML Image (file::2:1) Error downloading " SERVER_ADDR "/no-such-file.png - server replied: Not found";
+        << false << "file::2:1: QML Image: Error downloading " SERVER_ADDR "/no-such-file.png - server replied: Not found";
 
 }
 
 void tst_qdeclarativeimage::imageSource()
 {
     QFETCH(QString, source);
-    QFETCH(qreal, width);
-    QFETCH(qreal, height);
+    QFETCH(double, width);
+    QFETCH(double, height);
     QFETCH(bool, remote);
     QFETCH(bool, async);
     QFETCH(QString, error);
@@ -147,6 +156,7 @@ void tst_qdeclarativeimage::imageSource()
     if (remote) {
         QVERIFY(server.isValid());
         server.serveDirectory(SRCDIR "/data");
+        server.addRedirect("oldcolors.png", SERVER_ADDR "/colors.png");
     }
 
     if (!error.isEmpty())
@@ -161,7 +171,7 @@ void tst_qdeclarativeimage::imageSource()
 
     if (async)
         QVERIFY(obj->asynchronous() == true);
-    
+
     if (remote || async)
         TRY_WAIT(obj->status() == QDeclarativeImage::Loading);
 
@@ -169,8 +179,8 @@ void tst_qdeclarativeimage::imageSource()
 
     if (error.isEmpty()) {
         TRY_WAIT(obj->status() == QDeclarativeImage::Ready);
-        QCOMPARE(obj->width(), width);
-        QCOMPARE(obj->height(), height);
+        QCOMPARE(obj->width(), qreal(width));
+        QCOMPARE(obj->height(), qreal(height));
         QCOMPARE(obj->fillMode(), QDeclarativeImage::Stretch);
         QCOMPARE(obj->progress(), 1.0);
     } else {
@@ -252,36 +262,6 @@ void tst_qdeclarativeimage::smooth()
     delete obj;
 }
 
-void tst_qdeclarativeimage::pixmap()
-{
-    QString componentStr = "import Qt 4.7\nImage { pixmap: testPixmap }";
-
-    QPixmap pixmap;
-    QDeclarativeContext *ctxt = engine.rootContext();
-    ctxt->setContextProperty("testPixmap", pixmap);
-
-    QDeclarativeComponent component(&engine);
-    component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
-
-    QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
-    QVERIFY(obj != 0);
-    QCOMPARE(obj->source(), QUrl());
-    QVERIFY(obj->status() == QDeclarativeImage::Null);
-    QCOMPARE(obj->width(), 0.);
-    QCOMPARE(obj->height(), 0.);
-    QCOMPARE(obj->fillMode(), QDeclarativeImage::Stretch);
-    QCOMPARE(obj->progress(), 0.0);
-    QVERIFY(obj->pixmap().isNull());
-
-    pixmap = QPixmap(SRCDIR "/data/colors.png");
-    ctxt->setContextProperty("testPixmap", pixmap);
-    QCOMPARE(obj->width(), 120.);
-    QCOMPARE(obj->height(), 120.);
-    QVERIFY(obj->status() == QDeclarativeImage::Ready);
-
-    delete obj;
-}
-
 void tst_qdeclarativeimage::svg()
 {
     QString src = QUrl::fromLocalFile(SRCDIR "/data/heart.svg").toString();
@@ -298,6 +278,8 @@ void tst_qdeclarativeimage::svg()
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart-mac.png"));
 #elif defined(Q_OS_WIN32)
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart-win32.png"));
+#elif defined(QT_ARCH_ARM)
+    QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart-arm.png"));
 #else
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart.png"));
 #endif
@@ -312,6 +294,8 @@ void tst_qdeclarativeimage::svg()
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200-mac.png"));
 #elif defined(Q_OS_WIN32)
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200-win32.png"));
+#elif defined(QT_ARCH_ARM)
+    QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200-arm.png"));
 #else
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200.png"));
 #endif
@@ -339,6 +323,76 @@ void tst_qdeclarativeimage::big()
     delete obj;
 }
 
+void tst_qdeclarativeimage::tiling_QTBUG_6716()
+{
+    QDeclarativeView *canvas = new QDeclarativeView(0);
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/tiling.qml"));
+    canvas->show();
+    qApp->processEvents();
+
+    QDeclarativeImage *vTiling = findItem<QDeclarativeImage>(canvas->rootObject(), "vTiling");
+    QDeclarativeImage *hTiling = findItem<QDeclarativeImage>(canvas->rootObject(), "hTiling");
+
+    QVERIFY(vTiling != 0);
+    QVERIFY(hTiling != 0);
+
+    {
+        QPixmap pm(vTiling->width(), vTiling->height());
+        QPainter p(&pm);
+        vTiling->paint(&p, 0, 0);
+
+        QImage img = pm.toImage();
+        for (int x = 0; x < vTiling->width(); ++x) {
+            for (int y = 0; y < vTiling->height(); ++y) {
+                QVERIFY(img.pixel(x, y) == qRgb(0, 255, 0));
+            }
+        }
+    }
+
+    {
+        QPixmap pm(hTiling->width(), hTiling->height());
+        QPainter p(&pm);
+        hTiling->paint(&p, 0, 0);
+
+        QImage img = pm.toImage();
+        for (int x = 0; x < hTiling->width(); ++x) {
+            for (int y = 0; y < hTiling->height(); ++y) {
+                QVERIFY(img.pixel(x, y) == qRgb(0, 255, 0));
+            }
+        }
+    }
+}
+
+/*
+   Find an item with the specified objectName.  If index is supplied then the
+   item must also evaluate the {index} expression equal to index
+*/
+template<typename T>
+T *tst_qdeclarativeimage::findItem(QGraphicsObject *parent, const QString &objectName, int index)
+{
+    const QMetaObject &mo = T::staticMetaObject;
+    //qDebug() << parent->childItems().count() << "children";
+    for (int i = 0; i < parent->childItems().count(); ++i) {
+        QDeclarativeItem *item = qobject_cast<QDeclarativeItem*>(parent->childItems().at(i));
+        if(!item)
+            continue;
+        //qDebug() << "try" << item;
+        if (mo.cast(item) && (objectName.isEmpty() || item->objectName() == objectName)) {
+            if (index != -1) {
+                QDeclarativeExpression e(qmlContext(item), item, "index");
+                if (e.evaluate().toInt() == index)
+                    return static_cast<T*>(item);
+            } else {
+                return static_cast<T*>(item);
+            }
+        }
+        item = findItem<T>(item, objectName, index);
+        if (item)
+            return static_cast<T*>(item);
+    }
+
+    return 0;
+}
 
 QTEST_MAIN(tst_qdeclarativeimage)
 

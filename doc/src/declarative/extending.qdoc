@@ -6,35 +6,21 @@
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** $QT_BEGIN_LICENSE:FDL$
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in a
+** written agreement between you and Nokia.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of this
+** file.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -43,7 +29,7 @@
 \page qml-extending.html
 \title Extending QML in C++
 
-The QML syntax declaratively describes how to construct an in memory object
+The QML syntax declaratively describes how to construct an in-memory object
 tree.  In Qt, QML is mainly used to describe a visual scene graph, but it is
 not conceptually limited to this: the QML format is an abstract description of
 any object tree.  All the QML element types included in Qt are implemented using
@@ -56,45 +42,45 @@ QML for their own independent use.
 \section1 Adding Types
 \target adding-types
 
-\snippet examples/declarative/extending/adding/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/adding/example.qml 0
 
 The QML snippet shown above instantiates one \c Person instance and sets
-the name and shoeSize properties on it.  Everything in QML ultimately comes down
+the \c name and \c shoeSize properties on it.  Everything in QML ultimately comes down
 to either instantiating an object instance, or assigning a property a value.
+
 QML relies heavily on Qt's meta object system and can only instantiate classes
-that derive from QObject.
+that derive from QObject. For visual element types, this will usually mean a subclass
+of QDeclarativeItem; for models used with the view elements, a subclass of QAbstractItemModel;
+and for abitrary objects with properties, a direct subclass of QObject.
 
 The QML engine has no intrinsic knowledge of any class types.  Instead the
-programmer must define the C++ types, and their corresponding QML name.
+programmer must register the C++ types with their corresponding QML names.
 
-Custom C++ types are declared QML types using a macro and a template function:
+Custom C++ types are registered using a template function:
 
 \quotation
 
 \code
-#define QML_DECLARE_TYPE(T)
 template<typename T>
 int qmlRegisterType(const char *uri, int versionMajor, int versionMinor, const char *qmlName)
 \endcode
 
-Calling qmlRegisterType() registers the C++ type \a T with the QML system, and makes it available in QML
-under the name \a qmlName in library \a uri version \a versionMajor.versionMinor.
-The \a qmlName can be the same as the C++ type name.
-
-Generally the QML_DECLARE_TYPE() macro should be included immediately following
-the type declaration (usually in its header file), and the template function qmlRegisterType()
-called by the implementation.
+Calling qmlRegisterType() registers the C++ type \a T with the QML
+system, and makes it available in QML under the name \a qmlName in
+library \a uri version \a versionMajor.versionMinor.  The \a qmlName
+can be the same as the C++ type name.
 
 Type \a T must be a concrete type that inherits QObject and has a default
 constructor.
+
 \endquotation
 
-Types can be registered by libraries (such as Qt does), application code,
-or by plugins (see QDeclarativeExtensionPlugin).
+Types can be registered by libraries, application code, or by plugins
+(see QDeclarativeExtensionPlugin).
 
-Once registered, all of the \l {Qt's Property System}{properties} of a supported
-type are available for use within QML.  QML has intrinsic support for properties
-of these types:
+Once registered, all \l {Qt's Property System}{properties} of the
+supported types are available in QML.  QML has intrinsic support for
+properties of these types:
 
 \list
 \o bool
@@ -110,9 +96,14 @@ of these types:
 \o QVariant
 \endlist
 
-QML is typesafe.  Attempting to assign an invalid value to a property will
-generate an error.  For example, assuming the name property of the \c Person
-element had a type of QString, this would cause an error:
+When a property of a supported type is added to a C++ class, in a QML
+element based on the C++ class, a \e{value-changed} signal handler
+will be available. See \l{Signal Support} below.
+
+QML is typesafe.  Attempting to assign an invalid value to a property
+will generate an error.  For example, assuming the \e{name} property
+of the \c Person element had a type of QString, this would cause an
+error:
 
 \code
 Person {
@@ -126,10 +117,10 @@ the \c Person type.
 
 \section1 Object and List Property Types
 
-\snippet examples/declarative/extending/properties/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/properties/example.qml 0
 
 The QML snippet shown above assigns a \c Person object to the \c BirthdayParty's
-celebrant property, and assigns three \c Person objects to the guests property.
+\c host property, and assigns three \c Person objects to the guests property.
 
 QML can set properties of types that are more complex than basic intrinsics like
 integers and strings.  Properties can also be object pointers, Qt interface
@@ -138,83 +129,73 @@ is typesafe it ensures that only valid types are assigned to these properties,
 just like it does for primitive types.
 
 Properties that are pointers to objects or Qt interfaces are declared with the
-Q_PROPERTY() macro, just like other properties.  The celebrant property
+Q_PROPERTY() macro, just like other properties.  The \c host property
 declaration looks like this:
 
-\snippet examples/declarative/extending/properties/birthdayparty.h 1
+\snippet examples/declarative/cppextensions/referenceexamples/properties/birthdayparty.h 1
 
-As long as the property type, in this case Person, is registered with QML the
+As long as the property type, in this case \c Person, is registered with QML the
 property can be assigned.
 
 QML also supports assigning Qt interfaces.  To assign to a property whose type
 is a Qt interface pointer, the interface must also be registered with QML.  As
 they cannot be instantiated directly, registering a Qt interface is different
-from registering a new QML type.  The following macro and function are used instead:
+from registering a new QML type. The following function is used instead:
 
 \quotation
 \code
-#define QML_DECLARE_INTERFACE(T)
 template<typename T>
 int qmlRegisterInterface(const char *typeName)
 \endcode
 
-Registers the C++ interface \a T with the QML system as \a typeName.
-
-Generally the QML_DECLARE_INTERFACE() macro should be included immediately
-following the interface declaration (usually in its header file), and the
-qmlRegisterInterface() template function called by the implementation.
+This registers the C++ interface \a T with the QML system as \a typeName.
 
 Following registration, QML can coerce objects that implement this interface
 for assignment to appropriately typed properties.
 \endquotation
 
-The guests property is a list of \c Person objects.  Properties that are lists
+The \c guests property is a list of \c Person objects.  Properties that are lists
 of objects or Qt interfaces are also declared with the Q_PROPERTY() macro, just
 like other properties.  List properties must have the type \c {QDeclarativeListProperty<T>}.
 As with object properties, the type \a T must be registered with QML.
 
-The guest property declaration looks like this:
+The \c guest property declaration looks like this:
 
-\snippet examples/declarative/extending/properties/birthdayparty.h 2
+\snippet examples/declarative/cppextensions/referenceexamples/properties/birthdayparty.h 2
 
 \l {Extending QML - Object and List Property Types Example} shows the complete
 code used to create the \c BirthdayParty type.
 
 \section1 Inheritance and Coercion
 
-\snippet examples/declarative/extending/coercion/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/coercion/example.qml 0
 
 The QML snippet shown above assigns a \c Boy object to the \c BirthdayParty's
-celebrant property, and assigns three other objects to the guests property.
+\c host property, and assigns three other objects to the \c guests property.
 
-QML supports C++ inheritance heirarchies and can freely coerce between known,
+QML supports C++ inheritance hierarchies and can freely coerce between known,
 valid object types.  This enables the creation of common base classes that allow
 the assignment of specialized classes to object or list properties.  In the
-snippet shown, both the celebrant and the guests properties retain the Person
-type used in the previous section, but the assignment is valid as both the Boy
-and Girl objects inherit from Person.
+snippet shown, both the \c host and the \c guests properties retain the \c Person
+type used in the previous section, but the assignment is valid as both the \c Boy
+and \c Girl objects inherit from \c Person.
 
 To assign to a property, the property's type must have been registered with QML.
 Both the qmlRegisterType() and qmlRegisterInterface() template functions already
 shown can be used to register a type with QML.  Additionally, if a type that acts purely
 as a base class that cannot be instantiated from QML needs to be
-registered these macro and function can be used:
+registered, the following function can be used:
 
 \quotation
 \code
-    #define QML_DECLARE_TYPE(T)
     template<typename T>
     int qmlRegisterType()
 \endcode
 
-Registers the C++ type \a T with the QML system. The parameterless call to the template
+This registers the C++ type \a T with the QML system. The parameterless call to the template
 function qmlRegisterType() does not define a mapping between the
 C++ class and a QML element name, so the type is not instantiable from QML, but
 it is available for type coercion.
-
-Generally the QML_DECLARE_TYPE() macro should be included immediately following
-the type declaration (usually in its header file), and the
-qmlRegisterType() template function called from the implementation.
 
 Type \a T must inherit QObject, but there are no restrictions on whether it is
 concrete or the signature of its constructor.
@@ -229,15 +210,15 @@ code used to create the \c Boy and \c Girl types.
 
 \section1 Default Property
 
-\snippet examples/declarative/extending/default/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/default/example.qml 0
 
 The QML snippet shown above assigns a collection of objects to the
 \c BirthdayParty's default property.
 
-The default property is a syntactic convenience that allows a type designer to
+The \e {default property} is a syntactic convenience that allows a type designer to
 specify a single property as the type's default.  The default property is
 assigned to whenever no explicit property is specified.  As a convenience, it is
-behaviorally identical to assigning the default property explicitly by name.
+behaviorally identical to assigning to the default property explicitly by name.
 
 From C++, type designers mark the default property using a Q_CLASSINFO()
 annotation:
@@ -247,7 +228,7 @@ annotation:
 Q_CLASSINFO("DefaultProperty", "property")
 \endcode
 
-Mark \a property as the class's default property.  \a property must be either
+This marks \a property as the class's default property.  \a property must be either
 an object property, or a list property.
 
 A default property is optional.  A derived class inherits its base class's
@@ -261,9 +242,9 @@ specify a default property.
 
 \section1 Grouped Properties
 
-\snippet examples/declarative/extending/grouped/example.qml 1
+\snippet examples/declarative/cppextensions/referenceexamples/grouped/example.qml 1
 
-The QML snippet shown above assigns a number properties to the \c Boy object,
+The QML snippet shown above assigns a number of properties to the \c Boy object,
 including four properties using the grouped property syntax.
 
 Grouped properties collect similar properties together into a single named
@@ -272,12 +253,12 @@ may also simplify the implementation of common property collections across
 different types through implementation reuse.
 
 A grouped property block is implemented as a read-only object property.  The
-shoe property shown is declared like this:
+\c shoe property shown is declared like this:
 
-\snippet examples/declarative/extending/grouped/person.h 1
+\snippet examples/declarative/cppextensions/referenceexamples/grouped/person.h 1
 
-The ShoeDescription type declares the properties available to the grouped
-property block - in this case the size, color, brand and price properties.
+The \c ShoeDescription type declares the properties available to the grouped
+property block - in this case the \c size, \c color, \c brand and \c price properties.
 
 Grouped property blocks may declared and accessed be recusively.
 
@@ -286,18 +267,18 @@ implement the \c shoe property grouping.
 
 \section1 Attached Properties
 
-\snippet examples/declarative/extending/attached/example.qml 1
+\snippet examples/declarative/cppextensions/referenceexamples/attached/example.qml 1
 
-The QML snippet shown above assigns the rsvp property using the attached
+The QML snippet shown above assigns a date to the \c rsvp property using the attached
 property syntax.
 
 Attached properties allow unrelated types to annotate other types with some
 additional properties, generally for their own use.  Attached properties are
 identified through the use of the attacher type name, in the case shown
-\c BirthdayParty, as a suffix to the property name.
+\c BirthdayParty, as a prefix to the property name.
 
 In the example shown, \c BirthdayParty is called the attaching type, and the
-Boy instance the attachee object instance.
+\c Boy instance the attachee object instance.
 
 For the attaching type, an attached property block is implemented as a new
 QObject derived type, called the attachment object.  The properties on the
@@ -320,9 +301,8 @@ public:
 };
 
 QML_DECLARE_TYPEINFO(MyType, QML_HAS_ATTACHED_PROPERTIES)
-QML_DECLARE_TYPE(MyType)
 \endcode
-Return an attachment object, of type \a AttachedPropertiesType, for the
+This returns an attachment object, of type \a AttachedPropertiesType, for the
 attachee \a object instance.  It is customary, though not strictly required, for
 the attachment object to be parented to \a object to prevent memory leaks.
 
@@ -342,7 +322,7 @@ their effect may be so limited.
 
 For example, a common usage scenario is for a type to enhance the properties
 available to its children in order to gather instance specific data.  Here we
-add a rsvp field to all the guests coming to a birthday party:
+add a \c rsvp field to all the guests coming to a birthday party:
 \code
 BirthdayParty {
     Boy { BirthdayParty.rsvp: "2009-06-01" }
@@ -365,7 +345,7 @@ an instance can be accessed using the following method:
 template<typename T>
 QObject *qmlAttachedPropertiesObject<T>(QObject *attachee, bool create = true);
 \endcode
-Returns the attachment object attached to \a attachee by the attaching type
+This returns the attachment object attached to \a attachee by the attaching type
 \a T.  If type \a T is not a valid attaching type, this method always returns 0.
 
 If \a create is true, a valid attachment object will always be returned,
@@ -378,11 +358,11 @@ implement the rsvp attached property.
 
 \section1 Memory Management and QVariant types
 
-It is an elements responsibility to ensure that it does not access or return
+It is an element's responsibility to ensure that it does not access or return
 pointers to invalid objects.  QML makes the following guarentees:
 
 \list
-\o An object assigned to an QObject (or QObject-derived) pointer property will be 
+\o An object assigned to a QObject (or QObject-derived) pointer property will be
 valid at the time of assignment.  
 
 Following assignment, it is the responsibility of the class to subsequently guard 
@@ -409,8 +389,8 @@ this situation, but it must not crash.
 
 \section1 Signal Support
 
-\snippet examples/declarative/extending/signal/example.qml 0
-\snippet examples/declarative/extending/signal/example.qml 1
+\snippet examples/declarative/cppextensions/referenceexamples/signal/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/signal/example.qml 1
 
 The QML snippet shown above associates the evaluation of a JavaScript expression
 with the emission of a Qt signal.
@@ -422,7 +402,7 @@ signal name: "on" is prepended, and the first letter of the signal name upper
 cased.  For example, the signal used in the example above has the following
 C++ signature:
 
-\snippet examples/declarative/extending/signal/birthdayparty.h 0
+\snippet examples/declarative/cppextensions/referenceexamples/signal/birthdayparty.h 0
 
 In classes with multiple signals with the same name, only the final signal
 is accessible as a signal property.  Note that signals with the same name
@@ -438,12 +418,28 @@ value will not be accessible from script.
 \l {Extending QML - Signal Support Example} shows the complete code used to
 implement the onPartyStarted signal property.
 
+If you want to use signals from items not created in QML, you can access their
+signals with the \l {Connections} element.
+
+Additionally, if a property is added to a C++ class, all QML elements
+based on that C++ class will have a \e{value-changed} signal handler
+for that property. The name of the signal handler is
+\e{on<Property-name>Changed}, with the first letter of the property
+name being upper case.
+
+\note The QML signal handler will always be named
+on<Property-name>Changed, regardless of the name used for the NOTIFY
+signal in C++. We recommend using <property-name>Changed() for the
+NOTIFY signal in C++.
+
+See also \l {Extending types from QML}.
+
 \section1 Property Value Sources
 
-\snippet examples/declarative/extending/valuesource/example.qml 0
-\snippet examples/declarative/extending/valuesource/example.qml 1
+\snippet examples/declarative/cppextensions/referenceexamples/valuesource/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/valuesource/example.qml 1
 
-The QML snippet shown above assigns a property value to the speaker property.
+The QML snippet shown above applies a property value source to the \c announcment property.
 A property value source generates a value for a property that changes over time.
 
 Property value sources are most commonly used to do animation.  Rather than
@@ -451,12 +447,12 @@ constructing an animation object and manually setting the animation's "target"
 property, a property value source can be assigned directly to a property of any
 type and automatically set up this association.
 
-The example shown here is rather contrived: the speaker property of the
-BirthdayParty object is a string that is printed every time it is assigned and
-the HappyBirthday value source generates the lyrics of the song
+The example shown here is rather contrived: the \c announcment property of the
+\c BirthdayParty object is a string that is printed every time it is assigned and
+the \c HappyBirthdaySong value source generates the lyrics of the song
 "Happy Birthday".
 
-\snippet examples/declarative/extending/valuesource/birthdayparty.h 0
+\snippet examples/declarative/cppextensions/referenceexamples/valuesource/birthdayparty.h 0
 
 Normally, assigning an object to a string property would not be allowed.  In
 the case of a property value source, rather than assigning the object instance
@@ -467,11 +463,11 @@ Property value sources are special types that derive from the
 QDeclarativePropertyValueSource base class.  This base class contains a single method,
 QDeclarativePropertyValueSource::setTarget(), that the QML engine invokes when
 associating the property value source with a property.  The relevant part of
-the HappyBirthday type declaration looks like this:
+the \c HappyBirthdaySong type declaration looks like this:
 
-\snippet examples/declarative/extending/valuesource/happybirthday.h 0
-\snippet examples/declarative/extending/valuesource/happybirthday.h 1
-\snippet examples/declarative/extending/valuesource/happybirthday.h 2
+\snippet examples/declarative/cppextensions/referenceexamples/valuesource/happybirthdaysong.h 0
+\snippet examples/declarative/cppextensions/referenceexamples/valuesource/happybirthdaysong.h 1
+\snippet examples/declarative/cppextensions/referenceexamples/valuesource/happybirthdaysong.h 2
 
 In all other respects, property value sources are regular QML types.  They must
 be registered with the QML engine using the same macros as other types, and can
@@ -479,19 +475,19 @@ contain properties, signals and methods just like other types.
 
 When a property value source object is assigned to a property, QML first tries
 to assign it normally, as though it were a regular QML type.  Only if this
-assignment fails does the engine call the setTarget() method.  This allows
+assignment fails does the engine call the \l {QDeclarativePropertyValueSource::}{setTarget()} method.  This allows
 the type to also be used in contexts other than just as a value source.
 
 \l {Extending QML -  Property Value Source Example} shows the complete code used
-implement the HappyBirthday property value source.
+implement the \c HappyBirthdaySong property value source.
 
 \section1 Property Binding
 
-\snippet examples/declarative/extending/binding/example.qml 0
-\snippet examples/declarative/extending/binding/example.qml 1
+\snippet examples/declarative/cppextensions/referenceexamples/binding/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/binding/example.qml 1
 
 The QML snippet shown above uses a property binding to ensure the
-HappyBirthday's name property remains up to date with the celebrant.
+\c HappyBirthdaySong's \c name property remains up to date with the \c host.
 
 Property binding is a core feature of QML.  In addition to assigning literal
 values, property bindings allow the developer to assign an arbitrarily complex
@@ -504,11 +500,11 @@ All properties on custom types automatically support property binding.  However,
 for binding to work correctly, QML must be able to reliably determine when a
 property has changed so that it knows to reevaluate any bindings that depend on
 the property's value.  QML relies on the presence of a
-\c {Qt's Property System}{NOTIFY signal} for this determination.
+\l {Qt's Property System}{NOTIFY signal} for this determination.
 
-Here is the celebrant property declaration:
+Here is the \c host property declaration:
 
-\snippet examples/declarative/extending/binding/birthdayparty.h 0
+\snippet examples/declarative/cppextensions/referenceexamples/binding/birthdayparty.h 0
 
 The NOTIFY attribute is followed by a signal name.  It is the responsibility of
 the class implementer to ensure that whenever the property's value changes, the
@@ -547,7 +543,7 @@ subsequently change.  The most common case of this is when a type uses
 only freed when the object is deleted.  In these cases, the CONSTANT attribute
 may be added to the property declaration instead of a NOTIFY signal.
 
-\snippet examples/declarative/extending/binding/person.h 0
+\snippet examples/declarative/cppextensions/referenceexamples/binding/person.h 0
 
 Extreme care must be taken here or applications using your type may misbehave.
 The CONSTANT attribute should only be used for properties whose value is set,
@@ -559,7 +555,7 @@ include NOTIFY signals for use in binding.
 
 \section1 Extension Objects
 
-\snippet examples/declarative/extending/extended/example.qml 0
+\snippet examples/declarative/cppextensions/referenceexamples/extended/example.qml 0
 
 The QML snippet shown above adds a new property to an existing C++ type without
 modifying its source code.
@@ -578,19 +574,22 @@ extension type - when registering the target class whose properties are
 transparently merged with the original target class when used from within QML.
 
 An extension class is a regular QObject, with a constructor that takes a QObject
-pointer.  When needed (extension classes are delay created until the first extended
+pointer.  When needed (extension class creation is delayed until the first extended
 property is accessed) the extension class is created and the target object is
 passed in as the parent.  When an extended property on the original is accessed,
 the appropriate property on the extension object is used instead.
 
 When an extended type is installed, one of the
 \code
-    #define QML_REGISTER_EXTENDED_TYPE(URI, VMAJ, VFROM, VTO, QDeclarativeName,T, ExtendedT)
-    #define QML_REGISTER_EXTENDED_NOCREATE_TYPE(T, ExtendedT)
+template<typename T, typename ExtendedT>
+int qmlRegisterType(const char *uri, int versionMajor, int versionMinor, const char *qmlName)
+
+template<typename T, typename ExtendedT>
+int qmlRegisterType()
 \endcode
-macros should be used instead of the regular \c QML_REGISTER_TYPE or
-\c QML_REGISTER_NOCREATE_TYPE.  The arguments are identical to the corresponding
-non-extension object macro, except for the ExtendedT parameter which is the type
+functions should be used instead of the regular \c qmlRegisterType() variations.
+The arguments are identical to the corresponding non-extension registration functions,
+except for the ExtendedT parameter which is the type
 of the extension object.
 
 \section1 Optimization
@@ -705,10 +704,6 @@ of some of the types. For the remaining types the default values are undefined.
 \row \o color \o #000000 (black)
 \endtable
 
-If specified, the optional "default" attribute marks the new property as the
-types default property, overriding any existing default property.  Using the
-default attribute twice in the same type block is an error.
-
 The following example shows how to declare a new "innerColor" property that
 controls the color of the inner rectangle.
 
@@ -725,6 +720,63 @@ controls the color of the inner rectangle.
         }
     }
 \endcode
+
+
+\section3 Property signal handlers
+
+Adding a property to an item automatically adds a \e{value-changed}
+signal handler to the item. The signal hander is named
+\c{on<Property_name>Changed}, with the first letter of the property
+name being upper case.
+
+Signal handlers can have arbitrary JavaScript code assigned. The following 
+example shows how to output to a text console a new value of property 
+\c{innerColor} whenever the value of this property changes.
+
+\code
+    Rectangle {
+        id: rect
+        property color innerColor: "black"
+
+        onInnerColorChanged: { console.log(rect.innerColor); }
+    }
+\endcode
+
+
+\section3 Setting default properties
+
+The optional \c default attribute for a property marks it as the \e {default property}
+for a type. This allows other items to specify the default property's value
+as child elements. For example, the \l Item element's default property is its 
+\l{Item::children}{children} property. This allows the children of an \l Item 
+to be set like this:
+
+\qml
+Item {
+    Rectangle {}
+    Rectangle {}
+}
+\endqml
+
+If the \l{Item::children}{children} property was not the default property for 
+\l Item, its value would have to be set like this instead:
+
+\qml
+Item {
+    children: [
+        Rectangle {}
+        Rectangle {}
+    ]
+}
+\endqml
+
+See the \l{declarative/ui-components/tabwidget}{TabWidget} example for a
+demonstration of using default properties.
+
+Specifying a default property overrides any existing default property (for
+example, any default property inherited from a parent item). Using the
+default attribute twice in the same type block is an error.
+
 
 \target qml-property-aliases
 \section2 Property aliases
@@ -906,9 +958,13 @@ in other projects without the use of C++.  Components can also help to reduce
 duplication inside one project by limiting the need for large numbers of
 copy-and-pasted blocks.
 
-Any snippet of QML code can become a component, just by placing it in the file
-"<Name>.qml" where <Name> is the new element name, and begins with an uppercase
-letter.  These QML files automatically become available as new QML element types
+Any snippet of QML code can become a component, just by placing it in the file "<Name>.qml" 
+where <Name> is the new element name, and begins with an uppercase letter.  Note that
+the case of all characters in the <Name> are significant on some filesystems, notably
+UNIX filesystems.  It is recommended that the case of the filename matches the case of
+the component name in QML exactly, regardless of the platform the QML will be deployed to.
+
+These QML files automatically become available as new QML element types
 to other QML components and applications in the same directory.
 
 For example, here we show how a component named "Box" is defined and used

@@ -118,6 +118,7 @@ void tst_QSizeGrip::hideAndShowOnWindowStateChange_data()
     QTest::newRow("Qt::SubWindow") << Qt::SubWindow;
 }
 
+// note: on Maemo 5 the grip is never visible. On Mac only if the window is fullscreen.
 void tst_QSizeGrip::hideAndShowOnWindowStateChange()
 {
     QFETCH(Qt::WindowType, windowType);
@@ -131,23 +132,39 @@ void tst_QSizeGrip::hideAndShowOnWindowStateChange()
         parentWidget->show();
     else
         widget->show();
+#ifndef Q_WS_MAEMO_5
     QVERIFY(sizeGrip->isVisible());
+#else
+    QVERIFY(!sizeGrip->isVisible());
+#endif
 
     widget->showFullScreen();
     QVERIFY(!sizeGrip->isVisible());
 
     widget->showNormal();
+#ifndef Q_WS_MAEMO_5
     QVERIFY(sizeGrip->isVisible());
+#else
+    QVERIFY(!sizeGrip->isVisible());
+#endif
 
     widget->showMaximized();
 #ifndef Q_WS_MAC
     QVERIFY(!sizeGrip->isVisible());
 #else
+#ifndef Q_WS_MAEMO_5
     QVERIFY(sizeGrip->isVisible());
+#else
+    QVERIFY(!sizeGrip->isVisible());
+#endif
 #endif
 
     widget->showNormal();
+#ifndef Q_WS_MAEMO_5
     QVERIFY(sizeGrip->isVisible());
+#else
+    QVERIFY(!sizeGrip->isVisible());
+#endif
 
     sizeGrip->hide();
     QVERIFY(!sizeGrip->isVisible());
@@ -173,6 +190,10 @@ void tst_QSizeGrip::orientation()
     widget.layout()->setAlignment(sizeGrip, Qt::AlignBottom | Qt::AlignRight);
 
     widget.show();
+#ifdef Q_WS_MAEMO_5
+    // need  to force a show on maemo 5 because the size grip is usually invisible there
+    sizeGrip->show();
+#endif
     QCOMPARE(sizeGripCorner(&widget, sizeGrip), Qt::BottomRightCorner);
 
     widget.setLayoutDirection(Qt::RightToLeft);

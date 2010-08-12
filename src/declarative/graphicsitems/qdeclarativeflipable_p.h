@@ -55,7 +55,7 @@ QT_BEGIN_NAMESPACE
 QT_MODULE(Declarative)
 
 class QDeclarativeFlipablePrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeFlipable : public QDeclarativeItem
+class Q_AUTOTEST_EXPORT QDeclarativeFlipable : public QDeclarativeItem
 {
     Q_OBJECT
 
@@ -80,6 +80,9 @@ public:
 
 Q_SIGNALS:
     void sideChanged();
+
+private Q_SLOTS:
+    void retransformBack();
 
 private:
     Q_DISABLE_COPY(QDeclarativeFlipable)

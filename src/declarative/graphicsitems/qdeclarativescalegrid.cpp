@@ -130,8 +130,9 @@ QDeclarativeGridScaledImage::QDeclarativeGridScaledImage(QIODevice *data)
     int b = -1;
     QString imgFile;
 
-    while(!data->atEnd()) {
-        QString line = QString::fromUtf8(data->readLine().trimmed());
+    QByteArray raw;
+    while(raw = data->readLine(), !raw.isEmpty()) {
+        QString line = QString::fromUtf8(raw.trimmed());
         if (line.isEmpty() || line.startsWith(QLatin1Char('#')))
             continue;
 
@@ -175,7 +176,7 @@ QDeclarativeBorderImage::TileMode QDeclarativeGridScaledImage::stringToRule(cons
     if (s == QLatin1String("Round"))
         return QDeclarativeBorderImage::Round;
 
-    qWarning() << "Unknown tile rule specified. Using Stretch";
+    qWarning("QDeclarativeGridScaledImage: Invalid tile rule specified. Using Stretch.");
     return QDeclarativeBorderImage::Stretch;
 }
 

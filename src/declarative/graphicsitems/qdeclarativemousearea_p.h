@@ -50,7 +50,7 @@ QT_BEGIN_NAMESPACE
 
 QT_MODULE(Declarative)
 
-class Q_DECLARATIVE_EXPORT QDeclarativeDrag : public QObject
+class Q_AUTOTEST_EXPORT QDeclarativeDrag : public QObject
 {
     Q_OBJECT
 
@@ -61,6 +61,8 @@ class Q_DECLARATIVE_EXPORT QDeclarativeDrag : public QObject
     Q_PROPERTY(qreal maximumX READ xmax WRITE setXmax NOTIFY maximumXChanged)
     Q_PROPERTY(qreal minimumY READ ymin WRITE setYmin NOTIFY minimumYChanged)
     Q_PROPERTY(qreal maximumY READ ymax WRITE setYmax NOTIFY maximumYChanged)
+    Q_PROPERTY(bool active READ active NOTIFY activeChanged)
+    Q_PROPERTY(bool filterChildren READ filterChildren WRITE setFilterChildren NOTIFY filterChildrenChanged)
     //### consider drag and drop
 
 public:
@@ -84,6 +86,12 @@ public:
     qreal ymax() const;
     void setYmax(qreal);
 
+    bool active() const;
+    void setActive(bool);
+
+    bool filterChildren() const;
+    void setFilterChildren(bool);
+
 Q_SIGNALS:
     void targetChanged();
     void axisChanged();
@@ -91,6 +99,8 @@ Q_SIGNALS:
     void maximumXChanged();
     void minimumYChanged();
     void maximumYChanged();
+    void activeChanged();
+    void filterChildrenChanged();
 
 private:
     QGraphicsObject *_target;
@@ -99,23 +109,25 @@ private:
     qreal _xmax;
     qreal _ymin;
     qreal _ymax;
+    bool _active : 1;
+    bool _filterChildren: 1;
     Q_DISABLE_COPY(QDeclarativeDrag)
 };
 
 class QDeclarativeMouseEvent;
 class QDeclarativeMouseAreaPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeMouseArea : public QDeclarativeItem
+class Q_AUTOTEST_EXPORT QDeclarativeMouseArea : public QDeclarativeItem
 {
     Q_OBJECT
 
-    Q_PROPERTY(qreal mouseX READ mouseX NOTIFY positionChanged)
-    Q_PROPERTY(qreal mouseY READ mouseY NOTIFY positionChanged)
+    Q_PROPERTY(qreal mouseX READ mouseX NOTIFY mousePositionChanged)
+    Q_PROPERTY(qreal mouseY READ mouseY NOTIFY mousePositionChanged)
     Q_PROPERTY(bool containsMouse READ hovered NOTIFY hoveredChanged)
     Q_PROPERTY(bool pressed READ pressed NOTIFY pressedChanged)
     Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(Qt::MouseButtons pressedButtons READ pressedButtons NOTIFY pressedChanged)
     Q_PROPERTY(Qt::MouseButtons acceptedButtons READ acceptedButtons WRITE setAcceptedButtons NOTIFY acceptedButtonsChanged)
-    Q_PROPERTY(bool hoverEnabled READ acceptHoverEvents WRITE setAcceptHoverEvents)
+    Q_PROPERTY(bool hoverEnabled READ hoverEnabled WRITE setHoverEnabled NOTIFY hoverEnabledChanged)
     Q_PROPERTY(QDeclarativeDrag *drag READ drag CONSTANT) //### add flicking to QDeclarativeDrag or add a QDeclarativeFlick ???
 
 public:
@@ -136,6 +148,9 @@ public:
     Qt::MouseButtons acceptedButtons() const;
     void setAcceptedButtons(Qt::MouseButtons buttons);
 
+    bool hoverEnabled() const;
+    void setHoverEnabled(bool h);
+
     QDeclarativeDrag *drag();
 
 Q_SIGNALS:
@@ -143,7 +158,9 @@ Q_SIGNALS:
     void pressedChanged();
     void enabledChanged();
     void acceptedButtonsChanged();
+    void hoverEnabledChanged();
     void positionChanged(QDeclarativeMouseEvent *mouse);
+    void mousePositionChanged(QDeclarativeMouseEvent *mouse);
 
     void pressed(QDeclarativeMouseEvent *mouse);
     void pressAndHold(QDeclarativeMouseEvent *mouse);
@@ -152,6 +169,7 @@ Q_SIGNALS:
     void doubleClicked(QDeclarativeMouseEvent *mouse);
     void entered();
     void exited();
+    void canceled();
 
 protected:
     void setHovered(bool);
@@ -165,7 +183,13 @@ protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event);
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
     bool sceneEvent(QEvent *);
+    bool sendMouseEvent(QGraphicsSceneMouseEvent *event);
+    bool sceneEventFilter(QGraphicsItem *i, QEvent *e);
     void timerEvent(QTimerEvent *event);
+
+    virtual void geometryChanged(const QRectF &newGeometry,
+                                 const QRectF &oldGeometry);
+    virtual QVariant itemChange(GraphicsItemChange change, const QVariant& value);
 
 private:
     void handlePress();

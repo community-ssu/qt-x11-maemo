@@ -573,9 +573,9 @@ void QGL2PaintEngineExPrivate::resetGLState()
     glStencilMask(0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     glStencilFunc(GL_ALWAYS, 0, 0xff);
-    glDisableVertexAttribArray(QT_TEXTURE_COORDS_ATTR);
-    glDisableVertexAttribArray(QT_VERTEX_COORDS_ATTR);
-    glDisableVertexAttribArray(QT_OPACITY_ATTR);
+    ctx->d_func()->setVertexAttribArrayEnabled(QT_TEXTURE_COORDS_ATTR, false);
+    ctx->d_func()->setVertexAttribArrayEnabled(QT_VERTEX_COORDS_ATTR, false);
+    ctx->d_func()->setVertexAttribArrayEnabled(QT_OPACITY_ATTR, false);
 #ifndef QT_OPENGL_ES_2
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f); // color may have been changed by glVertexAttrib()
 #endif
@@ -1128,7 +1128,7 @@ void QGL2PaintEngineEx::fill(const QVectorPath &path, const QBrush &brush)
     d->fill(path);
 }
 
-extern bool qt_scaleForTransform(const QTransform &transform, qreal *scale); // qtransform.cpp
+extern Q_GUI_EXPORT bool qt_scaleForTransform(const QTransform &transform, qreal *scale); // qtransform.cpp
 
 
 void QGL2PaintEngineEx::stroke(const QVectorPath &path, const QPen &pen)
@@ -1333,13 +1333,24 @@ void QGL2PaintEngineEx::drawStaticTextItem(QStaticTextItem *textItem)
     QFontEngineGlyphCache::Type glyphType = textItem->fontEngine->glyphFormat >= 0
                                             ? QFontEngineGlyphCache::Type(textItem->fontEngine->glyphFormat)
                                             : d->glyphCacheType;
+    if (glyphType == QFontEngineGlyphCache::Raster_RGBMask) {
+        if (d->device->alphaRequested() || state()->matrix.type() > QTransform::TxTranslate
+            || (state()->composition_mode != QPainter::CompositionMode_Source
+            && state()->composition_mode != QPainter::CompositionMode_SourceOver))
+        {
+            glyphType = QFontEngineGlyphCache::Raster_A8;
+        }
+    }
 
-    d->drawCachedGlyphs(glyphType, textItem, true);
+    d->drawCachedGlyphs(glyphType, textItem);
 }
 
-void QGL2PaintEngineEx::drawTexture(const QRectF &dest, GLuint textureId, const QSize &size, const QRectF &src)
+bool QGL2PaintEngineEx::drawTexture(const QRectF &dest, GLuint textureId, const QSize &size, const QRectF &src)
 {
     Q_D(QGL2PaintEngineEx);
+    if (!d->shaderManager)
+        return false;
+
     ensureActive();
     d->transferMode(ImageDrawingMode);
 
@@ -1354,6 +1365,7 @@ void QGL2PaintEngineEx::drawTexture(const QRectF &dest, GLuint textureId, const 
     d->updateTextureFilter(GL_TEXTURE_2D, GL_CLAMP_TO_EDGE,
                            state()->renderHints & QPainter::SmoothPixmapTransform, textureId);
     d->drawTexture(dest, srcRect, size, false);
+    return true;
 }
 
 void QGL2PaintEngineEx::drawTextItem(const QPointF &p, const QTextItem &textItem)
@@ -1397,14 +1409,14 @@ void QGL2PaintEngineEx::drawTextItem(const QPointF &p, const QTextItem &textItem
 
         {
             QStaticTextItem staticTextItem;
-            staticTextItem.chars = ti.chars;
+            staticTextItem.chars = const_cast<QChar *>(ti.chars);
             staticTextItem.fontEngine = ti.fontEngine;
             staticTextItem.glyphs = glyphs.data();
             staticTextItem.numChars = ti.num_chars;
             staticTextItem.numGlyphs = glyphs.size();
             staticTextItem.glyphPositions = positions.data();
 
-            d->drawCachedGlyphs(glyphType, &staticTextItem, false);
+            d->drawCachedGlyphs(glyphType, &staticTextItem);
         }
         return;
     }
@@ -1435,21 +1447,16 @@ namespace {
 // #define QT_OPENGL_DRAWCACHEDGLYPHS_INDEX_ARRAY_VBO
 
 void QGL2PaintEngineExPrivate::drawCachedGlyphs(QFontEngineGlyphCache::Type glyphType,
-                                                QStaticTextItem *staticTextItem,
-                                                bool includeMatrixInCache)
+                                                QStaticTextItem *staticTextItem)
 {
     Q_Q(QGL2PaintEngineEx);
 
     QOpenGL2PaintEngineState *s = q->state();
 
     QGLTextureGlyphCache *cache =
-        (QGLTextureGlyphCache *) staticTextItem->fontEngine->glyphCache(ctx, glyphType,
-                                                                        includeMatrixInCache
-                                                                          ? s->matrix
-                                                                          : QTransform());
+        (QGLTextureGlyphCache *) staticTextItem->fontEngine->glyphCache(ctx, glyphType, QTransform());
     if (!cache || cache->cacheType() != glyphType) {
-        cache = new QGLTextureGlyphCache(ctx, glyphType,
-                                         includeMatrixInCache ? s->matrix : QTransform());
+        cache = new QGLTextureGlyphCache(ctx, glyphType, QTransform());
         staticTextItem->fontEngine->setGlyphCache(ctx, cache);
     }
 
@@ -1557,13 +1564,6 @@ void QGL2PaintEngineExPrivate::drawCachedGlyphs(QFontEngineGlyphCache::Type glyp
     QBrush pensBrush = q->state()->pen.brush();
     setBrush(pensBrush);
 
-    // When painting a QStaticTextItem, the glyph positions are already in device coordinates,
-    // therefore we temporarily set an identity matrix on the painter for the draw call to
-    // avoid transforming the positions twice.
-    QTransform old = s->matrix;
-    if (includeMatrixInCache)
-        s->matrix = QTransform();
-
     if (glyphType == QFontEngineGlyphCache::Raster_RGBMask) {
 
         // Subpixel antialiasing without gamma correction
@@ -1660,9 +1660,6 @@ void QGL2PaintEngineExPrivate::drawCachedGlyphs(QFontEngineGlyphCache::Type glyp
 #else
     glDrawElements(GL_TRIANGLE_STRIP, 6 * staticTextItem->numGlyphs, GL_UNSIGNED_SHORT, elementIndices.data());
 #endif
-
-    if (includeMatrixInCache)
-        s->matrix = old;
 }
 
 void QGL2PaintEngineEx::drawPixmapFragments(const QPainter::PixmapFragment *fragments, int fragmentCount, const QPixmap &pixmap,
@@ -1806,27 +1803,6 @@ bool QGL2PaintEngineEx::begin(QPaintDevice *pdev)
 
     d->dirtyStencilRegion = QRect(0, 0, d->width, d->height);
     d->stencilClean = true;
-
-    switch (pdev->devType()) {
-    case QInternal::Pixmap:
-        d->deviceHasAlpha = static_cast<QPixmap *>(pdev)->hasAlphaChannel();
-        break;
-    case QInternal::FramebufferObject:
-        {
-            GLenum f = static_cast<QGLFramebufferObject *>(pdev)->format().internalTextureFormat();
-#ifndef QT_OPENGL_ES
-            d->deviceHasAlpha = (f != GL_RGB && f != GL_RGB5 && f != GL_RGB8);
-#else
-            d->deviceHasAlpha = (f == GL_RGBA);
-#endif
-        }
-        break;
-    default:
-        // widget, pbuffer
-        d->deviceHasAlpha = d->ctx->d_func()->reqFormat.alpha();
-        break;
-    }
-
 
     // Calling begin paint should make the correct context current. So, any
     // code which calls into GL or otherwise needs a current context *must*

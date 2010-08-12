@@ -9,6 +9,7 @@ SOURCES += \
     $$PWD/qdeclarativeproperty.cpp \
     $$PWD/qdeclarativecomponent.cpp \
     $$PWD/qdeclarativecontext.cpp \
+    $$PWD/qdeclarativeinclude.cpp \
     $$PWD/qdeclarativecustomparser.cpp \
     $$PWD/qdeclarativepropertyvaluesource.cpp \
     $$PWD/qdeclarativepropertyvalueinterceptor.cpp \
@@ -40,6 +41,7 @@ SOURCES += \
     $$PWD/qdeclarativepropertycache.cpp \
     $$PWD/qdeclarativenotifier.cpp \
     $$PWD/qdeclarativeintegercache.cpp \
+    $$PWD/qdeclarativetypenotavailable.cpp \
     $$PWD/qdeclarativetypenamecache.cpp \
     $$PWD/qdeclarativescriptstring.cpp \
     $$PWD/qdeclarativeobjectscriptclass.cpp \
@@ -53,6 +55,7 @@ SOURCES += \
     $$PWD/qdeclarativenetworkaccessmanagerfactory.cpp \
     $$PWD/qdeclarativedirparser.cpp \
     $$PWD/qdeclarativeextensionplugin.cpp \
+    $$PWD/qdeclarativeimport.cpp \
     $$PWD/qdeclarativelist.cpp 
 
 HEADERS += \
@@ -90,6 +93,7 @@ HEADERS += \
     $$PWD/qdeclarativeinfo.h \
     $$PWD/qdeclarativeproperty_p.h \
     $$PWD/qdeclarativecontext_p.h \
+    $$PWD/qdeclarativeinclude_p.h \
     $$PWD/qdeclarativecompositetypedata_p.h \
     $$PWD/qdeclarativecompositetypemanager_p.h \
     $$PWD/qdeclarativelist.h \
@@ -112,6 +116,7 @@ HEADERS += \
     $$PWD/qdeclarativepropertycache_p.h \
     $$PWD/qdeclarativenotifier_p.h \
     $$PWD/qdeclarativeintegercache_p.h \
+    $$PWD/qdeclarativetypenotavailable_p.h \
     $$PWD/qdeclarativetypenamecache_p.h \
     $$PWD/qdeclarativescriptstring.h \
     $$PWD/qdeclarativeobjectscriptclass_p.h \
@@ -126,6 +131,7 @@ HEADERS += \
     $$PWD/qdeclarativenetworkaccessmanagerfactory.h \
     $$PWD/qdeclarativedirparser_p.h \
     $$PWD/qdeclarativeextensioninterface.h \
+    $$PWD/qdeclarativeimport_p.h \
     $$PWD/qdeclarativeextensionplugin.h
 
 QT += sql

@@ -57,10 +57,14 @@ public:
     QDeclarativeFlipablePrivate() : current(QDeclarativeFlipable::Front), front(0), back(0) {}
 
     void updateSceneTransformFromParent();
+    void setBackTransform();
 
     QDeclarativeFlipable::Side current;
     QDeclarativeGuard<QGraphicsObject> front;
     QDeclarativeGuard<QGraphicsObject> back;
+
+    bool wantBackXFlipped;
+    bool wantBackYFlipped;
 };
 
 /*!
@@ -70,7 +74,7 @@ public:
     \inherits Item
 
     Flipable is an item that can be visibly "flipped" between its front and
-    back sides. It is used together with Rotation and State/Transition to
+    back sides. It is used together with \l Rotation and \l {State}/\l {Transition} to
     produce a flipping effect.
 
     Here is a Flipable that flips whenever it is clicked:
@@ -79,18 +83,18 @@ public:
 
     \image flipable.gif
 
-    The Rotation element is used to specify the angle and axis of the flip,
-    and the State defines the changes in angle which produce the flipping
-    effect. Finally, the Transition creates the animation that changes the
+    The \l Rotation element is used to specify the angle and axis of the flip,
+    and the \l State defines the changes in angle which produce the flipping
+    effect. Finally, the \l Transition creates the animation that changes the
     angle over one second.
+    
+    \sa {declarative/ui-components/flipable}{Flipable example}
 */
 
 /*!
     \internal
     \class QDeclarativeFlipable
     \brief The Flipable item provides a surface that can be flipped.
-
-    \ingroup group_widgets
 
     Flipable is an item that can be visibly "flipped" between its front and
     back sides.
@@ -148,13 +152,24 @@ void QDeclarativeFlipable::setBack(QGraphicsObject *back)
     d->back->setParentItem(this);
     if (Front == d->current)
         d->back->setOpacity(0.);
+    connect(back, SIGNAL(widthChanged()),
+            this, SLOT(retransformBack()));
+    connect(back, SIGNAL(heightChanged()),
+            this, SLOT(retransformBack()));
+}
+
+void QDeclarativeFlipable::retransformBack()
+{
+    Q_D(QDeclarativeFlipable);
+    if (d->current == QDeclarativeFlipable::Back && d->back)
+        d->setBackTransform();
 }
 
 /*!
   \qmlproperty enumeration Flipable::side
 
   The side of the Flippable currently visible. Possible values are \c
-  Front and \c Back.
+  Flippable.Front and \c Flippable.Back.
 */
 QDeclarativeFlipable::Side QDeclarativeFlipable::side() const
 {
@@ -177,39 +192,52 @@ void QDeclarativeFlipablePrivate::updateSceneTransformFromParent()
     QPointF p2(1, 0);
     QPointF p3(1, 1);
 
-    p1 = sceneTransform.map(p1);
-    p2 = sceneTransform.map(p2);
-    p3 = sceneTransform.map(p3);
+    QPointF scenep1 = sceneTransform.map(p1);
+    QPointF scenep2 = sceneTransform.map(p2);
+    QPointF scenep3 = sceneTransform.map(p3);
+    p1 = q->mapToParent(p1);
+    p2 = q->mapToParent(p2);
+    p3 = q->mapToParent(p3);
 
-    qreal cross = (p1.x() - p2.x()) * (p3.y() - p2.y()) -
-                  (p1.y() - p2.y()) * (p3.x() - p2.x());
+    qreal cross = (scenep1.x() - scenep2.x()) * (scenep3.y() - scenep2.y()) -
+                  (scenep1.y() - scenep2.y()) * (scenep3.x() - scenep2.x());
+
+    wantBackYFlipped = p1.x() >= p2.x();
+    wantBackXFlipped = p2.y() >= p3.y();
 
     QDeclarativeFlipable::Side newSide;
     if (cross > 0) {
-       newSide = QDeclarativeFlipable::Back;
+        newSide = QDeclarativeFlipable::Back;
     } else {
         newSide = QDeclarativeFlipable::Front;
     }
 
     if (newSide != current) {
         current = newSide;
-        if (current == QDeclarativeFlipable::Back && back) {
-            QTransform mat;
-            QGraphicsItemPrivate *dBack = QGraphicsItemPrivate::get(back);
-            mat.translate(dBack->width()/2,dBack->height()/2);
-            if (dBack->width() && p1.x() >= p2.x())
-                mat.rotate(180, Qt::YAxis);
-            if (dBack->height() && p2.y() >= p3.y())
-                mat.rotate(180, Qt::XAxis);
-            mat.translate(-dBack->width()/2,-dBack->height()/2);
-            back->setTransform(mat);
-        }
+        if (current == QDeclarativeFlipable::Back && back)
+            setBackTransform();
         if (front)
             front->setOpacity((current==QDeclarativeFlipable::Front)?1.:0.);
         if (back)
             back->setOpacity((current==QDeclarativeFlipable::Back)?1.:0.);
         emit q->sideChanged();
     }
+}
+
+/* Depends on the width/height of the back item, and so needs reevaulating
+   if those change.
+*/
+void QDeclarativeFlipablePrivate::setBackTransform()
+{
+    QTransform mat;
+    QGraphicsItemPrivate *dBack = QGraphicsItemPrivate::get(back);
+    mat.translate(dBack->width()/2,dBack->height()/2);
+    if (dBack->width() && wantBackYFlipped)
+        mat.rotate(180, Qt::YAxis);
+    if (dBack->height() && wantBackXFlipped)
+        mat.rotate(180, Qt::XAxis);
+    mat.translate(-dBack->width()/2,-dBack->height()/2);
+    back->setTransform(mat);
 }
 
 QT_END_NAMESPACE

@@ -67,7 +67,8 @@ class QDeclarativeMouseAreaPrivate : public QDeclarativeItemPrivate
 
 public:
     QDeclarativeMouseAreaPrivate()
-      : absorb(true), hovered(false), pressed(false), longPress(false), drag(0)
+      : absorb(true), hovered(false), pressed(false), longPress(false),
+      moved(false), stealMouse(false), drag(0)
     {
     }
 
@@ -77,18 +78,20 @@ public:
     {
         Q_Q(QDeclarativeMouseArea);
         q->setAcceptedMouseButtons(Qt::LeftButton);
+        q->setFiltersChildEvents(true);
     }
 
     void saveEvent(QGraphicsSceneMouseEvent *event) {
         lastPos = event->pos();
+        lastScenePos = event->scenePos();
         lastButton = event->button();
         lastButtons = event->buttons();
         lastModifiers = event->modifiers();
     }
 
-    bool isConnected(const char *signal) {
+    bool isPressAndHoldConnected() {
         Q_Q(QDeclarativeMouseArea);
-        int idx = QObjectPrivate::get(q)->signalIndex(signal);
+        static int idx = QObjectPrivate::get(q)->signalIndex("pressAndHold(QDeclarativeMouseEvent*)");
         return QObjectPrivate::get(q)->isSignalConnected(idx);
     }
 
@@ -99,12 +102,13 @@ public:
     bool moved : 1;
     bool dragX : 1;
     bool dragY : 1;
-    bool dragged : 1;
+    bool stealMouse : 1;
     QDeclarativeDrag *drag;
     QPointF startScene;
     qreal startX;
     qreal startY;
     QPointF lastPos;
+    QDeclarativeNullableValue<QPointF> lastScenePos;
     Qt::MouseButton lastButton;
     Qt::MouseButtons lastButtons;
     Qt::KeyboardModifiers lastModifiers;

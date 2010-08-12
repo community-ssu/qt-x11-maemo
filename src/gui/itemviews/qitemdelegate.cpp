@@ -667,7 +667,6 @@ void QItemDelegate::drawDisplay(QPainter *painter, const QStyleOptionViewItem &o
 {
     Q_D(const QItemDelegate);
 
-    QPen pen = painter->pen();
     QPalette::ColorGroup cg = option.state & QStyle::State_Enabled
                               ? QPalette::Normal : QPalette::Disabled;
     if (cg == QPalette::Normal && !(option.state & QStyle::State_Active))
@@ -1227,6 +1226,13 @@ bool QItemDelegate::eventFilter(QObject *object, QEvent *event)
             editor->parentWidget()->setFocus();
         return true;
     } else if (event->type() == QEvent::FocusOut || (event->type() == QEvent::Hide && editor->isWindow())) {
+#ifdef Q_WS_MAEMO_5
+        //We have to filter the event when the softkeyboard opens.
+        QFocusEvent *fe = static_cast<QFocusEvent*>(event);
+        if (fe->reason() == Qt::ActiveWindowFocusReason)
+            return true;
+#endif
+
         //the Hide event will take care of he editors that are in fact complete dialogs
         if (!editor->isActiveWindow() || (QApplication::focusWidget() != editor)) {
             QWidget *w = QApplication::focusWidget();

@@ -103,10 +103,11 @@ private:
     friend class QDeclarativeContextData;
     QDeclarativeContext(QDeclarativeContextData *);
     QDeclarativeContext(QDeclarativeEngine *, bool);
+    Q_DISABLE_COPY(QDeclarativeContext)
 };
 QT_END_NAMESPACE
 
-Q_DECLARE_METATYPE(QList<QObject*>);
+Q_DECLARE_METATYPE(QList<QObject*>)
 
 QT_END_HEADER
 

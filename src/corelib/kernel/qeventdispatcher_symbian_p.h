@@ -62,6 +62,7 @@
 #include <qmutex.h>
 #include <qwaitcondition.h>
 #include <qsocketnotifier.h>
+#include <qdatetime.h>
 
 #include <e32base.h>
 
@@ -220,6 +221,7 @@ public: // from CActiveScheduler
 
 class Q_CORE_EXPORT QEventDispatcherSymbian : public QAbstractEventDispatcher
 {
+    Q_OBJECT
     Q_DECLARE_PRIVATE(QAbstractEventDispatcher)
 
 public:
@@ -259,8 +261,9 @@ private:
     bool sendPostedEvents();
     bool sendDeferredSocketEvents();
 
+    QSelectThread& selectThread();
 private:
-    QSelectThread m_selectThread;
+    QSelectThread *m_selectThread;
 
     CQtActiveScheduler *m_activeScheduler;
 
@@ -279,7 +282,9 @@ private:
 
     QList<QActiveObject *> m_deferredActiveObjects;
 
-    RProcess m_processHandle;
+    int m_delay;
+    int m_avgEventTime;
+    QTime m_lastIdleRequestTimer;
 };
 
 #ifdef QT_DEBUG

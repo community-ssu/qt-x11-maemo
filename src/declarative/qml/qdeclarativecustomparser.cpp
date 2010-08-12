@@ -89,6 +89,8 @@ using namespace QDeclarativeParser;
     by \a data, which is a block of data previously returned by a call
     to compile().
 
+    Errors should be reported using qmlInfo(object).
+
     The \a object will be an instance of the TypeClass specified by QML_REGISTER_CUSTOM_TYPE.
 */
 
@@ -235,6 +237,24 @@ void QDeclarativeCustomParser::clearErrors()
 }
 
 /*!
+    Reports an error with the given \a description.
+
+    This can only be used during the compile() step. For errors during setCustomData(), use qmlInfo().
+
+    An error is generated referring to the position of the element in the source file.
+*/
+void QDeclarativeCustomParser::error(const QString& description)
+{
+    Q_ASSERT(object);
+    QDeclarativeError error;
+    QString exceptionDescription;
+    error.setLine(object->location.start.line);
+    error.setColumn(object->location.start.column);
+    error.setDescription(description);
+    exceptions << error;
+}
+
+/*!
     Reports an error in parsing \a prop, with the given \a description.
 
     An error is generated referring to the position of \a node in the source file.
@@ -274,5 +294,15 @@ int QDeclarativeCustomParser::evaluateEnum(const QByteArray& script) const
 {
     return compiler->evaluateEnum(script);
 }
+
+/*!
+    Resolves \a name to a type, or 0 if it is not a type. This can be used
+    to type-check object nodes.
+*/
+const QMetaObject *QDeclarativeCustomParser::resolveType(const QByteArray& name) const
+{
+    return compiler->resolveType(name);
+}
+
 
 QT_END_NAMESPACE

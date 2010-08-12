@@ -110,7 +110,7 @@ void QDeclarativeWatchProxy::notifyValueChanged()
 {
     QVariant v;
     if (m_expr)
-        v = m_expr->value();
+        v = m_expr->evaluate();
     else
         v = m_property.read(m_object);
 
@@ -153,7 +153,7 @@ bool QDeclarativeWatcher::addWatch(int id, quint32 objectId, const QString &expr
     QObject *object = QDeclarativeDebugService::objectForId(objectId);
     QDeclarativeContext *context = qmlContext(object);
     if (context) {
-        QDeclarativeExpression *exprObj = new QDeclarativeExpression(context, expr, object);
+        QDeclarativeExpression *exprObj = new QDeclarativeExpression(context, object, expr);
         exprObj->setNotifyOnValueChanged(true);
         QDeclarativeWatchProxy *proxy = new QDeclarativeWatchProxy(id, exprObj, objectId, this);
         exprObj->setParent(proxy);

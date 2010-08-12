@@ -57,6 +57,7 @@
 #include <QPointF>
 #include <QSizeF>
 #include <QRectF>
+#include <QStringBuilder>
 #include <QtDebug>
 
 QT_BEGIN_NAMESPACE
@@ -89,8 +90,6 @@ QDeclarativeParser::Object::~Object()
         prop.first->release();
     foreach(const DynamicProperty &prop, dynamicProperties)
         if (prop.defaultValue) prop.defaultValue->release();
-    foreach(Object *obj, scriptBlockObjects)
-        obj->release();
 }
 
 void Object::setBindingBit(int b)
@@ -312,6 +311,49 @@ double QDeclarativeParser::Variant::asNumber() const
     return d;
 }
 
+//reverse of Lexer::singleEscape()
+QString escapedString(const QString &string)
+{
+    QString tmp = QLatin1String("\"");
+    for (int i = 0; i < string.length(); ++i) {
+        const QChar &c = string.at(i);
+        switch(c.unicode()) {
+        case 0x08:
+            tmp += QLatin1String("\\b");
+            break;
+        case 0x09:
+            tmp += QLatin1String("\\t");
+            break;
+        case 0x0A:
+            tmp += QLatin1String("\\n");
+            break;
+        case 0x0B:
+            tmp += QLatin1String("\\v");
+            break;
+        case 0x0C:
+            tmp += QLatin1String("\\f");
+            break;
+        case 0x0D:
+            tmp += QLatin1String("\\r");
+            break;
+        case 0x22:
+            tmp += QLatin1String("\\\"");
+            break;
+        case 0x27:
+            tmp += QLatin1String("\\\'");
+            break;
+        case 0x5C:
+            tmp += QLatin1String("\\\\");
+            break;
+        default:
+            tmp += c;
+            break;
+        }
+    }
+    tmp += QLatin1Char('\"');
+    return tmp;
+}
+
 QString QDeclarativeParser::Variant::asScript() const
 {
     switch(type()) { 
@@ -326,6 +368,7 @@ QString QDeclarativeParser::Variant::asScript() const
         else
             return s;
     case String:
+        return escapedString(s);
     case Script:
         return s;
     }

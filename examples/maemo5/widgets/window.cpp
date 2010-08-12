@@ -103,10 +103,10 @@ Window::Window(QWidget *parent)
     m_fullscreen->setCheckable(true);
     QActionGroup *orientation = new QActionGroup(this);
     orientation->setExclusive(true);
-    m_portrait = new QAction(QIcon::fromTheme("general_portrait", QIcon(QLatin1String(":/images/portrait"))), QString(), orientation);
+    m_portrait = new QAction(QIcon::fromTheme("general_portrait", QIcon(QLatin1String(":/images/portrait.png"))), QString(), orientation);
     m_portrait->setCheckable(true);
     m_portrait->setChecked(false);
-    m_landscape = new QAction(QIcon::fromTheme("general_landscape", QIcon(QLatin1String(":/images/landscape"))), QString(), orientation);
+    m_landscape = new QAction(QIcon::fromTheme("general_landscape", QIcon(QLatin1String(":/images/landscape.png"))), QString(), orientation);
     m_landscape->setCheckable(true);
     m_landscape->setChecked(false);
     m_auto = new QAction(tr("Auto"), orientation);
@@ -203,9 +203,11 @@ MainWindow::MainWindow()
 
     QPushButton *pb;
     pb = new QPushButton(tr("Show various Widgets"));
+    pb->setFixedHeight(160);
     lay->addWidget(pb, 0, 0);
     connect(pb, SIGNAL(clicked()), this, SLOT(showWidgets1()));
     pb = new QPushButton(tr("Show an editable List"));
+    pb->setFixedHeight(160);
     lay->addWidget(pb, 0, 0);
     connect(pb, SIGNAL(clicked()), this, SLOT(showWidgets2()));
 

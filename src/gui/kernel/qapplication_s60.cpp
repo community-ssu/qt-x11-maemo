@@ -62,17 +62,24 @@
 #include "qpaintengine.h"
 #include "private/qmenubar_p.h"
 #include "private/qsoftkeymanager_p.h"
+#ifdef QT_GRAPHICSSYSTEM_RUNTIME
+#include "private/qgraphicssystem_runtime_p.h"
+#endif
 
 #include "apgwgnam.h" // For CApaWindowGroupName
 #include <mdaaudiotoneplayer.h>     // For CMdaAudioToneUtility
 
-#if defined(Q_WS_S60)
-# if !defined(QT_NO_IM)
-#  include "qinputcontext.h"
-#  include <private/qcoefepinputcontext_p.h>
-# endif
+#if defined(Q_OS_SYMBIAN)
 # include <private/qs60mainapplication_p.h>
 # include <centralrepository.h>
+# include "qs60mainappui.h"
+# include "qinputcontext.h"
+#endif
+
+#if defined(Q_WS_S60)
+# if !defined(QT_NO_IM)
+#  include <private/qcoefepinputcontext_p.h>
+# endif
 #endif
 
 #include "private/qstylesheetstyle_p.h"
@@ -81,6 +88,10 @@
 #include <hal_data.h>
 
 QT_BEGIN_NAMESPACE
+
+// Goom Events through Window Server
+static const int KGoomMemoryLowEvent = 0x10282DBF;
+static const int KGoomMemoryGoodEvent = 0x20026790;
 
 #if defined(QT_DEBUG)
 static bool        appNoGrab        = false;        // Grabbing enabled
@@ -363,6 +374,7 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
 
         SetFocusing(true);
         m_longTapDetector = QLongTapTimer::NewL(this);
+        m_doubleClickTimer.invalidate();
 
         DrawableWindow()->SetPointerGrab(ETrue);
     }
@@ -370,6 +382,10 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
 
 QSymbianControl::~QSymbianControl()
 {
+    // Ensure backing store is deleted before the top-level
+    // window is destroyed
+    qt_widget_private(qwidget)->topData()->backingStore.destroy();
+
     if (S60->curWin == this)
         S60->curWin = 0;
     if (!QApplicationPrivate::is_app_closing) {
@@ -406,25 +422,44 @@ void QSymbianControl::HandleLongTapEventL( const TPoint& aPenEventLocation, cons
 void QSymbianControl::translateAdvancedPointerEvent(const TAdvancedPointerEvent *event)
 {
     QApplicationPrivate *d = QApplicationPrivate::instance();
+    QPointF screenPos = qwidget->mapToGlobal(QPoint(event->iPosition.iX, event->iPosition.iY));
+    qreal pressure;
+    if(d->pressureSupported
+        && event->Pressure() > 0) //workaround for misconfigured HAL
+        pressure = event->Pressure() / qreal(d->maxTouchPressure);
+    else
+        pressure = qreal(1.0);
+    processTouchEvent(event->PointerNumber(), event->iType, screenPos, pressure);
+}
+#endif
 
+void QSymbianControl::processTouchEvent(int pointerNumber, TPointerEvent::TType type, QPointF screenPos, qreal pressure)
+{
     QRect screenGeometry = qApp->desktop()->screenGeometry(qwidget);
 
-    while (d->appAllTouchPoints.count() <= event->PointerNumber())
-        d->appAllTouchPoints.append(QTouchEvent::TouchPoint(d->appAllTouchPoints.count()));
+    QApplicationPrivate *d = QApplicationPrivate::instance();
+
+    QList<QTouchEvent::TouchPoint> points = d->appAllTouchPoints;
+    while (points.count() <= pointerNumber)
+        points.append(QTouchEvent::TouchPoint(points.count()));
 
     Qt::TouchPointStates allStates = 0;
-    for (int i = 0; i < d->appAllTouchPoints.count(); ++i) {
-        QTouchEvent::TouchPoint &touchPoint = d->appAllTouchPoints[i];
+    for (int i = 0; i < points.count(); ++i) {
+        QTouchEvent::TouchPoint &touchPoint = points[i];
 
-        if (touchPoint.id() == event->PointerNumber()) {
+        if (touchPoint.id() == pointerNumber) {
             Qt::TouchPointStates state;
-            switch (event->iType) {
+            switch (type) {
             case TPointerEvent::EButton1Down:
+#ifdef QT_SYMBIAN_SUPPORTS_ADVANCED_POINTER
             case TPointerEvent::EEnterHighPressure:
+#endif
                 state = Qt::TouchPointPressed;
                 break;
             case TPointerEvent::EButton1Up:
+#ifdef QT_SYMBIAN_SUPPORTS_ADVANCED_POINTER
             case TPointerEvent::EExitCloseProximity:
+#endif
                 state = Qt::TouchPointReleased;
                 break;
             case TPointerEvent::EDrag:
@@ -435,16 +470,15 @@ void QSymbianControl::translateAdvancedPointerEvent(const TAdvancedPointerEvent 
                 state = Qt::TouchPointStationary;
                 break;
             }
-            if (event->PointerNumber() == 0)
+            if (pointerNumber == 0)
                 state |= Qt::TouchPointPrimary;
             touchPoint.setState(state);
 
-            QPointF screenPos = QPointF(event->iPosition.iX, event->iPosition.iY);
             touchPoint.setScreenPos(screenPos);
             touchPoint.setNormalizedPos(QPointF(screenPos.x() / screenGeometry.width(),
                                                 screenPos.y() / screenGeometry.height()));
 
-            touchPoint.setPressure(event->Pressure() / qreal(d->maxTouchPressure));
+            touchPoint.setPressure(pressure);
         } else if (touchPoint.state() != Qt::TouchPointReleased) {
             // all other active touch points should be marked as stationary
             touchPoint.setState(Qt::TouchPointStationary);
@@ -456,13 +490,14 @@ void QSymbianControl::translateAdvancedPointerEvent(const TAdvancedPointerEvent 
     if ((allStates & Qt::TouchPointStateMask) == Qt::TouchPointReleased) {
         // all touch points released
         d->appAllTouchPoints.clear();
+    } else {
+        d->appAllTouchPoints = points;
     }
 
     QApplicationPrivate::translateRawTouchEvent(qwidget,
                                                 QTouchEvent::TouchScreen,
-                                                d->appAllTouchPoints);
+                                                points);
 }
-#endif
 
 void QSymbianControl::HandlePointerEventL(const TPointerEvent& pEvent)
 {
@@ -536,8 +571,23 @@ void QSymbianControl::HandlePointerEvent(const TPointerEvent& pEvent)
         qt_symbian_move_cursor_sprite();
 #endif
 
+//Generate single touch event for S60 5.0 (has touchscreen, does not have advanced pointers)
+#ifndef QT_SYMBIAN_SUPPORTS_ADVANCED_POINTER
+    if (S60->hasTouchscreen) {
+        processTouchEvent(0, pEvent.iType, QPointF(globalPos), 1.0);
+    }
+#endif
+
     sendMouseEvent(receiver, type, globalPos, button, modifiers);
 }
+
+#ifdef Q_WS_S60
+void QSymbianControl::HandleStatusPaneSizeChange()
+{
+    QS60MainAppUi *s60AppUi = static_cast<QS60MainAppUi *>(S60->appUi());
+    s60AppUi->HandleStatusPaneSizeChange();
+}
+#endif
 
 void QSymbianControl::sendMouseEvent(
         QWidget *receiver,
@@ -575,185 +625,302 @@ TKeyResponse QSymbianControl::OfferKeyEventL(const TKeyEvent& keyEvent, TEventCo
 
 TKeyResponse QSymbianControl::OfferKeyEvent(const TKeyEvent& keyEvent, TEventCode type)
 {
-    switch (type) {
-    //case EEventKeyDown: // <-- Intentionally left out. See below.
-    case EEventKeyUp:
-    case EEventKey:
-    {
-        // S60 has a confusing way of delivering key events. There are three types of
-        // events: EKeyEvent, EKeyEventDown and EKeyEventUp. When a key is pressed, the
-        // two first events are generated. When releasing the key, the last one is
-        // generated.
-        // Because S60 does not generate keysyms for EKeyEventDown and EKeyEventUp events,
-        // we need to do some special tricks to map it to the Qt way. First, we completely
-        // discard EKeyEventDown events, since they are redundant. Second, since
-        // EKeyEventUp does not give us a keysym, we need to cache the keysyms from
-        // the EKeyEvent events. This is what resolveS60ScanCode does.
+    /*
+      S60 has a confusing way of delivering key events. There are three types of
+      events: EEventKey, EEventKeyDown and EEventKeyUp. When a key is pressed,
+      EEventKeyDown is first generated, followed by EEventKey. Then, when the key is
+      released, EEventKeyUp is generated.
+      However, it is possible that only the EEventKey is generated alone, typically
+      in relation to virtual keyboards. In that case we need to take care to
+      generate both press and release events in Qt, since applications expect that.
+      We do this by having three states for each used scan code, depending on the
+      events received. See the switch below for what happens in each state
+      transition.
+    */
 
+    if (type != EEventKeyDown)
+        if (handleVirtualMouse(keyEvent, type) == EKeyWasConsumed)
+            return EKeyWasConsumed;
 
-        // ### hackish way to send Qt application to background when pressing right softkey
-        /*
-        if( keyEvent.iScanCode == EStdKeyDevice1 ) {
-            S60->window_group->SetOrdinalPosition(-1);
-            qApp->setActiveWindow(0);
-            return EKeyWasNotConsumed;
+    TKeyResponse ret = EKeyWasNotConsumed;
+#define GET_RETURN(x) (ret = ((x) == EKeyWasConsumed) ? EKeyWasConsumed : ret)
+
+    // This top level switch corresponds to the states, and the inner switches
+    // correspond to the transitions.
+    QS60Data::ScanCodeState &scanCodeState = S60->scanCodeStates[keyEvent.iScanCode];
+    switch (scanCodeState) {
+    case QS60Data::Unpressed:
+        switch (type) {
+        case EEventKeyDown:
+            scanCodeState = QS60Data::KeyDown;
+            break;
+        case EEventKey:
+            GET_RETURN(sendSymbianKeyEvent(keyEvent, QEvent::KeyPress));
+            GET_RETURN(sendSymbianKeyEvent(keyEvent, QEvent::KeyRelease));
+            break;
+        case EEventKeyUp:
+            // No action.
+            break;
         }
-        */
+        break;
+    case QS60Data::KeyDown:
+        switch (type) {
+        case EEventKeyDown:
+            // This should never happen, just stay in this state to be safe.
+            break;
+        case EEventKey:
+            GET_RETURN(sendSymbianKeyEvent(keyEvent, QEvent::KeyPress));
+            scanCodeState = QS60Data::KeyDownAndKey;
+            break;
+        case EEventKeyUp:
+            scanCodeState = QS60Data::Unpressed;
+            break;
+        }
+        break;
+    case QS60Data::KeyDownAndKey:
+        switch (type) {
+        case EEventKeyDown:
+            // This should never happen, just stay in this state to be safe.
+            break;
+        case EEventKey:
+            GET_RETURN(sendSymbianKeyEvent(keyEvent, QEvent::KeyRelease));
+            GET_RETURN(sendSymbianKeyEvent(keyEvent, QEvent::KeyPress));
+            break;
+        case EEventKeyUp:
+            GET_RETURN(sendSymbianKeyEvent(keyEvent, QEvent::KeyRelease));
+            scanCodeState = QS60Data::Unpressed;
+            break;
+        }
+        break;
+    }
+    return ret;
 
-        TUint s60Keysym = QApplicationPrivate::resolveS60ScanCode(keyEvent.iScanCode,
-                keyEvent.iCode);
-        int keyCode;
-        if (s60Keysym == EKeyNull){ //some key events have 0 in iCode, for them iScanCode should be used
-            keyCode = qt_keymapper_private()->mapS60ScanCodesToQt(keyEvent.iScanCode);
-        } else if (s60Keysym >= 0x20 && s60Keysym < ENonCharacterKeyBase) {
-            // Normal characters keys.
-            keyCode = s60Keysym;
+#undef GET_RETURN
+}
+
+TKeyResponse QSymbianControl::sendSymbianKeyEvent(const TKeyEvent &keyEvent, QEvent::Type type)
+{
+    // Because S60 does not generate keysyms for EKeyEventDown and EKeyEventUp
+    // events, we need to cache the keysyms from the EKeyEvent events. This is what
+    // resolveS60ScanCode does.
+    TUint s60Keysym = QApplicationPrivate::resolveS60ScanCode(keyEvent.iScanCode,
+            keyEvent.iCode);
+    int keyCode;
+    if (s60Keysym == EKeyNull){ //some key events have 0 in iCode, for them iScanCode should be used
+        keyCode = qt_keymapper_private()->mapS60ScanCodesToQt(keyEvent.iScanCode);
+    } else if (s60Keysym >= 0x20 && s60Keysym < ENonCharacterKeyBase) {
+        // Normal characters keys.
+        keyCode = s60Keysym;
+    } else {
+        // Special S60 keys.
+        keyCode = qt_keymapper_private()->mapS60KeyToQt(s60Keysym);
+    }
+
+    Qt::KeyboardModifiers mods = mapToQtModifiers(keyEvent.iModifiers);
+    QKeyEventEx qKeyEvent(type, keyCode, mods, qt_keymapper_private()->translateKeyEvent(keyCode, mods),
+            (keyEvent.iRepeats != 0), 1, keyEvent.iScanCode, s60Keysym, keyEvent.iModifiers);
+    QWidget *widget;
+    widget = QWidget::keyboardGrabber();
+    if (!widget) {
+        if (QApplicationPrivate::popupWidgets != 0) {
+            widget = QApplication::activePopupWidget()->focusWidget();
+            if (!widget) {
+                widget = QApplication::activePopupWidget();
+            }
         } else {
-            // Special S60 keys.
-            keyCode = qt_keymapper_private()->mapS60KeyToQt(s60Keysym);
+            widget = QApplicationPrivate::focus_widget;
+            if (!widget) {
+                widget = qwidget;
+            }
         }
+    }
 
+    QEventDispatcherS60 *dispatcher;
+    // It is theoretically possible for someone to install a different event dispatcher.
+    if ((dispatcher = qobject_cast<QEventDispatcherS60 *>(widget->d_func()->threadData->eventDispatcher)) != 0) {
+        if (dispatcher->excludeUserInputEvents()) {
+            dispatcher->saveInputEvent(this, widget, new QKeyEventEx(qKeyEvent));
+            return EKeyWasConsumed;
+        }
+    }
+    return sendKeyEvent(widget, &qKeyEvent);
+}
+
+TKeyResponse QSymbianControl::handleVirtualMouse(const TKeyEvent& keyEvent,TEventCode type)
+{
 #ifndef QT_NO_CURSOR
-        if (S60->mouseInteractionEnabled && S60->virtualMouseRequired) {
-            //translate keys to pointer
-            if (keyCode >= Qt::Key_Left && keyCode <= Qt::Key_Down || keyCode == Qt::Key_Select) {
-                /*Explanation about virtualMouseAccel:
-                 Tapping an arrow key allows precise pixel positioning
-                 Holding an arrow key down, acceleration is applied to allow cursor
-                 to be quickly moved to another part of the screen by key repeats.
-                 */
-                if (S60->virtualMouseLastKey == keyCode) {
-                    S60->virtualMouseAccel *= 2;
-                    if (S60->virtualMouseAccel > S60->virtualMouseMaxAccel)
-                        S60->virtualMouseAccel = S60->virtualMouseMaxAccel;
-                }
-                else
-                    S60->virtualMouseAccel = 1;
-                S60->virtualMouseLastKey = keyCode;
-
-                QPoint pos = QCursor::pos();
-                TPointerEvent fakeEvent;
-                TInt x = pos.x();
-                TInt y = pos.y();
-                if (type == EEventKeyUp) {
-                    if (keyCode == Qt::Key_Select)
+    if (S60->mouseInteractionEnabled && S60->virtualMouseRequired) {
+        //translate keys to pointer
+        if ((keyEvent.iScanCode >= EStdKeyLeftArrow && keyEvent.iScanCode <= EStdKeyDownArrow) ||
+                (keyEvent.iScanCode >= EStdKeyDevice10 && keyEvent.iScanCode <= EStdKeyDevice13) ||
+                keyEvent.iScanCode == EStdKeyDevice3) {
+            QPoint pos = QCursor::pos();
+            TPointerEvent fakeEvent;
+            fakeEvent.iType = (TPointerEvent::TType)(-1);
+            fakeEvent.iModifiers = keyEvent.iModifiers;
+            TInt x = pos.x();
+            TInt y = pos.y();
+            if (type == EEventKeyUp) {
+                S60->virtualMouseAccelTimeout.start();
+                switch (keyEvent.iScanCode) {
+                case EStdKeyLeftArrow:
+                    S60->virtualMousePressedKeys &= ~QS60Data::Left;
+                    break;
+                case EStdKeyRightArrow:
+                    S60->virtualMousePressedKeys &= ~QS60Data::Right;
+                    break;
+                case EStdKeyUpArrow:
+                    S60->virtualMousePressedKeys &= ~QS60Data::Up;
+                    break;
+                case EStdKeyDownArrow:
+                    S60->virtualMousePressedKeys &= ~QS60Data::Down;
+                    break;
+                // diagonal keys (named aliases don't exist in 3.1 SDK)
+                case EStdKeyDevice10:
+                    S60->virtualMousePressedKeys &= ~QS60Data::LeftUp;
+                    break;
+                case EStdKeyDevice11:
+                    S60->virtualMousePressedKeys &= ~QS60Data::RightUp;
+                    break;
+                case EStdKeyDevice12:
+                    S60->virtualMousePressedKeys &= ~QS60Data::RightDown;
+                    break;
+                case EStdKeyDevice13:
+                    S60->virtualMousePressedKeys &= ~QS60Data::LeftDown;
+                    break;
+                case EStdKeyDevice3: //select
+                    if (S60->virtualMousePressedKeys & QS60Data::Select)
                         fakeEvent.iType = TPointerEvent::EButton1Up;
-                    S60->virtualMouseAccel = 1;
-                    S60->virtualMouseLastKey = 0;
-                    switch (keyCode) {
-                    case Qt::Key_Left:
-                        S60->virtualMousePressedKeys &= ~QS60Data::Left;
-                        break;
-                    case Qt::Key_Right:
-                        S60->virtualMousePressedKeys &= ~QS60Data::Right;
-                        break;
-                    case Qt::Key_Up:
-                        S60->virtualMousePressedKeys &= ~QS60Data::Up;
-                        break;
-                    case Qt::Key_Down:
-                        S60->virtualMousePressedKeys &= ~QS60Data::Down;
-                        break;
-                    case Qt::Key_Select:
-                        S60->virtualMousePressedKeys &= ~QS60Data::Select;
-                        break;
-                    }
+                    S60->virtualMousePressedKeys &= ~QS60Data::Select;
+                    break;
                 }
-                else if (type == EEventKey) {
-                    switch (keyCode) {
-                    case Qt::Key_Left:
-                        S60->virtualMousePressedKeys |= QS60Data::Left;
-                        x -= S60->virtualMouseAccel;
-                        fakeEvent.iType = TPointerEvent::EMove;
-                        break;
-                    case Qt::Key_Right:
-                        S60->virtualMousePressedKeys |= QS60Data::Right;
-                        x += S60->virtualMouseAccel;
-                        fakeEvent.iType = TPointerEvent::EMove;
-                        break;
-                    case Qt::Key_Up:
-                        S60->virtualMousePressedKeys |= QS60Data::Up;
-                        y -= S60->virtualMouseAccel;
-                        fakeEvent.iType = TPointerEvent::EMove;
-                        break;
-                    case Qt::Key_Down:
-                        S60->virtualMousePressedKeys |= QS60Data::Down;
-                        y += S60->virtualMouseAccel;
-                        fakeEvent.iType = TPointerEvent::EMove;
-                        break;
-                    case Qt::Key_Select:
-                        // Platform bug. If you start pressing several keys simultaneously (for
-                        // example for drag'n'drop), Symbian starts producing spurious up and
-                        // down messages for some keys. Therefore, make sure we have a clean slate
-                        // of pressed keys before starting a new button press.
-                        if (S60->virtualMousePressedKeys != 0) {
-                            S60->virtualMousePressedKeys |= QS60Data::Select;
-                            return EKeyWasConsumed;
+            }
+            else if (type == EEventKey) {
+                int dx = 0;
+                int dy = 0;
+                if (keyEvent.iScanCode != EStdKeyDevice3) {
+                    m_doubleClickTimer.invalidate();
+                    //reset mouse accelleration after a short time with no moves
+                    const int maxTimeBetweenKeyEventsMs = 500;
+                    if (S60->virtualMouseAccelTimeout.isValid() &&
+                            S60->virtualMouseAccelTimeout.hasExpired(maxTimeBetweenKeyEventsMs)) {
+                        S60->virtualMouseAccelDX = 0;
+                        S60->virtualMouseAccelDY = 0;
+                    }
+                    S60->virtualMouseAccelTimeout.invalidate();
+                }
+                switch (keyEvent.iScanCode) {
+                case EStdKeyLeftArrow:
+                    S60->virtualMousePressedKeys |= QS60Data::Left;
+                    dx = -1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyRightArrow:
+                    S60->virtualMousePressedKeys |= QS60Data::Right;
+                    dx = 1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyUpArrow:
+                    S60->virtualMousePressedKeys |= QS60Data::Up;
+                    dy = -1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyDownArrow:
+                    S60->virtualMousePressedKeys |= QS60Data::Down;
+                    dy = 1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyDevice10:
+                    S60->virtualMousePressedKeys |= QS60Data::LeftUp;
+                    dx = -1;
+                    dy = -1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyDevice11:
+                    S60->virtualMousePressedKeys |= QS60Data::RightUp;
+                    dx = 1;
+                    dy = -1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyDevice12:
+                    S60->virtualMousePressedKeys |= QS60Data::RightDown;
+                    dx = 1;
+                    dy = 1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyDevice13:
+                    S60->virtualMousePressedKeys |= QS60Data::LeftDown;
+                    dx = -1;
+                    dy = 1;
+                    fakeEvent.iType = TPointerEvent::EMove;
+                    break;
+                case EStdKeyDevice3:
+                    // Platform bug. If you start pressing several keys simultaneously (for
+                    // example for drag'n'drop), Symbian starts producing spurious up and
+                    // down messages for some keys. Therefore, make sure we have a clean slate
+                    // of pressed keys before starting a new button press.
+                    if (S60->virtualMousePressedKeys & QS60Data::Select) {
+                        return EKeyWasConsumed;
+                    } else {
+                        S60->virtualMousePressedKeys |= QS60Data::Select;
+                        fakeEvent.iType = TPointerEvent::EButton1Down;
+                        if (m_doubleClickTimer.isValid()
+                                && !m_doubleClickTimer.hasExpired(QApplication::doubleClickInterval())) {
+                            fakeEvent.iModifiers |= EModifierDoubleClick;
+                            m_doubleClickTimer.invalidate();
                         } else {
-                            S60->virtualMousePressedKeys |= QS60Data::Select;
-                            fakeEvent.iType = TPointerEvent::EButton1Down;
+                            m_doubleClickTimer.start();
                         }
-                        break;
                     }
+                    break;
                 }
-                //clip to screen size (window server allows a sprite hotspot to be outside the screen)
-                if (x < 0)
-                    x = 0;
-                else if (x >= S60->screenWidthInPixels)
-                    x = S60->screenWidthInPixels - 1;
-                if (y < 0)
-                    y = 0;
-                else if (y >= S60->screenHeightInPixels)
-                    y = S60->screenHeightInPixels - 1;
-                TPoint epos(x, y);
-                TPoint cpos = epos - PositionRelativeToScreen();
-                fakeEvent.iModifiers = keyEvent.iModifiers;
-                fakeEvent.iPosition = cpos;
-                fakeEvent.iParentPosition = epos;
+                if (dx) {
+                    int cdx = S60->virtualMouseAccelDX;
+                    //reset accel on change of sign, else double accel
+                    if (dx * cdx <= 0)
+                        cdx = dx;
+                    else
+                        cdx *= 4;
+                    //cap accelleration
+                    if (dx * cdx > S60->virtualMouseMaxAccel)
+                        cdx = dx * S60->virtualMouseMaxAccel;
+                    //move mouse position
+                    x += cdx;
+                    S60->virtualMouseAccelDX = cdx;
+                }
+
+                if (dy) {
+                    int cdy = S60->virtualMouseAccelDY;
+                    if (dy * cdy <= 0)
+                        cdy = dy;
+                    else
+                        cdy *= 4;
+                    if (dy * cdy > S60->virtualMouseMaxAccel)
+                        cdy = dy * S60->virtualMouseMaxAccel;
+                    y += cdy;
+                    S60->virtualMouseAccelDY = cdy;
+                }
+            }
+            //clip to screen size (window server allows a sprite hotspot to be outside the screen)
+            if (x < 0)
+                x = 0;
+            else if (x >= S60->screenWidthInPixels)
+                x = S60->screenWidthInPixels - 1;
+            if (y < 0)
+                y = 0;
+            else if (y >= S60->screenHeightInPixels)
+                y = S60->screenHeightInPixels - 1;
+            TPoint epos(x, y);
+            TPoint cpos = epos - PositionRelativeToScreen();
+            fakeEvent.iPosition = cpos;
+            fakeEvent.iParentPosition = epos;
+            if(fakeEvent.iType != -1)
                 HandlePointerEvent(fakeEvent);
-                return EKeyWasConsumed;
-            }
-            else {
-                S60->virtualMouseLastKey = keyCode;
-                S60->virtualMouseAccel = 1;
-            }
+            return EKeyWasConsumed;
         }
+    }
 #endif
 
-        Qt::KeyboardModifiers mods = mapToQtModifiers(keyEvent.iModifiers);
-        QKeyEventEx qKeyEvent(type == EEventKeyUp ? QEvent::KeyRelease : QEvent::KeyPress, keyCode,
-                mods, qt_keymapper_private()->translateKeyEvent(keyCode, mods),
-                (keyEvent.iRepeats != 0), 1, keyEvent.iScanCode, s60Keysym, keyEvent.iModifiers);
-//        WId wid = reinterpret_cast<RWindowGroup *>(keyEvent.Handle())->Child();
-//        if (!wid)
-//             Could happen if window isn't shown yet.
-//            return EKeyWasNotConsumed;
-        QWidget *widget;
-        widget = QWidget::keyboardGrabber();
-        if (!widget) {
-            if (QApplicationPrivate::popupWidgets != 0) {
-                widget = QApplication::activePopupWidget()->focusWidget();
-                if (!widget) {
-                    widget = QApplication::activePopupWidget();
-                }
-            } else {
-                widget = QApplicationPrivate::focus_widget;
-                if (!widget) {
-                    widget = qwidget;
-                }
-            }
-        }
-
-        QEventDispatcherS60 *dispatcher;
-        // It is theoretically possible for someone to install a different event dispatcher.
-        if ((dispatcher = qobject_cast<QEventDispatcherS60 *>(widget->d_func()->threadData->eventDispatcher)) != 0) {
-            if (dispatcher->excludeUserInputEvents()) {
-                dispatcher->saveInputEvent(this, widget, new QKeyEventEx(qKeyEvent));
-                return EKeyWasConsumed;
-            }
-        }
-        return sendKeyEvent(widget, &qKeyEvent);
-    }
-    }
     return EKeyWasNotConsumed;
 }
 
@@ -785,7 +952,7 @@ TKeyResponse QSymbianControl::sendKeyEvent(QWidget *widget, QKeyEvent *keyEvent)
         if (qic && qic->filterEvent(keyEvent))
             return EKeyWasConsumed;
     }
-#endif // !defined(QT_NO_IM) && defined(Q_WS_S60)
+#endif // !defined(QT_NO_IM) && defined(Q_OS_SYMBIAN)
 
     if (widget && qt_sendSpontaneousEvent(widget, keyEvent))
         if (keyEvent->isAccepted())
@@ -846,7 +1013,16 @@ void QSymbianControl::Draw(const TRect& controlRect) const
     const TRect backingStoreRect(TPoint(backingStoreBase.x(), backingStoreBase.y()), controlRect.Size());
 
     if (engine->type() == QPaintEngine::Raster) {
-        QS60WindowSurface *s60Surface = static_cast<QS60WindowSurface *>(qwidget->windowSurface());
+        QS60WindowSurface *s60Surface;
+#ifdef QT_GRAPHICSSYSTEM_RUNTIME
+        if (QApplicationPrivate::runtime_graphics_system) {
+            QRuntimeWindowSurface *rtSurface =
+                    static_cast<QRuntimeWindowSurface*>(qwidget->windowSurface());
+            s60Surface = static_cast<QS60WindowSurface *>(rtSurface->m_windowSurface);
+        } else
+#endif
+            s60Surface = static_cast<QS60WindowSurface *>(qwidget->windowSurface());
+
         CFbsBitmap *bitmap = s60Surface->symbianBitmap();
         CWindowGc &gc = SystemGc();
 
@@ -914,6 +1090,9 @@ void QSymbianControl::SizeChanged()
                 qwidget->d_func()->syncBackingStore();
             if (!slowResize && tlwExtra)
                 tlwExtra->inTopLevelResize = false;
+        } else {
+            QResizeEvent *e = new QResizeEvent(newSize, oldSize);
+            QApplication::postEvent(qwidget, e);
         }
     }
 
@@ -982,15 +1161,6 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
             const TBool isFullscreen = qwidget->windowState() & Qt::WindowFullScreen;
             const TBool cbaVisibilityHint = qwidget->windowFlags() & Qt::WindowSoftkeysVisibleHint;
             buttonGroup->MakeVisible(visible || (isFullscreen && cbaVisibilityHint));
-
-            // Responsiviness
-            CEikCba *cba = static_cast<CEikCba *>( buttonGroup->ButtonGroup() ); // downcast from MEikButtonGroup
-            TUint cbaFlags = cba->ButtonGroupFlags();
-            if(qwidget->windowFlags() & Qt::WindowSoftkeysRespondHint)
-                cbaFlags |= EAknCBAFlagRespondWhenInvisible;
-            else
-                cbaFlags &= ~EAknCBAFlagRespondWhenInvisible;
-            cba->SetButtonGroupFlags(cbaFlags);
         }
 #endif
     } else if (QApplication::activeWindow() == qwidget->window()) {
@@ -1329,6 +1499,8 @@ void qt_init(QApplicationPrivate * /* priv */, int)
     qRegisterMetaType<WId>("WId");
 }
 
+extern void qt_cleanup_symbianFontDatabaseExtras(); // qfontdatabase_s60.cpp
+
 /*****************************************************************************
   qt_cleanup() - cleans up when the application is finished
  *****************************************************************************/
@@ -1339,6 +1511,7 @@ void qt_cleanup()
         qt_S60Beep = 0;
     }
     QFontCache::cleanup(); // Has to happen now, since QFontEngineS60 has FBS handles
+    qt_cleanup_symbianFontDatabaseExtras();
 // S60 structure and window server session are freed in eventdispatcher destructor as they are needed there
 
     // It's important that this happens here, before the event dispatcher gets
@@ -1691,19 +1864,27 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
                 return 1;
             const TWsVisibilityChangedEvent *visChangedEvent = event->VisibilityChanged();
             QWidget *w = QWidgetPrivate::mapper->value(control);
-            if (!w->d_func()->maybeTopData())
+            QWidget *const window = w->window();
+            if (!window->d_func()->maybeTopData())
                 break;
+            QRefCountedWidgetBackingStore &backingStore = window->d_func()->maybeTopData()->backingStore;
             if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::ENotVisible) {
-                delete w->d_func()->topData()->backingStore;
-                w->d_func()->topData()->backingStore = 0;
+                // Decrement backing store reference count
+                backingStore.deref();
                 // In order to ensure that any resources used by the window surface
                 // are immediately freed, we flush the WSERV command buffer.
                 S60->wsSession().Flush();
-            } else if ((visChangedEvent->iFlags & TWsVisibilityChangedEvent::EPartiallyVisible)
-                       && !w->d_func()->maybeBackingStore()) {
-                w->d_func()->topData()->backingStore = new QWidgetBackingStore(w);
-                w->d_func()->invalidateBuffer(w->rect());
-                w->repaint();
+            } else if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::EPartiallyVisible) {
+                if (backingStore.data()) {
+                    // Increment backing store reference count
+                    backingStore.ref();
+                } else {
+                    // Create backing store with an initial reference count of 1
+                    backingStore.create(window);
+                    backingStore.ref();
+                    w->d_func()->invalidateBuffer(w->rect());
+                    w->repaint();
+                }
             }
             return 1;
         }
@@ -1735,6 +1916,53 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
             else
 #endif
                 S60->wsSession().SetPointerCursorMode(EPointerCursorNone);
+        }
+#endif
+        break;
+    case KGoomMemoryLowEvent:
+#ifdef QT_DEBUG
+        qDebug() << "QApplicationPrivate::symbianProcessWsEvent - KGoomMemoryLowEvent";
+#endif
+        if (callSymbianEventFilters(symbianEvent))
+            return 1;
+#ifdef QT_GRAPHICSSYSTEM_RUNTIME
+        if(QApplicationPrivate::runtime_graphics_system) {
+            bool switchToSwRendering(false);
+
+            foreach (QWidget *w, QApplication::topLevelWidgets()) {
+                if(w->d_func()->topData()->backingStore) {
+                    switchToSwRendering = true;
+                    break;
+                }
+            }
+
+            if (switchToSwRendering) {
+                QRuntimeGraphicsSystem *gs =
+                   static_cast<QRuntimeGraphicsSystem*>(QApplicationPrivate::graphics_system);
+
+                uint memoryUsage = gs->memoryUsage();
+                uint memoryForFullscreen = ( S60->screenDepth / 8 )
+                                           * S60->screenWidthInPixels
+                                           * S60->screenHeightInPixels;
+
+                S60->memoryLimitForHwRendering = memoryUsage - memoryForFullscreen;
+                gs->setGraphicsSystem(QLatin1String("raster"));
+            }
+        }
+#endif
+        break;
+    case KGoomMemoryGoodEvent:
+#ifdef QT_DEBUG
+        qDebug() << "QApplicationPrivate::symbianProcessWsEvent - KGoomMemoryGoodEvent";
+#endif
+        if (callSymbianEventFilters(symbianEvent))
+            return 1;
+#ifdef QT_GRAPHICSSYSTEM_RUNTIME
+        if(QApplicationPrivate::runtime_graphics_system) {
+            QRuntimeGraphicsSystem *gs =
+                   static_cast<QRuntimeGraphicsSystem*>(QApplicationPrivate::graphics_system);
+            gs->setGraphicsSystem(QLatin1String("openvg"), S60->memoryLimitForHwRendering);
+            S60->memoryLimitForHwRendering = 0;
         }
 #endif
         break;
@@ -1804,10 +2032,10 @@ int QApplicationPrivate::symbianHandleCommand(const QSymbianEvent *symbianEvent)
         ret = 1;
         break;
     default:
+#ifdef Q_WS_S60
         bool handled = QSoftKeyManager::handleCommand(command);
         if (handled)
             ret = 1;
-#ifdef Q_WS_S60
         else
             ret = QMenuBarPrivate::symbianCommands(command);
 #endif
@@ -1916,8 +2144,13 @@ TUint QApplicationPrivate::resolveS60ScanCode(TInt scanCode, TUint keysym)
 void QApplicationPrivate::initializeMultitouch_sys()
 {
 #ifdef QT_SYMBIAN_SUPPORTS_ADVANCED_POINTER
+    if (HAL::Get(HALData::EPointer3DPressureSupported, pressureSupported) != KErrNone)
+        pressureSupported = 0;
     if (HAL::Get(HALData::EPointer3DMaxPressure, maxTouchPressure) != KErrNone)
         maxTouchPressure = KMaxTInt;
+#else
+    pressureSupported = 0;
+    maxTouchPressure = KMaxTInt;
 #endif
 }
 
@@ -2023,5 +2256,30 @@ void QApplication::restoreOverrideCursor()
 }
 
 #endif // QT_NO_CURSOR
+
+QS60ThreadLocalData::QS60ThreadLocalData()
+{
+    CCoeEnv *env = CCoeEnv::Static();
+    if (env) {
+        //if this is the UI thread, share objects owned by CONE
+        usingCONEinstances = true;
+        wsSession = env->WsSession();
+        screenDevice = env->ScreenDevice();
+    }
+    else {
+        usingCONEinstances = false;
+        qt_symbian_throwIfError(wsSession.Connect(qt_s60GetRFs()));
+        screenDevice = new CWsScreenDevice(wsSession);
+        screenDevice->Construct();
+    }
+}
+
+QS60ThreadLocalData::~QS60ThreadLocalData()
+{
+    if (!usingCONEinstances) {
+        delete screenDevice;
+        wsSession.Close();
+    }
+}
 
 QT_END_NAMESPACE

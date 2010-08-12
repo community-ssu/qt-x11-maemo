@@ -44,16 +44,23 @@
 #ifdef hz
 #undef hz
 #endif
-#include "ui_recopts.h"
+#ifdef Q_WS_MAEMO_5
+#  include <QMaemo5ValueButton>
+#  include <QMaemo5ListPickSelector>
+#  include <QWidgetAction>
+#  include <QStringListModel>
+#  include "ui_recopts_maemo5.h"
+#else
+#  include "ui_recopts.h"
+#endif
 
 #include "qmlruntime.h"
 #include <qdeclarativecontext.h>
 #include <qdeclarativeengine.h>
 #include <qdeclarativenetworkaccessmanagerfactory.h>
 #include "qdeclarative.h"
-#include <private/qabstractanimation_p.h>
 #include <QAbstractAnimation>
-#include "deviceskin.h"
+#include <private/qabstractanimation_p.h>
 
 #include <QSettings>
 #include <QXmlStreamReader>
@@ -66,6 +73,7 @@
 #include <QDeclarativeComponent>
 #include <QWidget>
 #include <QApplication>
+#include <QTranslator>
 #include <QDir>
 #include <QTextBrowser>
 #include <QFile>
@@ -90,22 +98,56 @@
 #include <QGLWidget>
 #endif
 
+#if defined(Q_WS_S60)
+#include <aknappui.h> // For locking app orientation
+#endif
+
 #include <qdeclarativetester.h>
 
-#if defined (Q_OS_SYMBIAN)
-#define SYMBIAN_NETWORK_INIT
-#endif
-
-#if defined (SYMBIAN_NETWORK_INIT)
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <QTextCodec>
-#include "sym_iap_util.h"
-#endif
-
 QT_BEGIN_NAMESPACE
+
+class DragAndDropView : public QDeclarativeView
+{
+    Q_OBJECT
+public:
+    DragAndDropView(QDeclarativeViewer *parent = 0)
+    : QDeclarativeView(parent)
+    {
+        setAcceptDrops(true);
+    }
+
+    void dragEnterEvent(QDragEnterEvent *event)
+    {
+        const QMimeData *mimeData = event->mimeData();
+        if (mimeData->hasUrls())
+            event->acceptProposedAction();
+    }
+
+    void dragMoveEvent(QDragMoveEvent *event)
+    {
+        event->acceptProposedAction();
+    }
+
+    void dragLeaveEvent(QDragLeaveEvent *event)
+    {
+        event->accept();
+    }
+
+    void dropEvent(QDropEvent *event)
+    {
+        const QMimeData *mimeData = event->mimeData();
+        if (!mimeData->hasUrls())
+            return;
+        const QList<QUrl> urlList = mimeData->urls();
+        foreach (const QUrl &url, urlList) {
+            if (url.scheme() == QLatin1String("file")) {
+                static_cast<QDeclarativeViewer *>(parent())->open(url.toLocalFile());
+                event->accept();
+                return;
+            }
+        }
+    }
+};
 
 class Runtime : public QObject
 {
@@ -149,106 +191,58 @@ private:
 };
 
 
-class SizedMenuBar : public QMenuBar
-{
+
+#if defined(Q_WS_MAEMO_5)
+
+class Maemo5PickerAction : public QWidgetAction {
     Q_OBJECT
 public:
-    SizedMenuBar(QWidget *parent, QWidget *referenceWidget)
-        : QMenuBar(parent), refWidget(referenceWidget)
+    Maemo5PickerAction(const QString &text, QActionGroup *actions, QObject *parent)
+        : QWidgetAction(parent), m_text(text), m_actions(actions)
+    { }
+
+    QWidget *createWidget(QWidget *parent)
     {
+	QMaemo5ValueButton *button = new QMaemo5ValueButton(m_text, parent);
+	button->setValueLayout(QMaemo5ValueButton::ValueUnderTextCentered);
+        QMaemo5ListPickSelector *pick = new QMaemo5ListPickSelector(button);
+	button->setPickSelector(pick);
+	if (m_actions) {
+	    QStringList sl;
+	    int curIdx = -1, idx = 0;
+	    foreach (QAction *a, m_actions->actions()) {
+		sl << a->text();
+		if (a->isChecked())
+		    curIdx = idx;
+		idx++;
+            }
+	    pick->setModel(new QStringListModel(sl));
+	    pick->setCurrentIndex(curIdx);
+	} else {
+	    button->setEnabled(false);
+	}
+	connect(pick, SIGNAL(selected(QString)), this, SLOT(emitTriggered()));
+	return button;
     }
-
-    virtual QSize sizeHint() const
-    {
-        return QSize(refWidget->sizeHint().width(), QMenuBar::sizeHint().height());
-    }
-
-private:
-    QWidget *refWidget;
-};
-
-
-class PreviewDeviceSkin : public DeviceSkin
-{
-    Q_OBJECT
-public:
-    explicit PreviewDeviceSkin(const DeviceSkinParameters &parameters, QWidget *parent);
-
-    void setPreview(QWidget *formWidget);
-    void setPreviewAndScale(QWidget *formWidget);
-
-    void setScreenSize(const QSize& size)
-    {
-        QMatrix fit;
-        fit = fit.scale(qreal(size.width())/m_screenSize.width(),
-            qreal(size.height())/m_screenSize.height());
-        setTransform(fit);
-        QApplication::syncX();
-    }
-
-    QSize standardScreenSize() const { return m_screenSize; }
-
-    QMenu* menu;
 
 private slots:
-    void slotSkinKeyPressEvent(int code, const QString& text, bool autorep);
-    void slotSkinKeyReleaseEvent(int code, const QString& text, bool autorep);
-    void slotPopupMenu();
+    void emitTriggered()
+    {
+	QMaemo5ListPickSelector *pick = qobject_cast<QMaemo5ListPickSelector *>(sender());
+	if (!pick)
+	    return;
+	int idx = pick->currentIndex();
+
+	if (m_actions && idx >= 0 && idx < m_actions->actions().count())
+	    m_actions->actions().at(idx)->trigger();
+    }
 
 private:
-    const QSize m_screenSize;
+    QString m_text;
+    QPointer<QActionGroup> m_actions;
 };
 
-
-PreviewDeviceSkin::PreviewDeviceSkin(const DeviceSkinParameters &parameters, QWidget *parent) :
-    DeviceSkin(parameters, parent),
-    m_screenSize(parameters.screenSize())
-{
-    menu = new QMenu(this);
-    connect(this, SIGNAL(skinKeyPressEvent(int,QString,bool)),
-            this, SLOT(slotSkinKeyPressEvent(int,QString,bool)));
-    connect(this, SIGNAL(skinKeyReleaseEvent(int,QString,bool)),
-            this, SLOT(slotSkinKeyReleaseEvent(int,QString,bool)));
-    connect(this, SIGNAL(popupMenu()), this, SLOT(slotPopupMenu()));
-}
-
-void PreviewDeviceSkin::setPreview(QWidget *formWidget)
-{
-    formWidget->setFixedSize(m_screenSize);
-    formWidget->setParent(this, Qt::SubWindow);
-    formWidget->setAutoFillBackground(true);
-    setView(formWidget);
-}
-
-void PreviewDeviceSkin::setPreviewAndScale(QWidget *formWidget)
-{
-    setScreenSize(formWidget->sizeHint());
-    formWidget->setParent(this, Qt::SubWindow);
-    formWidget->setAutoFillBackground(true);
-    setView(formWidget);
-}
-
-void PreviewDeviceSkin::slotSkinKeyPressEvent(int code, const QString& text, bool autorep)
-{
-    if (QWidget *focusWidget =  QApplication::focusWidget()) {
-        QKeyEvent e(QEvent::KeyPress,code,0,text,autorep);
-        QApplication::sendEvent(focusWidget, &e);
-    }
-
-}
-
-void PreviewDeviceSkin::slotSkinKeyReleaseEvent(int code, const QString& text, bool autorep)
-{
-    if (QWidget *focusWidget =  QApplication::focusWidget()) {
-        QKeyEvent e(QEvent::KeyRelease,code,0,text,autorep);
-        QApplication::sendEvent(focusWidget, &e);
-    }
-}
-
-void PreviewDeviceSkin::slotPopupMenu()
-{
-    menu->exec(QCursor::pos());
-}
+#endif // Q_WS_MAEMO_5
 
 static struct { const char *name, *args; } ffmpegprofiles[] = {
     {"Maximum Quality", "-sameq"},
@@ -266,7 +260,9 @@ public:
     RecordingDialog(QWidget *parent) : QDialog(parent)
     {
         setupUi(this);
+#ifndef Q_WS_MAEMO_5
         hz->setValidator(new QDoubleValidator(hz));
+#endif
         for (int i=0; ffmpegprofiles[i].name; ++i) {
             profile->addItem(ffmpegprofiles[i].name);
         }
@@ -292,6 +288,132 @@ public:
         int i = profile->currentIndex();
         return ffmpegprofiles[i].args[0] ? QLatin1String(ffmpegprofiles[i].args) : customargs;
     }
+
+    void setOriginalSize(const QSize &s)
+    {
+        QString str = tr("Original (%1x%2)").arg(s.width()).arg(s.height());
+
+#ifdef Q_WS_MAEMO_5
+        sizeCombo->setItemText(0, str);
+#else
+        sizeOriginal->setText(str);
+        if (sizeWidth->value()<=1) {
+            sizeWidth->setValue(s.width());
+            sizeHeight->setValue(s.height());
+        }
+#endif
+    }
+
+    void showffmpegOptions(bool b)
+    {
+#ifdef Q_WS_MAEMO_5
+        profileLabel->setVisible(b);
+        profile->setVisible(b);
+        ffmpegHelp->setVisible(b);
+        args->setVisible(b);
+#else
+        ffmpegOptions->setVisible(b);
+#endif
+    }
+
+    void showRateOptions(bool b)
+    {
+#ifdef Q_WS_MAEMO_5
+        rateLabel->setVisible(b);
+        rateCombo->setVisible(b);
+#else
+        rateOptions->setVisible(b);
+#endif
+    }
+
+    void setVideoRate(int rate)
+    {
+#ifdef Q_WS_MAEMO_5
+        int idx;
+        if (rate >= 60)
+            idx = 0;
+        else if (rate >= 50)
+            idx = 2;
+        else if (rate >= 25)
+            idx = 3;
+        else if (rate >= 24)
+            idx = 4;
+        else if (rate >= 20)
+            idx = 5;
+        else if (rate >= 15)
+            idx = 6;
+        else
+            idx = 7;
+        rateCombo->setCurrentIndex(idx);
+#else
+        if (rate == 24)
+            hz24->setChecked(true);
+        else if (rate == 25)
+            hz25->setChecked(true);
+        else if (rate == 50)
+            hz50->setChecked(true);
+        else if (rate == 60)
+            hz60->setChecked(true);
+        else {
+            hzCustom->setChecked(true);
+            hz->setText(QString::number(rate));
+        }
+#endif
+    }
+
+    int videoRate() const
+    {
+#ifdef Q_WS_MAEMO_5
+        switch (rateCombo->currentIndex()) {
+            case 0: return 60;
+            case 1: return 50;
+            case 2: return 25;
+            case 3: return 24;
+            case 4: return 20;
+            case 5: return 15;
+            case 7: return 10;
+            default: return 60;
+        }
+#else
+        if (hz24->isChecked())
+            return 24;
+        else if (hz25->isChecked())
+            return 25;
+        else if (hz50->isChecked())
+            return 50;
+        else if (hz60->isChecked())
+            return 60;
+        else {
+            return hz->text().toInt();
+        }
+#endif
+    }
+
+    QSize videoSize() const
+    {
+#ifdef Q_WS_MAEMO_5
+        switch (sizeCombo->currentIndex()) {
+            case 0: return QSize();
+            case 1: return QSize(640,480);
+            case 2: return QSize(320,240);
+            case 3: return QSize(1280,720);
+            default: return QSize();
+        }
+#else
+        if (sizeOriginal->isChecked())
+            return QSize();
+        else if (size720p->isChecked())
+            return QSize(1280,720);
+        else if (sizeVGA->isChecked())
+            return QSize(640,480);
+        else if (sizeQVGA->isChecked())
+            return QSize(320,240);
+        else
+            return QSize(sizeWidth->value(), sizeHeight->value());
+#endif
+    }
+
+
 
 private slots:
     void pickProfile(int i)
@@ -341,14 +463,14 @@ private:
                 data.append("\n");
             }
         }
-        QSettings settings("Nokia", "QtQmlViewer");
+        QSettings settings;
         settings.setValue("Cookies",data);
     }
 
     void load()
     {
         QMutexLocker lock(&mutex);
-        QSettings settings("Nokia", "QtQmlViewer");
+        QSettings settings;
         QByteArray data = settings.value("Cookies").toByteArray();
         setAllCookies(QNetworkCookie::parseCookies(data));
     }
@@ -356,50 +478,58 @@ private:
     mutable QMutex mutex;
 };
 
-class NetworkAccessManagerFactory : public QDeclarativeNetworkAccessManagerFactory
+class SystemProxyFactory : public QNetworkProxyFactory
 {
+public:
+    SystemProxyFactory() : proxyDirty(true), httpProxyInUse(false) {
+    }
+
+    virtual QList<QNetworkProxy> queryProxy(const QNetworkProxyQuery &query)
+    {
+        if (proxyDirty)
+            setupProxy();
+        QString protocolTag = query.protocolTag();
+        if (httpProxyInUse && (protocolTag == "http" || protocolTag == "https")) {
+            QList<QNetworkProxy> ret;
+            ret << httpProxy;
+            return ret;
+        }
+#ifdef Q_OS_WIN
+        // systemProxyForQuery can take insanely long on Windows (QTBUG-10106)
+        return QNetworkProxyFactory::proxyForQuery(query);
+#else
+        return QNetworkProxyFactory::systemProxyForQuery(query);
+#endif
+    }
+
+    void setupProxy() {
+        // Don't bother locking because we know that the proxy only
+        // changes in response to the settings dialog and that
+        // the view will be reloaded.
+        proxyDirty = false;
+        httpProxyInUse = ProxySettings::httpProxyInUse();
+        if (httpProxyInUse)
+            httpProxy = ProxySettings::httpProxy();
+    }
+
+    void proxyChanged() {
+        proxyDirty = true;
+    }
+
+private:
+    volatile bool proxyDirty;
+    bool httpProxyInUse;
+    QNetworkProxy httpProxy;
+};
+
+class NetworkAccessManagerFactory : public QObject, public QDeclarativeNetworkAccessManagerFactory
+{
+    Q_OBJECT
 public:
     NetworkAccessManagerFactory() : cacheSize(0) {}
     ~NetworkAccessManagerFactory() {}
 
     QNetworkAccessManager *create(QObject *parent);
-
-    void setupProxy(QNetworkAccessManager *nam)
-    {
-        class SystemProxyFactory : public QNetworkProxyFactory
-        {
-        public:
-            virtual QList<QNetworkProxy> queryProxy(const QNetworkProxyQuery &query)
-            {
-                QString protocolTag = query.protocolTag();
-                if (httpProxyInUse && (protocolTag == "http" || protocolTag == "https")) {
-                    QList<QNetworkProxy> ret;
-                    ret << httpProxy;
-                    return ret;
-                }
-                return QNetworkProxyFactory::systemProxyForQuery(query);
-            }
-            void setHttpProxy (QNetworkProxy proxy)
-            {
-                httpProxy = proxy;
-                httpProxyInUse = true;
-            }
-            void unsetHttpProxy ()
-            {
-                httpProxyInUse = false;
-            }
-        private:
-            bool httpProxyInUse;
-            QNetworkProxy httpProxy;
-        };
-
-        SystemProxyFactory *proxyFactory = new SystemProxyFactory;
-        if (ProxySettings::httpProxyInUse())
-            proxyFactory->setHttpProxy(ProxySettings::httpProxy());
-        else
-            proxyFactory->unsetHttpProxy();
-        nam->setProxyFactory(proxyFactory);
-    }
 
     void setCacheSize(int size) {
         if (size != cacheSize) {
@@ -407,9 +537,23 @@ public:
         }
     }
 
+    void proxyChanged() {
+        foreach (QNetworkAccessManager *nam, namList) {
+            static_cast<SystemProxyFactory*>(nam->proxyFactory())->proxyChanged();
+        }
+    }
+
     static PersistentCookieJar *cookieJar;
+
+private slots:
+    void managerDestroyed(QObject *obj) {
+        namList.removeOne(static_cast<QNetworkAccessManager*>(obj));
+    }
+
+private:
     QMutex mutex;
     int cacheSize;
+    QList<QNetworkAccessManager*> namList;
 };
 
 PersistentCookieJar *NetworkAccessManagerFactory::cookieJar = 0;
@@ -430,15 +574,17 @@ QNetworkAccessManager *NetworkAccessManagerFactory::create(QObject *parent)
     }
     manager->setCookieJar(cookieJar);
     cookieJar->setParent(0);
-    setupProxy(manager);
+    manager->setProxyFactory(new SystemProxyFactory);
     if (cacheSize > 0) {
         QNetworkDiskCache *cache = new QNetworkDiskCache;
-        cache->setCacheDirectory(QDir::tempPath()+QLatin1String("/qml-duiviewer-network-cache"));
+        cache->setCacheDirectory(QDir::tempPath()+QLatin1String("/qml-viewer-network-cache"));
         cache->setMaximumCacheSize(cacheSize);
         manager->setCache(cache);
     } else {
         manager->setCache(0);
     }
+    connect(manager, SIGNAL(destroyed(QObject*)), this, SLOT(managerDestroyed(QObject*)));
+    namList.append(manager);
     qDebug() << "created new network access manager for" << parent;
     return manager;
 }
@@ -454,21 +600,36 @@ QString QDeclarativeViewer::getVideoFileName()
     return QFileDialog::getSaveFileName(this, title, "", types.join(";; "));
 }
 
+QDeclarativeViewer *QDeclarativeViewer::inst = 0;
 
+QDeclarativeViewer *QDeclarativeViewer::instance(QWidget *parent, Qt::WindowFlags flags)
+{
+    if (!inst) {
+        inst = new QDeclarativeViewer(parent, flags);
+        inst->setAttribute(Qt::WA_DeleteOnClose);
+    }
+    return inst;
+}
 QDeclarativeViewer::QDeclarativeViewer(QWidget *parent, Qt::WindowFlags flags)
-#if defined(Q_OS_SYMBIAN)
     : QMainWindow(parent, flags)
-#else
-    : QWidget(parent, flags)
-#endif
-      , frame_stream(0), scaleSkin(true), mb(0)
-      , portraitOrientation(0), landscapeOrientation(0)
-      , m_scriptOptions(0), tester(0), useQmlFileBrowser(true)
+      , loggerWindow(new LoggerWidget(this))
+      , frame_stream(0)
+      , rotateAction(0)
+      , orientation(0)
+      , showWarningsWindow(0)
+      , m_scriptOptions(0)
+      , tester(0)
+      , useQmlFileBrowser(true)
+      , translator(0)
 {
     QDeclarativeViewer::registerTypes();
+    setWindowTitle(tr("Qt QML Viewer"));
+#ifdef Q_WS_MAEMO_5
+    setAttribute(Qt::WA_Maemo5StackedWindow);
+//    setPalette(QApplication::palette("QLabel"));
+#endif
 
     devicemode = false;
-    skin = 0;
     canvas = 0;
     record_autotime = 0;
     record_rate = 50;
@@ -479,9 +640,9 @@ QDeclarativeViewer::QDeclarativeViewer(QWidget *parent, Qt::WindowFlags flags)
     senseFfmpeg();
     senseImageMagick();
     if (!ffmpegAvailable)
-        recdlg->ffmpegOptions->hide();
+        recdlg->showffmpegOptions(false);
     if (!ffmpegAvailable && !convertAvailable)
-        recdlg->rateOptions->hide();
+        recdlg->showRateOptions(false);
     QString warn;
     if (!ffmpegAvailable) {
         if (!convertAvailable)
@@ -493,61 +654,59 @@ QDeclarativeViewer::QDeclarativeViewer(QWidget *parent, Qt::WindowFlags flags)
         recdlg->warning->hide();
     }
 
-    canvas = new QDeclarativeView(this);
+    canvas = new DragAndDropView(this);
+
     canvas->setAttribute(Qt::WA_OpaquePaintEvent);
     canvas->setAttribute(Qt::WA_NoSystemBackground);
-    canvas->setResizeMode((!skin || !scaleSkin) ? QDeclarativeView::SizeRootObjectToView : QDeclarativeView::SizeViewToRootObject);
+
     canvas->setFocus();
 
     QObject::connect(canvas, SIGNAL(sceneResized(QSize)), this, SLOT(sceneResized(QSize)));
     QObject::connect(canvas, SIGNAL(statusChanged(QDeclarativeView::Status)), this, SLOT(statusChanged()));
-    QObject::connect(canvas->engine(), SIGNAL(quit()), QCoreApplication::instance (), SLOT(quit()));
+    QObject::connect(canvas->engine(), SIGNAL(quit()), this, SLOT(close()));
+
+    QObject::connect(warningsWidget(), SIGNAL(opened()), this, SLOT(warningsWidgetOpened()));
+    QObject::connect(warningsWidget(), SIGNAL(closed()), this, SLOT(warningsWidgetClosed()));
 
     if (!(flags & Qt::FramelessWindowHint)) {
-        createMenu(menuBar(),0);
-        setPortrait();
+        createMenu();
+        changeOrientation(orientation->actions().value(0));
+    } else {
+        setMenuBar(0);
     }
 
-#if !defined(Q_OS_SYMBIAN)
-    QVBoxLayout *layout = new QVBoxLayout;
-    layout->setMargin(0);
-    layout->setSpacing(0);
-    setLayout(layout);
-    if (mb)
-        layout->addWidget(mb);
-    layout->addWidget(canvas);
-#else
     setCentralWidget(canvas);
-#endif
 
     namFactory = new NetworkAccessManagerFactory;
     canvas->engine()->setNetworkAccessManagerFactory(namFactory);
 
-    connect(&autoStartTimer, SIGNAL(triggered()), this, SLOT(autoStartRecording()));
-    connect(&autoStopTimer, SIGNAL(triggered()), this, SLOT(autoStopRecording()));
-    connect(&recordTimer, SIGNAL(triggered()), this, SLOT(recordFrame()));
-    autoStartTimer.setRunning(false);
-    autoStopTimer.setRunning(false);
-    recordTimer.setRunning(false);
-    recordTimer.setRepeating(true);
+    connect(&autoStartTimer, SIGNAL(timeout()), this, SLOT(autoStartRecording()));
+    connect(&autoStopTimer, SIGNAL(timeout()), this, SLOT(autoStopRecording()));
+    connect(&recordTimer, SIGNAL(timeout()), this, SLOT(recordFrame()));
+    connect(DeviceOrientation::instance(), SIGNAL(orientationChanged()),
+            this, SLOT(orientationChanged()), Qt::QueuedConnection);
+    autoStartTimer.setSingleShot(true);
+    autoStopTimer.setSingleShot(true);
+    recordTimer.setSingleShot(false);
+
+    QObject::connect(qApp, SIGNAL(aboutToQuit()), this, SLOT(appAboutToQuit()));
 }
 
 QDeclarativeViewer::~QDeclarativeViewer()
 {
+    delete loggerWindow;
     canvas->engine()->setNetworkAccessManagerFactory(0);
     delete namFactory;
 }
 
-QMenuBar *QDeclarativeViewer::menuBar() const
+void QDeclarativeViewer::enableExperimentalGestures()
 {
-#if !defined(Q_OS_SYMBIAN)
-    if (!mb)
-        mb = new SizedMenuBar((QWidget*)this, canvas);
-#else
-    mb = QMainWindow::menuBar();
-#endif
-
-    return mb;
+    canvas->viewport()->grabGesture(Qt::TapGesture,Qt::DontStartGestureOnChildren|Qt::ReceivePartialGestures|Qt::IgnoredGesturesPropagateToParent);
+    canvas->viewport()->grabGesture(Qt::TapAndHoldGesture,Qt::DontStartGestureOnChildren|Qt::ReceivePartialGestures|Qt::IgnoredGesturesPropagateToParent);
+    canvas->viewport()->grabGesture(Qt::PanGesture,Qt::DontStartGestureOnChildren|Qt::ReceivePartialGestures|Qt::IgnoredGesturesPropagateToParent);
+    canvas->viewport()->grabGesture(Qt::PinchGesture,Qt::DontStartGestureOnChildren|Qt::ReceivePartialGestures|Qt::IgnoredGesturesPropagateToParent);
+    canvas->viewport()->grabGesture(Qt::SwipeGesture,Qt::DontStartGestureOnChildren|Qt::ReceivePartialGestures|Qt::IgnoredGesturesPropagateToParent);
+    canvas->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
 }
 
 QDeclarativeView *QDeclarativeViewer::view() const
@@ -555,158 +714,150 @@ QDeclarativeView *QDeclarativeViewer::view() const
     return canvas;
 }
 
-void QDeclarativeViewer::createMenu(QMenuBar *menu, QMenu *flatmenu)
+LoggerWidget *QDeclarativeViewer::warningsWidget() const
 {
-    QObject *parent = flatmenu ? (QObject*)flatmenu : (QObject*)menu;
+    return loggerWindow;
+}
 
-    QMenu *fileMenu = flatmenu ? flatmenu : menu->addMenu(tr("&File"));
-
-    QAction *openAction = new QAction(tr("&Open..."), parent);
-    openAction->setShortcut(QKeySequence("Ctrl+O"));
+void QDeclarativeViewer::createMenu()
+{
+    QAction *openAction = new QAction(tr("&Open..."), this);
+    openAction->setShortcuts(QKeySequence::Open);
     connect(openAction, SIGNAL(triggered()), this, SLOT(openFile()));
-    fileMenu->addAction(openAction);
 
-    QAction *reloadAction = new QAction(tr("&Reload"), parent);
-    reloadAction->setShortcut(QKeySequence("Ctrl+R"));
+    QAction *reloadAction = new QAction(tr("&Reload"), this);
+    reloadAction->setShortcuts(QKeySequence::Refresh);
     connect(reloadAction, SIGNAL(triggered()), this, SLOT(reload()));
-    fileMenu->addAction(reloadAction);
-
-#if defined(Q_OS_SYMBIAN)
-    QAction *networkAction = new QAction(tr("Start &Network"), parent);
-    connect(networkAction, SIGNAL(triggered()), this, SLOT(startNetwork()));
-    fileMenu->addAction(networkAction);
-#endif
-
-#if !defined(Q_OS_SYMBIAN)
-    if (flatmenu) flatmenu->addSeparator();
-
-    QMenu *recordMenu = flatmenu ? flatmenu : menu->addMenu(tr("&Recording"));
-
-    QAction *snapshotAction = new QAction(tr("&Take Snapshot\tF3"), parent);
+    QAction *snapshotAction = new QAction(tr("&Take Snapshot"), this);
+    snapshotAction->setShortcut(QKeySequence("F3"));
     connect(snapshotAction, SIGNAL(triggered()), this, SLOT(takeSnapShot()));
-    recordMenu->addAction(snapshotAction);
 
-    recordAction = new QAction(tr("Start Recording &Video\tF9"), parent);
+    recordAction = new QAction(tr("Start Recording &Video"), this);
+    recordAction->setShortcut(QKeySequence("F9"));
     connect(recordAction, SIGNAL(triggered()), this, SLOT(toggleRecordingWithSelection()));
-    recordMenu->addAction(recordAction);
 
-    QAction *recordOptions = new QAction(tr("Video &Options..."), parent);
+    QAction *recordOptions = new QAction(tr("Video &Options..."), this);
     connect(recordOptions, SIGNAL(triggered()), this, SLOT(chooseRecordingOptions()));
 
-    if (flatmenu)
-        flatmenu->addAction(recordOptions);
-
-    if (flatmenu) flatmenu->addSeparator();
-
-    QMenu *debugMenu = flatmenu ? flatmenu->addMenu(tr("&Debugging")) : menu->addMenu(tr("&Debugging"));
-
-    QAction *slowAction = new QAction(tr("&Slow Down Animations"), parent);
+    QAction *slowAction = new QAction(tr("&Slow Down Animations"), this);
     slowAction->setShortcut(QKeySequence("Ctrl+."));
     slowAction->setCheckable(true);
     connect(slowAction, SIGNAL(triggered(bool)), this, SLOT(setSlowMode(bool)));
-    debugMenu->addAction(slowAction);
 
-    if (flatmenu) flatmenu->addSeparator();
+    showWarningsWindow = new QAction(tr("Show Warnings"), this);
+    showWarningsWindow->setCheckable((true));
+    showWarningsWindow->setChecked(loggerWindow->isVisible());
+    connect(showWarningsWindow, SIGNAL(triggered(bool)), this, SLOT(showWarnings(bool)));
 
-    QMenu *skinMenu = flatmenu ? flatmenu->addMenu(tr("&Skin")) : menu->addMenu(tr("&Skin"));
-
-    QActionGroup *skinActions;
-    QAction *skinAction;
-
-    skinActions = new QActionGroup(parent);
-    skinAction = new QAction(tr("Scale skin"), parent);
-    skinAction->setCheckable(true);
-    skinAction->setChecked(scaleSkin);
-    skinActions->addAction(skinAction);
-    skinMenu->addAction(skinAction);
-    connect(skinAction, SIGNAL(triggered()), this, SLOT(setScaleSkin()));
-    skinAction = new QAction(tr("Resize view"), parent);
-    skinAction->setCheckable(true);
-    skinAction->setChecked(!scaleSkin);
-    skinActions->addAction(skinAction);
-    skinMenu->addAction(skinAction);
-    connect(skinAction, SIGNAL(triggered()), this, SLOT(setScaleView()));
-    skinMenu->addSeparator();
-
-    skinActions = new QActionGroup(parent);
-    QSignalMapper *mapper = new QSignalMapper(parent);
-    skinAction = new QAction(tr("None"), parent);
-    skinAction->setCheckable(true);
-    if (currentSkin.isEmpty())
-        skinAction->setChecked(true);
-    skinActions->addAction(skinAction);
-    skinMenu->addAction(skinAction);
-    mapper->setMapping(skinAction, "");
-    connect(skinAction, SIGNAL(triggered()), mapper, SLOT(map()));
-    skinMenu->addSeparator();
-
-    foreach (QString name, builtinSkins()) {
-        skinAction = new QAction(name, parent);
-        skinActions->addAction(skinAction);
-        skinMenu->addAction(skinAction);
-        skinAction->setCheckable(true);
-        if (":skin/"+name+".skin" == currentSkin)
-            skinAction->setChecked(true);
-        mapper->setMapping(skinAction, name);
-        connect(skinAction, SIGNAL(triggered()), mapper, SLOT(map()));
-    }
-    connect(mapper, SIGNAL(mapped(QString)), this, SLOT(setSkin(QString)));
-
-    if (flatmenu) flatmenu->addSeparator();
-#endif // Q_OS_SYMBIAN
-
-    QMenu *settingsMenu = flatmenu ? flatmenu : menu->addMenu(tr("S&ettings"));
-    QAction *proxyAction = new QAction(tr("Http &proxy..."), parent);
+    QAction *proxyAction = new QAction(tr("HTTP &Proxy..."), this);
     connect(proxyAction, SIGNAL(triggered()), this, SLOT(showProxySettings()));
-    settingsMenu->addAction(proxyAction);
-#if !defined(Q_OS_SYMBIAN)
-    if (!flatmenu)
-        settingsMenu->addAction(recordOptions);
-#else
-    QAction *fullscreenAction = new QAction(tr("Full Screen"), parent);
+
+    QAction *fullscreenAction = new QAction(tr("Full Screen"), this);
     fullscreenAction->setCheckable(true);
     connect(fullscreenAction, SIGNAL(triggered()), this, SLOT(toggleFullScreen()));
-    settingsMenu->addAction(fullscreenAction);
+
+    rotateAction = new QAction(tr("Rotate orientation"), this);
+    rotateAction->setShortcut(QKeySequence("Ctrl+T"));
+    connect(rotateAction, SIGNAL(triggered()), this, SLOT(rotateOrientation()));
+
+    orientation = new QActionGroup(this);
+    orientation->setExclusive(true);
+    connect(orientation, SIGNAL(triggered(QAction*)), this, SLOT(changeOrientation(QAction*)));
+
+#if defined(Q_OS_SYMBIAN)
+    QAction *autoOrientationAction = new QAction(tr("Auto-orientation"), this);
+    autoOrientationAction->setCheckable(true);
+#endif
+    QAction *portraitAction = new QAction(tr("Portrait"), this);
+    portraitAction->setCheckable(true);
+    QAction *landscapeAction = new QAction(tr("Landscape"), this);
+    landscapeAction->setCheckable(true);
+#if !defined(Q_OS_SYMBIAN)
+    QAction *portraitInvAction = new QAction(tr("Portrait (inverted)"), this);
+    portraitInvAction->setCheckable(true);
+    QAction *landscapeInvAction = new QAction(tr("Landscape (inverted)"), this);
+    landscapeInvAction->setCheckable(true);
 #endif
 
-    QMenu *propertiesMenu = settingsMenu->addMenu(tr("Properties"));
-    QActionGroup *orientation = new QActionGroup(parent);
-
-    QAction *toggleOrientation = new QAction(tr("&Toggle Orientation"), parent);
-    toggleOrientation->setCheckable(true);
-    toggleOrientation->setShortcut(QKeySequence("Ctrl+T"));
-    settingsMenu->addAction(toggleOrientation);
-    connect(toggleOrientation, SIGNAL(triggered()), this, SLOT(toggleOrientation()));
-
-    orientation->setExclusive(true);
-    portraitOrientation = new QAction(tr("orientation: Portrait"), parent);
-    portraitOrientation->setCheckable(true);
-    connect(portraitOrientation, SIGNAL(triggered()), this, SLOT(setPortrait()));
-    orientation->addAction(portraitOrientation);
-    propertiesMenu->addAction(portraitOrientation);
-
-    landscapeOrientation = new QAction(tr("orientation: Landscape"), parent);
-    landscapeOrientation->setCheckable(true);
-    connect(landscapeOrientation, SIGNAL(triggered()), this, SLOT(setLandscape()));
-    orientation->addAction(landscapeOrientation);
-    propertiesMenu->addAction(landscapeOrientation);
-
-    if (flatmenu) flatmenu->addSeparator();
-
-    QMenu *helpMenu = flatmenu ? flatmenu : menu->addMenu(tr("&Help"));
-    QAction *aboutAction = new QAction(tr("&About Qt..."), parent);
+    QAction *aboutAction = new QAction(tr("&About Qt..."), this);
+    aboutAction->setMenuRole(QAction::AboutQtRole);
     connect(aboutAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
-    helpMenu->addAction(aboutAction);
 
-    QAction *quitAction = new QAction(tr("&Quit"), parent);
-    quitAction->setShortcut(QKeySequence("Ctrl+Q"));
+    QAction *closeAction = new QAction(tr("&Close"), this);
+    closeAction->setShortcuts(QKeySequence::Close);
+    connect(closeAction, SIGNAL(triggered()), this, SLOT(close()));
+
+    QAction *quitAction = new QAction(tr("&Quit"), this);
+    quitAction->setMenuRole(QAction::QuitRole);
+    quitAction->setShortcuts(QKeySequence::Quit);
     connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
+
+    QMenuBar *menu = menuBar();
+    if (!menu)
+	return;
+
+#if defined(Q_WS_MAEMO_5)
+    menu->addAction(openAction);
+    menu->addAction(reloadAction);
+
+    menu->addAction(snapshotAction);
+    menu->addAction(recordAction);
+
+    menu->addAction(recordOptions);
+    menu->addAction(proxyAction);
+
+    menu->addAction(slowAction);
+    menu->addAction(showWarningsWindow);
+
+    orientation->addAction(landscapeAction);
+    orientation->addAction(portraitAction);
+    menu->addAction(new Maemo5PickerAction(tr("Set orientation"), orientation, this));
+    menu->addAction(fullscreenAction);
+    return;
+#endif // Q_WS_MAEMO_5
+
+    QMenu *fileMenu = menu->addMenu(tr("&File"));
+    fileMenu->addAction(openAction);
+    fileMenu->addAction(reloadAction);
     fileMenu->addSeparator();
+    fileMenu->addAction(closeAction);
+#if !defined(Q_OS_SYMBIAN)    
     fileMenu->addAction(quitAction);
-    if (menu) {
-        menu->setFixedHeight(menu->sizeHint().height());
-        menu->setMinimumWidth(10);
-    }
+
+    QMenu *recordMenu = menu->addMenu(tr("&Recording"));
+    recordMenu->addAction(snapshotAction);
+    recordMenu->addAction(recordAction);
+
+    QMenu *debugMenu = menu->addMenu(tr("&Debugging"));
+    debugMenu->addAction(slowAction);
+    debugMenu->addAction(showWarningsWindow);
+#endif // ! Q_OS_SYMBIAN
+
+    QMenu *settingsMenu = menu->addMenu(tr("&Settings"));
+    settingsMenu->addAction(proxyAction);
+#if defined(Q_OS_SYMBIAN)
+    settingsMenu->addAction(fullscreenAction);
+#else 
+    settingsMenu->addAction(recordOptions);
+    settingsMenu->addMenu(loggerWindow->preferencesMenu());
+#endif // !Q_OS_SYMBIAN
+    settingsMenu->addAction(rotateAction);
+
+    QMenu *propertiesMenu = settingsMenu->addMenu(tr("Properties"));
+
+#if defined(Q_OS_SYMBIAN)
+    orientation->addAction(autoOrientationAction);
+#endif
+    orientation->addAction(portraitAction);
+    orientation->addAction(landscapeAction);
+#if !defined(Q_OS_SYMBIAN)
+    orientation->addAction(portraitInvAction);
+    orientation->addAction(landscapeInvAction);
+#endif
+    propertiesMenu->addActions(orientation->actions());
+
+    QMenu *helpMenu = menu->addMenu(tr("&Help"));
+    helpMenu->addAction(aboutAction);
 }
 
 void QDeclarativeViewer::showProxySettings()
@@ -720,24 +871,38 @@ void QDeclarativeViewer::showProxySettings()
 
 void QDeclarativeViewer::proxySettingsChanged()
 {
+    namFactory->proxyChanged();
     reload ();
 }
 
-void QDeclarativeViewer::setPortrait()
+void QDeclarativeViewer::rotateOrientation()
 {
-    DeviceOrientation::instance()->setOrientation(DeviceOrientation::Portrait);
-    portraitOrientation->setChecked(true);
-}
+#if defined(Q_WS_S60)
+    CAknAppUi *appUi = static_cast<CAknAppUi *>(CEikonEnv::Static()->AppUi());
+    if (appUi) {
+        CAknAppUi::TAppUiOrientation oldOrientation = appUi->Orientation();
+        QString newOrientation;
+        if (oldOrientation == CAknAppUi::EAppUiOrientationPortrait) {
+            newOrientation = QLatin1String("Landscape");
+        } else {
+            newOrientation = QLatin1String("Portrait");
+        }
+        foreach (QAction *action, orientation->actions()) {
+            if (action->text() == newOrientation) {
+                changeOrientation(action);
+            }
+        }
+    }
+#else
+    QAction *current = orientation->checkedAction();
+    QList<QAction *> actions = orientation->actions();
+    int index = actions.indexOf(current);
+    if (index < 0)
+        return;
 
-void QDeclarativeViewer::setLandscape()
-{
-    DeviceOrientation::instance()->setOrientation(DeviceOrientation::Landscape);
-    landscapeOrientation->setChecked(true);
-}
-
-void QDeclarativeViewer::toggleOrientation()
-{
-    DeviceOrientation::instance()->setOrientation(DeviceOrientation::instance()->orientation()==DeviceOrientation::Portrait?DeviceOrientation::Landscape:DeviceOrientation::Portrait);
+    QAction *newOrientation = actions[(index + 1) % actions.count()];
+    changeOrientation(newOrientation);
+#endif
 }
 
 void QDeclarativeViewer::toggleFullScreen()
@@ -748,32 +913,20 @@ void QDeclarativeViewer::toggleFullScreen()
         showFullScreen();
 }
 
-void QDeclarativeViewer::setScaleSkin()
+void QDeclarativeViewer::showWarnings(bool show)
 {
-    if (scaleSkin)
-        return;
-    scaleSkin = true;
-    canvas->setResizeMode((!skin || !scaleSkin) ? QDeclarativeView::SizeRootObjectToView : QDeclarativeView::SizeViewToRootObject);
-    if (skin) {
-        canvas->setFixedSize(canvas->sizeHint());
-        skin->setScreenSize(canvas->sizeHint());
-    }
+    loggerWindow->setVisible(show);
 }
 
-void QDeclarativeViewer::setScaleView()
+void QDeclarativeViewer::warningsWidgetOpened()
 {
-    if (!scaleSkin)
-        return;
-    scaleSkin = false;
-    if (skin) {
-        canvas->setResizeMode((!skin || !scaleSkin) ? QDeclarativeView::SizeRootObjectToView : QDeclarativeView::SizeViewToRootObject);
-        canvas->setMinimumSize(QSize(0,0));
-        canvas->setMaximumSize(QSize(16777215,16777215));
-        canvas->resize(skin->standardScreenSize());
-        skin->setScreenSize(skin->standardScreenSize());
-    }
+    showWarningsWindow->setChecked(true);
 }
 
+void QDeclarativeViewer::warningsWidgetClosed()
+{
+    showWarningsWindow->setChecked(false);
+}
 
 void QDeclarativeViewer::takeSnapShot()
 {
@@ -797,25 +950,11 @@ void QDeclarativeViewer::chooseRecordingOptions()
     recdlg->file->setText(record_file);
 
     // Size
-    recdlg->sizeOriginal->setText(tr("Original (%1x%2)").arg(canvas->width()).arg(canvas->height()));
-    if (recdlg->sizeWidth->value()<=1) {
-        recdlg->sizeWidth->setValue(canvas->width());
-        recdlg->sizeHeight->setValue(canvas->height());
-    }
+    recdlg->setOriginalSize(canvas->size());
 
     // Rate
-    if (record_rate == 24)
-        recdlg->hz24->setChecked(true);
-    else if (record_rate == 25)
-        recdlg->hz25->setChecked(true);
-    else if (record_rate == 50)
-        recdlg->hz50->setChecked(true);
-    else if (record_rate == 60)
-        recdlg->hz60->setChecked(true);
-    else {
-        recdlg->hzCustom->setChecked(true);
-        recdlg->hz->setText(QString::number(record_rate));
-    }
+    recdlg->setVideoRate(record_rate);
+
 
     // Profile
     recdlg->setArguments(record_args.join(" "));
@@ -823,28 +962,9 @@ void QDeclarativeViewer::chooseRecordingOptions()
         // File
         record_file = recdlg->file->text();
         // Size
-        if (recdlg->sizeOriginal->isChecked())
-            record_outsize = QSize();
-        else if (recdlg->size720p->isChecked())
-            record_outsize = QSize(1280,720);
-        else if (recdlg->sizeVGA->isChecked())
-            record_outsize = QSize(640,480);
-        else if (recdlg->sizeQVGA->isChecked())
-            record_outsize = QSize(320,240);
-        else
-            record_outsize = QSize(recdlg->sizeWidth->value(),recdlg->sizeHeight->value());
+        record_outsize = recdlg->videoSize();
         // Rate
-        if (recdlg->hz24->isChecked())
-            record_rate = 24;
-        else if (recdlg->hz25->isChecked())
-            record_rate = 25;
-        else if (recdlg->hz50->isChecked())
-            record_rate = 50;
-        else if (recdlg->hz60->isChecked())
-            record_rate = 60;
-        else {
-            record_rate = recdlg->hz->text().toDouble();
-        }
+        record_rate = recdlg->videoRate();
         // Profile
         record_args = recdlg->arguments().split(" ",QString::SkipEmptyParts);
     }
@@ -852,7 +972,7 @@ void QDeclarativeViewer::chooseRecordingOptions()
 
 void QDeclarativeViewer::toggleRecordingWithSelection()
 {
-    if (!recordTimer.isRunning()) {
+    if (!recordTimer.isActive()) {
         if (record_file.isEmpty()) {
             QString fileName = getVideoFileName();
             if (fileName.isEmpty())
@@ -871,7 +991,7 @@ void QDeclarativeViewer::toggleRecording()
         toggleRecordingWithSelection();
         return;
     }
-    bool recording = !recordTimer.isRunning();
+    bool recording = !recordTimer.isActive();
     recordAction->setText(recording ? tr("&Stop Recording Video\tF9") : tr("&Start Recording Video\tF9"));
     setRecording(recording);
 }
@@ -900,7 +1020,7 @@ void QDeclarativeViewer::openFile()
 {
     QString cur = canvas->source().toLocalFile();
     if (useQmlFileBrowser) {
-        open("qrc:/content/Browser.qml");
+        open("qrc:/browser/Browser.qml");
     } else {
         QString fileName = QFileDialog::getOpenFileName(this, tr("Open QML file"), cur, tr("QML Files (*.qml)"));
         if (!fileName.isEmpty()) {
@@ -916,26 +1036,54 @@ void QDeclarativeViewer::statusChanged()
         tester->executefailure();
 
     if (canvas->status() == QDeclarativeView::Ready) {
-        if (!skin) {
-            canvas->updateGeometry();
-            if (mb)
-                mb->updateGeometry();
-            if (!isFullScreen() && !isMaximized())
-                resize(sizeHint());
-        } else {
-            if (scaleSkin)
-                canvas->resize(canvas->sizeHint());
-            else {
-                canvas->setFixedSize(skin->standardScreenSize());
-                canvas->resize(skin->standardScreenSize());
-            }
-        }
+        initialSize = canvas->initialSize();
+        updateSizeHints(true);
     }
 }
 
 void QDeclarativeViewer::launch(const QString& file_or_url)
 {
     QMetaObject::invokeMethod(this, "open", Qt::QueuedConnection, Q_ARG(QString, file_or_url));
+}
+
+void QDeclarativeViewer::loadTranslationFile(const QString& directory)
+{
+    if (!translator) {
+        translator = new QTranslator(this);
+        QApplication::installTranslator(translator);
+    }
+
+    translator->load(QLatin1String("qml_" )+QLocale::system().name(), directory + QLatin1String("/i18n"));
+}
+
+void QDeclarativeViewer::loadDummyDataFiles(const QString& directory)
+{
+    QDir dir(directory+"/dummydata", "*.qml");
+    QStringList list = dir.entryList();
+    for (int i = 0; i < list.size(); ++i) {
+        QString qml = list.at(i);
+        QFile f(dir.filePath(qml));
+        f.open(QIODevice::ReadOnly);
+        QByteArray data = f.readAll();
+        QDeclarativeComponent comp(canvas->engine());
+        comp.setData(data, QUrl());
+        QObject *dummyData = comp.create();
+
+        if(comp.isError()) {
+            QList<QDeclarativeError> errors = comp.errors();
+            foreach (const QDeclarativeError &error, errors) {
+                qWarning() << error;
+            }
+            if (tester) tester->executefailure();
+        }
+
+        if (dummyData) {
+            qWarning() << "Loaded dummy data:" << dir.filePath(qml);
+            qml.truncate(qml.length()-4);
+            canvas->rootContext()->setContextProperty(qml, dummyData);
+            dummyData->setParent(this);
+        }
+    }
 }
 
 bool QDeclarativeViewer::open(const QString& file_or_url)
@@ -948,7 +1096,7 @@ bool QDeclarativeViewer::open(const QString& file_or_url)
         url = QUrl::fromLocalFile(fi.absoluteFilePath());
     else
         url = QUrl(file_or_url);
-    setWindowTitle(tr("%1 - Qt Declarative UI Viewer").arg(file_or_url));
+    setWindowTitle(tr("%1 - Qt QML Viewer").arg(file_or_url));
 
     if (!m_script.isEmpty())
         tester = new QDeclarativeTester(m_script, m_scriptOptions, canvas);
@@ -967,39 +1115,16 @@ bool QDeclarativeViewer::open(const QString& file_or_url)
 
     QString fileName = url.toLocalFile();
     if (!fileName.isEmpty()) {
-        QFileInfo fi(fileName);
+        fi.setFile(fileName);
         if (fi.exists()) {
             if (fi.suffix().toLower() != QLatin1String("qml")) {
                 qWarning() << "qml cannot open non-QML file" << fileName;
                 return false;
             }
 
-            QDir dir(fi.path()+"/dummydata", "*.qml");
-            QStringList list = dir.entryList();
-            for (int i = 0; i < list.size(); ++i) {
-                QString qml = list.at(i);
-                QFile f(dir.filePath(qml));
-                f.open(QIODevice::ReadOnly);
-                QByteArray data = f.readAll();
-                QDeclarativeComponent comp(canvas->engine());
-                comp.setData(data, QUrl());
-                QObject *dummyData = comp.create();
-
-                if(comp.isError()) {
-                    QList<QDeclarativeError> errors = comp.errors();
-                    foreach (const QDeclarativeError &error, errors) {
-                        qWarning() << error;
-                    }
-                    if (tester) tester->executefailure();
-                }
-
-                if (dummyData) {
-                    qWarning() << "Loaded dummy data:" << dir.filePath(qml);
-                    qml.truncate(qml.length()-4);
-                    ctxt->setContextProperty(qml, dummyData);
-                    dummyData->setParent(this);
-                }
-            }
+            QFileInfo fi(fileName);
+            loadTranslationFile(fi.path());
+            loadDummyDataFiles(fi.path());
         } else {
             qWarning() << "qml cannot find file:" << fileName;
             return false;
@@ -1011,89 +1136,7 @@ bool QDeclarativeViewer::open(const QString& file_or_url)
 
     canvas->setSource(url);
 
-    qWarning() << "Wall startup time:" << t.elapsed();
-
     return true;
-}
-
-void QDeclarativeViewer::startNetwork()
-{
-#if defined(SYMBIAN_NETWORK_INIT)
-    qt_SetDefaultIap();
-#endif
-}
-
-QStringList QDeclarativeViewer::builtinSkins() const
-{
-    QDir dir(":/skins/","*.skin");
-    const QFileInfoList l = dir.entryInfoList();
-    QStringList r;
-    for (QFileInfoList::const_iterator it = l.begin(); it != l.end(); ++it) {
-        r += (*it).baseName();
-    }
-    return r;
-}
-
-void QDeclarativeViewer::setSkin(const QString& skinDirOrName)
-{
-    QString skinDirectory = skinDirOrName;
-
-    if (!QDir(skinDirOrName).exists() && QDir(":/skins/"+skinDirOrName+".skin").exists())
-        skinDirectory = ":/skins/"+skinDirOrName+".skin";
-
-    if (currentSkin == skinDirectory)
-        return;
-
-    currentSkin = skinDirectory;
-
-    // XXX QWidget::setMask does not handle changes well, and we may
-    // XXX have been signalled from an item in a menu we're replacing,
-    // XXX hence some rather convoluted resetting here...
-
-    QString err;
-    if (skin) {
-        skin->hide();
-        skin->deleteLater();
-    }
-
-    canvas->setResizeMode((!skin || !scaleSkin) ? QDeclarativeView::SizeRootObjectToView : QDeclarativeView::SizeViewToRootObject);
-
-    DeviceSkinParameters parameters;
-    if (!skinDirectory.isEmpty() && parameters.read(skinDirectory,DeviceSkinParameters::ReadAll,&err)) {
-        layout()->setEnabled(false);
-        //setMenuBar(0);
-        if (mb)
-            mb->hide();
-        if (!err.isEmpty())
-            qWarning() << err;
-        skin = new PreviewDeviceSkin(parameters,this);
-        canvas->resize(canvas->sizeHint());
-        if (scaleSkin)
-            skin->setPreviewAndScale(canvas);
-        else
-            skin->setPreview(canvas);
-        createMenu(0,skin->menu);
-        skin->show();
-    } else {
-        skin = 0;
-        clearMask();
-        menuBar()->clear();
-        canvas->setParent(this, Qt::SubWindow);
-        createMenu(menuBar(),0);
-        mb->show();
-        setMinimumSize(QSize(0,0));
-        setMaximumSize(QSize(16777215,16777215));
-        canvas->setMinimumSize(QSize(0,0));
-        canvas->setMaximumSize(QSize(16777215,16777215));
-        QRect g = geometry();
-        g.setSize(sizeHint());
-        setParent(0,windowFlags()); // recreate
-        canvas->move(0,menuBar()->sizeHint().height());
-        setGeometry(g);
-        layout()->setEnabled(true);
-        show();
-    }
-    canvas->show();
 }
 
 void QDeclarativeViewer::setAutoRecord(int from, int to)
@@ -1101,7 +1144,7 @@ void QDeclarativeViewer::setAutoRecord(int from, int to)
     if (from==0) from=1; // ensure resized
     record_autotime = to-from;
     autoStartTimer.setInterval(from);
-    autoStartTimer.setRunning(true);
+    autoStartTimer.start();
 }
 
 void QDeclarativeViewer::setRecordArgs(const QStringList& a)
@@ -1119,12 +1162,9 @@ void QDeclarativeViewer::setRecordRate(int fps)
     record_rate = fps;
 }
 
-void QDeclarativeViewer::sceneResized(QSize size)
+void QDeclarativeViewer::sceneResized(QSize)
 {
-    if (size.width() > 0 && size.height() > 0) {
-        if (skin && scaleSkin)
-            skin->setScreenSize(size);
-    }
+    updateSizeHints();
 }
 
 void QDeclarativeViewer::keyPressEvent(QKeyEvent *event)
@@ -1153,12 +1193,7 @@ void QDeclarativeViewer::keyPressEvent(QKeyEvent *event)
     } else if (event->key() == Qt::Key_F9 || (event->key() == Qt::Key_9 && devicemode)) {
         toggleRecording();
     } else if (event->key() == Qt::Key_F10) {
-        if (portraitOrientation) {
-            if (portraitOrientation->isChecked())
-                setLandscape();
-            else
-                setPortrait();
-        }
+        rotateOrientation();
     }
 
     QWidget::keyPressEvent(event);
@@ -1207,7 +1242,7 @@ void QDeclarativeViewer::senseFfmpeg()
 
 void QDeclarativeViewer::setRecording(bool on)
 {
-    if (on == recordTimer.isRunning())
+    if (on == recordTimer.isActive())
         return;
 
     int period = int(1000/record_rate+0.5);
@@ -1216,7 +1251,7 @@ void QDeclarativeViewer::setRecording(bool on)
     if (on) {
         canvas->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
         recordTimer.setInterval(period);
-        recordTimer.setRunning(true);
+        recordTimer.start();
         frame_fmt = record_file.right(4).toLower();
         frame = QImage(canvas->width(),canvas->height(),QImage::Format_RGB32);
         if (frame_fmt != ".png" && (!convertAvailable || frame_fmt != ".gif")) {
@@ -1247,7 +1282,7 @@ void QDeclarativeViewer::setRecording(bool on)
         }
     } else {
         canvas->setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate);
-        recordTimer.setRunning(false);
+        recordTimer.stop();
         if (frame_stream) {
             qDebug() << "Saving video...";
             frame_stream->close();
@@ -1327,7 +1362,7 @@ void QDeclarativeViewer::setRecording(bool on)
             frames.clear();
         }
     }
-    qDebug() << "Recording: " << (recordTimer.isRunning()?"ON":"OFF");
+    qDebug() << "Recording: " << (recordTimer.isActive()?"ON":"OFF");
 }
 
 void QDeclarativeViewer::ffmpegFinished(int code)
@@ -1335,11 +1370,21 @@ void QDeclarativeViewer::ffmpegFinished(int code)
     qDebug() << "ffmpeg returned" << code << frame_stream->readAllStandardError();
 }
 
+void QDeclarativeViewer::appAboutToQuit()
+{
+    // avoid QGLContext errors about invalid contexts on exit
+    canvas->setViewport(0);
+
+    // avoid crashes if messages are received after app has closed
+    delete loggerWindow;
+    loggerWindow = 0;
+}
+
 void QDeclarativeViewer::autoStartRecording()
 {
     setRecording(true);
     autoStopTimer.setInterval(record_autotime);
-    autoStopTimer.setRunning(true);
+    autoStopTimer.start();
 }
 
 void QDeclarativeViewer::autoStopRecording()
@@ -1361,6 +1406,44 @@ void QDeclarativeViewer::recordFrame()
     } else {
         frames.append(new QImage(frame));
     }
+}
+
+void QDeclarativeViewer::changeOrientation(QAction *action)
+{
+    if (!action)
+        return;
+    QString o = action->text();
+    action->setChecked(true);
+#if defined(Q_WS_S60)
+    CAknAppUi *appUi = static_cast<CAknAppUi *>(CEikonEnv::Static()->AppUi());
+    if (appUi) {
+        CAknAppUi::TAppUiOrientation orientation = appUi->Orientation();
+        if (o == QLatin1String("Auto-orientation")) {
+            appUi->SetOrientationL(CAknAppUi::EAppUiOrientationAutomatic);
+            rotateAction->setVisible(false);
+        } else if (o == QLatin1String("Portrait")) {
+            appUi->SetOrientationL(CAknAppUi::EAppUiOrientationPortrait);
+            rotateAction->setVisible(true);
+        } else if (o == QLatin1String("Landscape")) {
+            appUi->SetOrientationL(CAknAppUi::EAppUiOrientationLandscape);
+            rotateAction->setVisible(true);
+        }
+    }
+#else
+    if (o == QLatin1String("Portrait"))
+        DeviceOrientation::instance()->setOrientation(DeviceOrientation::Portrait);
+    else if (o == QLatin1String("Landscape"))
+        DeviceOrientation::instance()->setOrientation(DeviceOrientation::Landscape);
+    else if (o == QLatin1String("Portrait (inverted)"))
+        DeviceOrientation::instance()->setOrientation(DeviceOrientation::PortraitInverted);
+    else if (o == QLatin1String("Landscape (inverted)"))
+        DeviceOrientation::instance()->setOrientation(DeviceOrientation::LandscapeInverted);
+#endif
+}
+
+void QDeclarativeViewer::orientationChanged()
+{
+    updateSizeHints();
 }
 
 void QDeclarativeViewer::setDeviceKeys(bool on)
@@ -1385,10 +1468,13 @@ void QDeclarativeViewer::setUseGL(bool useGL)
 #endif
 
         QGLWidget *glWidget = new QGLWidget(format);
-        glWidget->setAutoFillBackground(false);
+        //### potentially faster, but causes junk to appear if top-level is Item, not Rectangle
+        //glWidget->setAutoFillBackground(false);
 
         canvas->setViewport(glWidget);
     }
+#else
+    Q_UNUSED(useGL)
 #endif
 }
 
@@ -1397,13 +1483,50 @@ void QDeclarativeViewer::setUseNativeFileBrowser(bool use)
     useQmlFileBrowser = !use;
 }
 
+void QDeclarativeViewer::setSizeToView(bool sizeToView)
+{
+    QDeclarativeView::ResizeMode resizeMode = sizeToView ? QDeclarativeView::SizeRootObjectToView : QDeclarativeView::SizeViewToRootObject;
+    if (resizeMode != canvas->resizeMode()) {
+        canvas->setResizeMode(resizeMode);
+        updateSizeHints();
+    }
+}
+
+void QDeclarativeViewer::updateSizeHints(bool initial)
+{
+    static bool isRecursive = false;
+
+    if (isRecursive)
+        return;
+    isRecursive = true;
+
+    if (initial || (canvas->resizeMode() == QDeclarativeView::SizeViewToRootObject)) {
+        QSize newWindowSize = initial ? initialSize : canvas->sizeHint();
+        //qWarning() << "USH:" << (initial ? "INIT:" : "V2R:") << "setting fixed size " << newWindowSize;
+        if (!isFullScreen() && !isMaximized()) {
+            canvas->setFixedSize(newWindowSize);
+            resize(1, 1);
+            layout()->setSizeConstraint(QLayout::SetFixedSize);
+            layout()->activate();
+        }
+    }
+    //qWarning() << "USH: R2V: setting free size ";
+    layout()->setSizeConstraint(QLayout::SetNoConstraint);
+    layout()->activate();
+    setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX));
+    canvas->setMinimumSize(QSize(0,0));
+    canvas->setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX));
+
+    isRecursive = false;
+}
+
 void QDeclarativeViewer::registerTypes()
 {
     static bool registered = false;
 
     if (!registered) {
         // registering only for exposing the DeviceOrientation::Orientation enum
-        qmlRegisterUncreatableType<DeviceOrientation>("Qt",4,6,"Orientation");
+        qmlRegisterUncreatableType<DeviceOrientation>("Qt",4,7,"Orientation","");
         registered = true;
     }
 }

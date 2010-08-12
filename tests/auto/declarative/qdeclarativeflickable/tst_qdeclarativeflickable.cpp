@@ -46,6 +46,11 @@
 #include <private/qdeclarativevaluetype_p.h>
 #include <math.h>
 
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
+
 class tst_qdeclarativeflickable : public QObject
 {
     Q_OBJECT
@@ -57,10 +62,11 @@ private slots:
     void horizontalViewportSize();
     void verticalViewportSize();
     void properties();
-    void overShoot();
+    void boundsBehavior();
     void maximumFlickVelocity();
     void flickDeceleration();
     void pressDelay();
+    void flickableDirection();
 
 private:
     QDeclarativeEngine engine;
@@ -88,7 +94,7 @@ void tst_qdeclarativeflickable::create()
     QCOMPARE(obj->verticalVelocity(), 0.);
 
     QCOMPARE(obj->isInteractive(), true);
-    QCOMPARE(obj->overShoot(), true);
+    QCOMPARE(obj->boundsBehavior(), QDeclarativeFlickable::DragAndOvershootBounds);
     QCOMPARE(obj->pressDelay(), 0);
     QCOMPARE(obj->maximumFlickVelocity(), 2000.);
 
@@ -137,34 +143,44 @@ void tst_qdeclarativeflickable::properties()
 
     QVERIFY(obj != 0);
     QCOMPARE(obj->isInteractive(), false);
-    QCOMPARE(obj->overShoot(), false);
+    QCOMPARE(obj->boundsBehavior(), QDeclarativeFlickable::StopAtBounds);
     QCOMPARE(obj->pressDelay(), 200);
     QCOMPARE(obj->maximumFlickVelocity(), 2000.);
+
+    QVERIFY(obj->property("ok").toBool() == false);
+    QMetaObject::invokeMethod(obj, "check");
+    QVERIFY(obj->property("ok").toBool() == true);
 
     delete obj;
 }
 
-void tst_qdeclarativeflickable::overShoot()
+void tst_qdeclarativeflickable::boundsBehavior()
 {
     QDeclarativeComponent component(&engine);
-    component.setData("import Qt 4.7; Flickable { overShoot: false; }", QUrl::fromLocalFile(""));
+    component.setData("import Qt 4.7; Flickable { boundsBehavior: Flickable.StopAtBounds }", QUrl::fromLocalFile(""));
     QDeclarativeFlickable *flickable = qobject_cast<QDeclarativeFlickable*>(component.create());
-    QSignalSpy spy(flickable, SIGNAL(overShootChanged()));
+    QSignalSpy spy(flickable, SIGNAL(boundsBehaviorChanged()));
 
     QVERIFY(flickable);
-    QVERIFY(!flickable->overShoot());
+    QVERIFY(flickable->boundsBehavior() == QDeclarativeFlickable::StopAtBounds);
 
-    flickable->setOverShoot(true);
-    QVERIFY(flickable->overShoot());
+    flickable->setBoundsBehavior(QDeclarativeFlickable::DragAndOvershootBounds);
+    QVERIFY(flickable->boundsBehavior() == QDeclarativeFlickable::DragAndOvershootBounds);
     QCOMPARE(spy.count(),1);
-    flickable->setOverShoot(true);
+    flickable->setBoundsBehavior(QDeclarativeFlickable::DragAndOvershootBounds);
     QCOMPARE(spy.count(),1);
 
-    flickable->setOverShoot(false);
-    QVERIFY(!flickable->overShoot());
+    flickable->setBoundsBehavior(QDeclarativeFlickable::DragOverBounds);
+    QVERIFY(flickable->boundsBehavior() == QDeclarativeFlickable::DragOverBounds);
     QCOMPARE(spy.count(),2);
-    flickable->setOverShoot(false);
+    flickable->setBoundsBehavior(QDeclarativeFlickable::DragOverBounds);
     QCOMPARE(spy.count(),2);
+
+    flickable->setBoundsBehavior(QDeclarativeFlickable::StopAtBounds);
+    QVERIFY(flickable->boundsBehavior() == QDeclarativeFlickable::StopAtBounds);
+    QCOMPARE(spy.count(),3);
+    flickable->setBoundsBehavior(QDeclarativeFlickable::StopAtBounds);
+    QCOMPARE(spy.count(),3);
 }
 
 void tst_qdeclarativeflickable::maximumFlickVelocity()
@@ -216,6 +232,33 @@ void tst_qdeclarativeflickable::pressDelay()
     QCOMPARE(spy.count(),1);
     flickable->setPressDelay(200);
     QCOMPARE(spy.count(),1);
+}
+
+void tst_qdeclarativeflickable::flickableDirection()
+{
+    QDeclarativeComponent component(&engine);
+    component.setData("import Qt 4.7; Flickable { flickableDirection: Flickable.VerticalFlick; }", QUrl::fromLocalFile(""));
+    QDeclarativeFlickable *flickable = qobject_cast<QDeclarativeFlickable*>(component.create());
+    QSignalSpy spy(flickable, SIGNAL(flickableDirectionChanged()));
+
+    QVERIFY(flickable);
+    QCOMPARE(flickable->flickableDirection(), QDeclarativeFlickable::VerticalFlick);
+
+    flickable->setFlickableDirection(QDeclarativeFlickable::HorizontalAndVerticalFlick);
+    QCOMPARE(flickable->flickableDirection(), QDeclarativeFlickable::HorizontalAndVerticalFlick);
+    QCOMPARE(spy.count(),1);
+
+    flickable->setFlickableDirection(QDeclarativeFlickable::AutoFlickDirection);
+    QCOMPARE(flickable->flickableDirection(), QDeclarativeFlickable::AutoFlickDirection);
+    QCOMPARE(spy.count(),2);
+
+    flickable->setFlickableDirection(QDeclarativeFlickable::HorizontalFlick);
+    QCOMPARE(flickable->flickableDirection(), QDeclarativeFlickable::HorizontalFlick);
+    QCOMPARE(spy.count(),3);
+
+    flickable->setFlickableDirection(QDeclarativeFlickable::HorizontalFlick);
+    QCOMPARE(flickable->flickableDirection(), QDeclarativeFlickable::HorizontalFlick);
+    QCOMPARE(spy.count(),3);
 }
 
 QTEST_MAIN(tst_qdeclarativeflickable)

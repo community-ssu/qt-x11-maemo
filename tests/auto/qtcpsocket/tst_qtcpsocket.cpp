@@ -144,6 +144,7 @@ private slots:
     void blockingIMAP();
     void nonBlockingIMAP();
     void hostNotFound();
+    void timeoutConnect_data();
     void timeoutConnect();
     void delayedClose();
     void partialRead();
@@ -544,19 +545,36 @@ void tst_QTcpSocket::hostNotFound()
 }
 
 //----------------------------------------------------------------------------------
+void tst_QTcpSocket::timeoutConnect_data()
+{
+    QTest::addColumn<QString>("address");
+    QTest::newRow("host") << QtNetworkSettings::serverName();
+    QTest::newRow("ip") << QtNetworkSettings::serverIP().toString();
+}
 
 void tst_QTcpSocket::timeoutConnect()
 {
+    QFETCH(QString, address);
     QTcpSocket *socket = newSocket();
 
-    // Outgoing port 53 is firewalled in the Oslo office.
-    socket->connectToHost("cisco.com", 53);
+    QElapsedTimer timer;
+    timer.start();
+
+    // Port 1357 is configured to drop packets on the test server
+    socket->connectToHost(address, 1357);
+    QVERIFY(timer.elapsed() < 50);
     QVERIFY(!socket->waitForConnected(200));
     QCOMPARE(socket->state(), QTcpSocket::UnconnectedState);
     QCOMPARE(int(socket->error()), int(QTcpSocket::SocketTimeoutError));
 
-    socket->connectToHost("cisco.com", 53);
-    QTest::qSleep(50);
+    timer.start();
+    socket->connectToHost(address, 1357);
+    QVERIFY(timer.elapsed() < 50);
+    QTimer::singleShot(50, &QTestEventLoop::instance(), SLOT(exitLoop()));
+    QTestEventLoop::instance().enterLoop(5);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+    QVERIFY(socket->state() == QTcpSocket::ConnectingState
+            || socket->state() == QTcpSocket::HostLookupState);
     socket->abort();
     QCOMPARE(socket->state(), QTcpSocket::UnconnectedState);
     QCOMPARE(socket->openMode(), QIODevice::NotOpen);
@@ -2251,7 +2269,11 @@ void tst_QTcpSocket::taskQtBug7054TimeoutErrorResetting()
     QTcpSocket *socket = newSocket();
 
     socket->connectToHost(QtNetworkSettings::serverName(), 443);
+#ifdef Q_WS_MAEMO_5
+    QVERIFY(socket->waitForConnected(10*1000));
+#else
     QVERIFY(socket->waitForConnected(5*1000));
+#endif
     QVERIFY(socket->error() == QAbstractSocket::UnknownSocketError);
 
     // We connected to the HTTPS port. Wait two seconds to receive data. We will receive

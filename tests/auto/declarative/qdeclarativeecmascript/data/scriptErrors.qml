@@ -1,12 +1,10 @@
 import Qt.test 1.0
+import "scriptErrors.js" as Script
 
 MyQmlObject {
-    Script { source: "scriptErrors.js" }
-    Script { function getValue() { a = 10; return 0; } }
-
     property int t: a.value
-    property int w: getValue();
-    property int x: undefinedObject
+    property int w: Script.getValue();
+    property int x: undefined
     property int y: (a.value, undefinedObject)
 
     onBasicSignal: { console.log(a.value); }

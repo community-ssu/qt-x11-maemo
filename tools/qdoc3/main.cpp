@@ -68,6 +68,7 @@
 #include "qscodeparser.h"
 #include "sgmlgenerator.h"
 #include "webxmlgenerator.h"
+#include "ditaxmlgenerator.h"
 #include "tokenizer.h"
 #include "tree.h"
 #include <qdebug.h>
@@ -427,6 +428,7 @@ int main(int argc, char **argv)
     ManGenerator manGenerator;
     SgmlGenerator smglGenerator;
     WebXMLGenerator webxmlGenerator;
+    DitaXmlGenerator ditaxmlGenerator;
 
     QStringList qdocFiles;
     QString opt;
@@ -473,8 +475,10 @@ int main(int argc, char **argv)
     /*
       Main loop.
      */
-    foreach (QString qf, qdocFiles)
+    foreach (QString qf, qdocFiles) {
+        qDebug() << "PROCESSING:" << qf;
 	processQdocconfFile(qf);
+    }
 
     qDeleteAll(trees);
     return EXIT_SUCCESS;

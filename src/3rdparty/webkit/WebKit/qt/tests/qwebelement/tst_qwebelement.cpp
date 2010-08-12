@@ -999,9 +999,10 @@ void tst_QWebElement::render()
     QWebElementCollection tables = page.mainFrame()->findAllElements("table");
     QCOMPARE(tables.count(), 1);
 
+    QPalette pal =  QApplication::palette();
     QImage image3(300, 300, QImage::Format_ARGB32);
     QPainter painter3(&image3);
-    painter3.fillRect(tableRect, Qt::white);
+    painter3.fillRect(tableRect, pal.base());
     tables[0].render(&painter3);
     painter3.end();
 

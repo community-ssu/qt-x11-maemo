@@ -61,7 +61,7 @@
 #include "QtGui/qtreeview.h"
 #include "QtGui/qabstractproxymodel.h"
 #include "qcompleter.h"
-#include "QtGui/qitemdelegate.h"
+#include "QtGui/qstyleditemdelegate.h"
 #include "QtGui/qpainter.h"
 #include "private/qabstractproxymodel_p.h"
 
@@ -80,7 +80,7 @@ public:
 
     QPointer<QWidget> widget;
     QCompletionModel *proxy;
-    QAbstractItemView *popup;
+    QPointer<QAbstractItemView> popup;
     QCompleter::CompletionMode mode;
 
     QString prefix;
@@ -190,17 +190,17 @@ private:
                      const QIndexMapper& iv, QMatchData* m);
 };
 
-class QCompleterItemDelegate : public QItemDelegate
+class QCompleterItemDelegate : public QStyledItemDelegate
 {
 public:
     QCompleterItemDelegate(QAbstractItemView *view)
-        : QItemDelegate(view), view(view) { }
+        : QStyledItemDelegate(view), view(view) { }
     void paint(QPainter *p, const QStyleOptionViewItem& opt, const QModelIndex& idx) const {
         QStyleOptionViewItem optCopy = opt;
         optCopy.showDecorationSelected = true;
         if (view->currentIndex() == idx)
             optCopy.state |= QStyle::State_HasFocus;
-        QItemDelegate::paint(p, optCopy, idx);
+        QStyledItemDelegate::paint(p, optCopy, idx);
     }
 
 private:

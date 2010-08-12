@@ -50,7 +50,7 @@
 // so that we can keep dynamic and static values inline.
 // Please adjust version data if correcting dynamic PM calculations.
 const TInt KPMMajorVersion = 1;
-const TInt KPMMinorVersion = 17;
+const TInt KPMMinorVersion = 19;
 
 TPixelMetricsVersion PixelMetrics::Version()
     {
@@ -468,7 +468,7 @@ TInt PixelMetrics::PixelMetricValue(QStyle::PixelMetric metric)
             TAknLayoutRect sliderSettingRect;
             sliderSettingRect.LayoutRect( sliderRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_cp() );
             TAknLayoutRect sliderGraph2Rect;
-            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g2() );
+            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g6() );
             value = sliderGraph2Rect.Rect().Width();
             }
             break;
@@ -483,7 +483,8 @@ TInt PixelMetrics::PixelMetricValue(QStyle::PixelMetric metric)
             TAknLayoutRect sliderSettingRect;
             sliderSettingRect.LayoutRect( sliderRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_cp() );
             TAknLayoutRect sliderGraph2Rect;
-            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g2() );
+            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g6() );
+            //todo: make a proper calculation for tick marks
             value = (TInt)(sliderGraph2Rect.Rect().Height()*1.5); // add assumed tickmark height
             }
             break;
@@ -498,7 +499,8 @@ TInt PixelMetrics::PixelMetricValue(QStyle::PixelMetric metric)
             TAknLayoutRect sliderSettingRect;
             sliderSettingRect.LayoutRect( sliderRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_cp() );
             TAknLayoutRect sliderGraph2Rect;
-            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g2() );
+            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g6() );
+            //todo: make a proper calculation for tick marks
             value = (TInt)(sliderGraph2Rect.Rect().Height()*0.5); // no tickmarks in S60, lets assume they are half the size of slider indicator
             }
             break;
@@ -513,7 +515,7 @@ TInt PixelMetrics::PixelMetricValue(QStyle::PixelMetric metric)
             TAknLayoutRect sliderSettingRect;
             sliderSettingRect.LayoutRect( sliderRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_cp() );
             TAknLayoutRect sliderGraph2Rect;
-            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g2() );
+            sliderGraph2Rect.LayoutRect( sliderSettingRect.Rect(), AknLayoutScalable_Avkon::slider_set_pane_g6() );
             value = sliderGraph2Rect.Rect().Height();
             }
             break;
@@ -1020,7 +1022,21 @@ TInt PixelMetrics::PixelMetricValue(QStyle::PixelMetric metric)
             break;
 
         case QStyle::PM_MenuScrollerHeight:
-            value = 0;
+            {
+            TRect rectParent( mainPaneRect );
+            TAknLayoutRect listWidthScrollBarsRect;
+            listWidthScrollBarsRect.LayoutRect( rectParent, AknLayoutScalable_Avkon::listscroll_gen_pane(0).LayoutLine() );
+
+            TAknLayoutRect listWidgetRect;
+            listWidgetRect.LayoutRect( listWidthScrollBarsRect.Rect(), AknLayoutScalable_Avkon::list_gen_pane(0).LayoutLine() );
+            TAknLayoutRect singleLineListWidgetRect;
+            singleLineListWidgetRect.LayoutRect( listWidgetRect.Rect(), AknLayoutScalable_Avkon::list_single_pane(0).LayoutLine() );
+
+            TAknLayoutRect listHighlightRect;
+            listHighlightRect.LayoutRect( singleLineListWidgetRect.Rect(), AknLayoutScalable_Avkon::list_highlight_pane_cp1(0).LayoutLine() );
+
+            value = listHighlightRect.Rect().Height();
+            }
             break;
 
 // todo: re-check if these really are not available in s60

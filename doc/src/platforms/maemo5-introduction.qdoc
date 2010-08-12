@@ -55,6 +55,18 @@
         \o \l {Installing Qt on the Maemo 5 Platform from Source}
         \o \l {The Maemo 5 Platform - Introduction to Qt}{Introduction to using Qt on Maemo 5}
     \endlist
+
+    To include the definitions of this modules' classes, use the following directive: 
+
+    \snippet doc/src/snippets/code/doc_src_qtmaemo5.qdoc 1
+
+    To link against the module, add this line to your \l qmake \c
+    .pro file:
+
+    \snippet doc/src/snippets/code/doc_src_qtmaemo5.qdoc 0
+
+    The QtMaemo5 module is part of the \l{Qt GUI Framework Edition},
+    the \l{Qt Full Framework Edition}, and the \l{Open Source Versions of Qt}.
 */
 
 /*!

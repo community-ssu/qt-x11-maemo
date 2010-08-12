@@ -323,7 +323,9 @@ QFontComboBox::QFontComboBox(QWidget *parent)
 {
     Q_D(QFontComboBox);
     d->currentFont = font();
-    setEditable(true);
+#ifndef Q_WS_MAEMO_5
+    setEditable(false);
+#endif
 
     QStringListModel *m = new QStringListModel(this);
     setModel(m);
@@ -447,11 +449,13 @@ void QFontComboBox::setCurrentFont(const QFont &font)
 */
 bool QFontComboBox::event(QEvent *e)
 {
+#ifndef Q_WS_MAEMO_5
     if (e->type() == QEvent::Resize) {
         QListView *lview = qobject_cast<QListView*>(view());
         if (lview)
             lview->window()->setFixedWidth(width() * 5 / 3);
     }
+#endif
     return QComboBox::event(e);
 }
 

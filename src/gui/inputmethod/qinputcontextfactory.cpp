@@ -84,7 +84,7 @@
 
 QT_BEGIN_NAMESPACE
 
-#if !defined(QT_NO_LIBRARY) && !defined(QT_NO_SETTINGS)
+#ifndef QT_NO_LIBRARY
 Q_GLOBAL_STATIC_WITH_ARGS(QFactoryLoader, loader,
     (QInputContextFactoryInterface_iid, QLatin1String("/inputmethods")))
 #endif
@@ -162,7 +162,7 @@ QInputContext *QInputContextFactory::create( const QString& key, QObject *parent
     }
 #endif
 
-#if defined(QT_NO_LIBRARY) || defined(QT_NO_SETTINGS)
+#ifdef QT_NO_LIBRARY
     Q_UNUSED(key);
 #else
     if (QInputContextFactoryInterface *factory =
@@ -206,7 +206,7 @@ QStringList QInputContextFactory::keys()
     result << QLatin1String("hildon");
 #endif
 
-#if !defined(QT_NO_LIBRARY) && !defined(QT_NO_SETTINGS)
+#ifndef QT_NO_LIBRARY
     result += loader()->keys();
 #endif // QT_NO_LIBRARY
     return result;

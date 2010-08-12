@@ -1,5 +1,5 @@
 import Qt.test 1.0
-import Qt 4.6
+import Qt 4.7
 
 MyTypeObject {
     Component.onCompleted: {
@@ -9,7 +9,7 @@ MyTypeObject {
         uintProperty = 10
         intProperty = -19
         realProperty = 23.2
-        doubleProperty = -19.7
+        doubleProperty = -19.75
         floatProperty = 8.5
         colorProperty = "red"
         dateProperty = "1982-11-25"

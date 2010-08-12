@@ -46,16 +46,21 @@ static bool areRectsFullyAligned(FocusDirection, const IntRect&, const IntRect&)
 static bool areRectsPartiallyAligned(FocusDirection, const IntRect&, const IntRect&);
 static bool isRectInDirection(FocusDirection, const IntRect&, const IntRect&);
 static void deflateIfOverlapped(IntRect&, IntRect&);
+static bool checkNegativeCoordsForNode(Node*, const IntRect&);
 
-long long distanceInDirection(Node* start, Node* dest, FocusDirection direction, FocusCandidate& candidate)
+void distanceDataForNode(FocusDirection direction, Node* start, FocusCandidate& candidate)
 {
     RenderObject* startRender = start->renderer();
-    if (!startRender)
-        return maxDistance();
+    if (!startRender) {
+        candidate.distance = maxDistance();
+        return;
+    }
 
-    RenderObject* destRender = dest->renderer();
-    if (!destRender)
-        return maxDistance();
+    RenderObject* destRender = candidate.node->renderer();
+    if (!destRender) {
+        candidate.distance = maxDistance();
+        return;
+    }
 
     IntRect curRect = renderRectRelativeToRootDocument(startRender);
     IntRect targetRect  = renderRectRelativeToRootDocument(destRender);
@@ -64,48 +69,42 @@ long long distanceInDirection(Node* start, Node* dest, FocusDirection direction,
     // deflate both.
     deflateIfOverlapped(curRect, targetRect);
 
+    // If empty rects or negative width or height, bail out.
     if (curRect.isEmpty() || targetRect.isEmpty()
-        || targetRect.x() < 0 || targetRect.y() < 0)
-        return maxDistance();
+     || targetRect.width() <= 0 || targetRect.height() <= 0) {
+        candidate.distance = maxDistance();
+        return;
+    }
 
-    if (!isRectInDirection(direction, curRect, targetRect))
-        return maxDistance();
+    // Negative coordinates can be used if node is scrolled up offscreen.
+    if (!checkNegativeCoordsForNode(start, curRect)) {
+        candidate.distance = maxDistance();
+        return;
+    }
+
+    if (!checkNegativeCoordsForNode(candidate.node, targetRect)) {
+        candidate.distance = maxDistance();
+        return;
+    }
+
+    if (!isRectInDirection(direction, curRect, targetRect)) {
+        candidate.distance = maxDistance();
+        return;
+    }
 
     // The distance between two nodes is not to be considered alone when evaluating/looking
     // for the best focus candidate node. Alignment of rects can be also a good point to be
     // considered in order to make the algorithm to behavior in a more intuitive way.
-    RectsAlignment alignment = alignmentForRects(direction, curRect, targetRect);
-
-    bool sameDocument = dest->document() == candidate.document();
-    if (sameDocument) {
-        if (candidate.alignment > alignment || (candidate.parentAlignment && alignment > candidate.parentAlignment))
-            return maxDistance();
-    } else if (candidate.alignment > alignment && (candidate.parentAlignment && alignment > candidate.parentAlignment))
-        return maxDistance();
-
-    // FIXME_tonikitoo: simplify the logic here !
-    if (alignment != None
-        || (!candidate.isNull() && candidate.parentAlignment >= alignment
-        && candidate.document() == dest->document())) {
-
-        // If we are now in an higher precedent case, lets reset the current |candidate|'s
-        // |distance| so we force it to be bigger than the result we will get from
-        // |spatialDistance| (see below).
-        if (candidate.alignment < alignment && candidate.parentAlignment < alignment)
-            candidate.distance = maxDistance();
-
-        candidate.alignment = alignment;
-    }
-
-    return spatialDistance(direction, curRect, targetRect);
+    candidate.alignment = alignmentForRects(direction, curRect, targetRect);
+    candidate.distance = spatialDistance(direction, curRect, targetRect);
 }
 
 // FIXME: This function does not behave correctly with transformed frames.
 static IntRect renderRectRelativeToRootDocument(RenderObject* render)
 {
-    ASSERT(render);
+    ASSERT(render && render->node());
 
-    IntRect rect(render->absoluteClippedOverflowRect());
+    IntRect rect = render->node()->getRect();
 
     // In cases when the |render|'s associated node is in a scrollable inner
     // document, we only consider its scrollOffset if it is not offscreen.
@@ -120,8 +119,11 @@ static IntRect renderRectRelativeToRootDocument(RenderObject* render)
 
     // Handle nested frames.
     for (Frame* frame = render->document()->frame(); frame; frame = frame->tree()->parent()) {
-        if (HTMLFrameOwnerElement* ownerElement = frame->ownerElement())
-            rect.move(ownerElement->offsetLeft(), ownerElement->offsetTop());
+        if (Element* element = static_cast<Element*>(frame->ownerElement())) {
+            do {
+                rect.move(element->offsetLeft(), element->offsetTop());
+            } while ((element = element->offsetParent()));
+        }
     }
 
     return rect;
@@ -432,12 +434,15 @@ bool hasOffscreenRect(Node* node)
         return true;
 
     IntRect rect(render->absoluteClippedOverflowRect());
+    if (rect.isEmpty())
+        return true;
+
     return !containerViewportRect.intersects(rect);
 }
 
 // In a bottom-up way, this method tries to scroll |frame| in a given direction
 // |direction|, going up in the frame tree hierarchy in case it does not succeed.
-bool scrollInDirection(Frame* frame, FocusDirection direction)
+bool scrollInDirection(Frame* frame, FocusDirection direction, const FocusCandidate& candidate)
 {
     if (!frame)
         return false;
@@ -461,6 +466,9 @@ bool scrollInDirection(Frame* frame, FocusDirection direction)
         return false;
     }
 
+    if (!candidate.isNull() && isScrollableContainerNode(candidate.enclosingScrollableBox))
+        return frame->eventHandler()->scrollRecursively(scrollDirection, ScrollByLine, candidate.enclosingScrollableBox);
+
     return frame->eventHandler()->scrollRecursively(scrollDirection, ScrollByLine);
 }
 
@@ -470,9 +478,8 @@ void scrollIntoView(Element* element)
     // it is preferable to inflate |element|'s bounding rect a bit before
     // scrolling it for accurate reason.
     // Element's scrollIntoView method does not provide this flexibility.
-    static const int fudgeFactor = 2;
     IntRect bounds = element->getRect();
-    bounds.inflate(fudgeFactor);
+    bounds.inflate(fudgeFactor());
     element->renderer()->enclosingLayer()->scrollRectToVisible(bounds);
 }
 
@@ -490,14 +497,67 @@ static void deflateIfOverlapped(IntRect& a, IntRect& b)
     if (!a.intersects(b) || a.contains(b) || b.contains(a))
         return;
 
-    static const int fudgeFactor = -2;
+    int deflateFactor = -fudgeFactor();
 
     // Avoid negative width or height values.
-    if ((a.width() + 2 * fudgeFactor > 0) && (a.height() + 2 * fudgeFactor > 0))
-        a.inflate(fudgeFactor);
+    if ((a.width() + 2 * deflateFactor > 0) && (a.height() + 2 * deflateFactor > 0))
+        a.inflate(deflateFactor);
 
-    if ((b.width() + 2 * fudgeFactor > 0) && (b.height() + 2 * fudgeFactor > 0))
-        b.inflate(fudgeFactor);
+    if ((b.width() + 2 * deflateFactor > 0) && (b.height() + 2 * deflateFactor > 0))
+        b.inflate(deflateFactor);
+}
+
+static bool checkNegativeCoordsForNode(Node* node, const IntRect& curRect)
+{
+    ASSERT(node || node->renderer());
+
+    if (curRect.x() >= 0 && curRect.y() >= 0)
+        return true;
+
+    bool canBeScrolled = false;
+
+    RenderObject* renderer = node->renderer();
+    for (; renderer; renderer = renderer->parent()) {
+        if (renderer->isBox() && toRenderBox(renderer)->canBeScrolledAndHasScrollableArea()) {
+            canBeScrolled = true;
+            break;
+        }
+    }
+
+    return canBeScrolled;
+}
+
+bool isScrollableContainerNode(Node* node)
+{
+    if (!node)
+        return false;
+
+    if (RenderObject* renderer = node->renderer()) {
+        return (renderer->isBox() && toRenderBox(renderer)->canBeScrolledAndHasScrollableArea()
+             && node->hasChildNodes() && !node->isDocumentNode());
+    }
+
+    return false;
+}
+
+bool isNodeDeepDescendantOfDocument(Node* node, Document* baseDocument)
+{
+    if (!node || !baseDocument)
+        return false;
+
+    bool descendant = baseDocument == node->document();
+
+    Element* currentElement = static_cast<Element*>(node);
+    while (!descendant) {
+        Element* documentOwner = currentElement->document()->ownerElement();
+        if (!documentOwner)
+            break;
+
+        descendant = documentOwner->document() == baseDocument;
+        currentElement = documentOwner;
+    }
+
+    return descendant;
 }
 
 } // namespace WebCore

@@ -42,6 +42,7 @@
 #include <qtest.h>
 #include <QDebug>
 #include <QDeclarativeEngine>
+#include <QFontDatabase>
 #include <QFileInfo>
 #include <QDeclarativeComponent>
 #include <QDesktopServices>
@@ -49,6 +50,11 @@
 #include <QVector3D>
 #include <QCryptographicHash>
 #include <QDeclarativeItem>
+
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
 
 class tst_qdeclarativeqt : public QObject
 {
@@ -70,10 +76,14 @@ private slots:
     void openUrlExternally();
     void md5();
     void createComponent();
+    void createComponent_pragmaLibrary();
     void createQmlObject();
     void consoleLog();
     void formatting();
     void isQtObject();
+    void btoa();
+    void atob();
+    void fontFamilies();
 
 private:
     QDeclarativeEngine engine;
@@ -102,14 +112,10 @@ void tst_qdeclarativeqt::rgba()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("rgba.qml"));
 
-    QString warning1 = component.url().toString() + ":6: Unable to assign null to QColor";
-    QString warning2 = component.url().toString() + ":7: Unable to assign null to QColor";
-    QString warning3 = component.url().toString() + ":8: Unable to assign null to QColor";
-    QString warning4 = component.url().toString() + ":9: Unable to assign null to QColor";
+    QString warning1 = component.url().toString() + ":6: Error: Qt.rgba(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":7: Error: Qt.rgba(): Invalid arguments";
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
-    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning3));
-    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning4));
 
     QObject *object = component.create();
     QVERIFY(object != 0);
@@ -119,8 +125,8 @@ void tst_qdeclarativeqt::rgba()
     QCOMPARE(qvariant_cast<QColor>(object->property("test2")), QColor::fromRgbF(1, 0.5, 0.3, 1));
     QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor());
     QCOMPARE(qvariant_cast<QColor>(object->property("test4")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor());
+    QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor::fromRgbF(1, 1, 1, 1));
+    QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor::fromRgbF(0, 0, 0, 0));
 
     delete object;
 }
@@ -129,14 +135,10 @@ void tst_qdeclarativeqt::hsla()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("hsla.qml"));
 
-    QString warning1 = component.url().toString() + ":6: Unable to assign null to QColor";
-    QString warning2 = component.url().toString() + ":7: Unable to assign null to QColor";
-    QString warning3 = component.url().toString() + ":8: Unable to assign null to QColor";
-    QString warning4 = component.url().toString() + ":9: Unable to assign null to QColor";
+    QString warning1 = component.url().toString() + ":6: Error: Qt.hsla(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":7: Error: Qt.hsla(): Invalid arguments";
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
-    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning3));
-    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning4));
 
     QObject *object = component.create();
     QVERIFY(object != 0);
@@ -145,8 +147,8 @@ void tst_qdeclarativeqt::hsla()
     QCOMPARE(qvariant_cast<QColor>(object->property("test2")), QColor::fromHslF(1, 0.5, 0.3, 1));
     QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor());
     QCOMPARE(qvariant_cast<QColor>(object->property("test4")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor());
+    QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor::fromHslF(1, 1, 1, 1));
+    QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor::fromHslF(0, 0, 0, 0));
 
     delete object;
 }
@@ -154,6 +156,12 @@ void tst_qdeclarativeqt::hsla()
 void tst_qdeclarativeqt::rect()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("rect.qml"));
+
+    QString warning1 = component.url().toString() + ":6: Error: Qt.rect(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":7: Error: Qt.rect(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
@@ -169,6 +177,12 @@ void tst_qdeclarativeqt::rect()
 void tst_qdeclarativeqt::point()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("point.qml"));
+
+    QString warning1 = component.url().toString() + ":6: Error: Qt.point(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":7: Error: Qt.point(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
@@ -183,6 +197,12 @@ void tst_qdeclarativeqt::point()
 void tst_qdeclarativeqt::size()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("size.qml"));
+
+    QString warning1 = component.url().toString() + ":7: Error: Qt.size(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":8: Error: Qt.size(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
@@ -198,6 +218,12 @@ void tst_qdeclarativeqt::size()
 void tst_qdeclarativeqt::vector()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("vector.qml"));
+
+    QString warning1 = component.url().toString() + ":6: Error: Qt.vector(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":7: Error: Qt.vector(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
@@ -212,12 +238,18 @@ void tst_qdeclarativeqt::vector()
 void tst_qdeclarativeqt::lighter()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("lighter.qml"));
+
+    QString warning1 = component.url().toString() + ":5: Error: Qt.lighter(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":10: Error: Qt.lighter(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
     QCOMPARE(qvariant_cast<QColor>(object->property("test1")), QColor::fromRgbF(1, 0.8, 0.3).lighter());
     QCOMPARE(qvariant_cast<QColor>(object->property("test2")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor());
+    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor::fromRgbF(1, 0.8, 0.3).lighter(180));
     QCOMPARE(qvariant_cast<QColor>(object->property("test4")), QColor("red").lighter());
     QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor());
     QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor());
@@ -228,12 +260,18 @@ void tst_qdeclarativeqt::lighter()
 void tst_qdeclarativeqt::darker()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("darker.qml"));
+
+    QString warning1 = component.url().toString() + ":5: Error: Qt.darker(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":10: Error: Qt.darker(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
     QCOMPARE(qvariant_cast<QColor>(object->property("test1")), QColor::fromRgbF(1, 0.8, 0.3).darker());
     QCOMPARE(qvariant_cast<QColor>(object->property("test2")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor());
+    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor::fromRgbF(1, 0.8, 0.3).darker(280));
     QCOMPARE(qvariant_cast<QColor>(object->property("test4")), QColor("red").darker());
     QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor());
     QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor());
@@ -245,8 +283,9 @@ void tst_qdeclarativeqt::tint()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("tint.qml"));
 
-    QString warning1 = component.url().toString() + ":7: Unable to assign null to QColor";
-    QString warning2 = component.url().toString() + ":8: Unable to assign null to QColor";
+    QString warning1 = component.url().toString() + ":7: Error: Qt.tint(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":8: Error: Qt.tint(): Invalid arguments";
+
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
 
@@ -293,10 +332,13 @@ void tst_qdeclarativeqt::openUrlExternally()
 void tst_qdeclarativeqt::md5()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("md5.qml"));
+
+    QString warning1 = component.url().toString() + ":4: Error: Qt.md5(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
-    QCOMPARE(object->property("test1").toString(), QLatin1String(QCryptographicHash::hash(QByteArray(), QCryptographicHash::Md5).toHex()));
     QCOMPARE(object->property("test2").toString(), QLatin1String(QCryptographicHash::hash("Hello World", QCryptographicHash::Md5).toHex()));
 
     delete object;
@@ -305,12 +347,14 @@ void tst_qdeclarativeqt::md5()
 void tst_qdeclarativeqt::createComponent()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("createComponent.qml"));
+
+    QString warning1 = component.url().toString() + ":9: Error: Qt.createComponent(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":10: Error: Qt.createComponent(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
-
-    QCOMPARE(object->property("incorrectArgCount1").toBool(), true);
-    QCOMPARE(object->property("incorrectArgCount2").toBool(), true);
-    QCOMPARE(object->property("emptyArg").toBool(), true);
 
     QCOMPARE(object->property("absoluteUrl").toString(), QString("http://www.example.com/test.qml"));
     QCOMPARE(object->property("relativeUrl").toString(), TEST_FILE("createComponentData.qml").toString());
@@ -318,34 +362,39 @@ void tst_qdeclarativeqt::createComponent()
     delete object;
 }
 
+void tst_qdeclarativeqt::createComponent_pragmaLibrary()
+{
+    // Currently, just loading createComponent_lib.qml causes crash on some platforms
+    QDeclarativeComponent component(&engine, TEST_FILE("createComponent_lib.qml"));
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+    QCOMPARE(object->property("status").toInt(), int(QDeclarativeComponent::Ready));
+    QCOMPARE(object->property("readValue").toInt(), int(1913));
+    delete object;
+}
+
 void tst_qdeclarativeqt::createQmlObject()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("createQmlObject.qml"));
 
-    QString warning1 = "QDeclarativeEngine::createQmlObject():";
-    QString warning2 = "    " + TEST_FILE("main.qml").toString() + ":4:1: Duplicate property name";
-    QString warning3 = "QDeclarativeEngine::createQmlObject():";
-    QString warning4 = "    " + TEST_FILE("inline").toString() + ":2:10: Blah is not a type";
-    QString warning5 = "QDeclarativeEngine::createQmlObject():";
-    QString warning6 = "    " + TEST_FILE("inline").toString() + ":3: Cannot assign object type QObject with no default method";
+    QString warning1 = component.url().toString() + ":7: Error: Qt.createQmlObject(): Invalid arguments";
+    QString warning2 = component.url().toString()+ ":10: Error: Qt.createQmlObject() failed to create object:     " + TEST_FILE("inline").toString() + ":2:10: Blah is not a type\n";
+    QString warning3 = component.url().toString()+ ":11: Error: Qt.createQmlObject() failed to create object:     " + TEST_FILE("main.qml").toString() + ":4:1: Duplicate property name\n";
+    QString warning4 = component.url().toString()+ ":9: Error: Qt.createQmlObject(): Missing parent object";
+    QString warning5 = component.url().toString()+ ":8: Error: Qt.createQmlObject(): Invalid arguments";
+    QString warning6 = "RunTimeError:  Qt.createQmlObject() failed to create object:     " + TEST_FILE("inline").toString() + ":3: Cannot assign object type QObject with no default method\n";
 
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning3));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning4));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning5));
-    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning6));
+    QTest::ignoreMessage(QtDebugMsg, qPrintable(warning6));
 
     QObject *object = component.create();
     QVERIFY(object != 0);
 
-    QCOMPARE(object->property("incorrectArgCount1").toBool(), true);
-    QCOMPARE(object->property("incorrectArgCount2").toBool(), true);
     QCOMPARE(object->property("emptyArg").toBool(), true);
-    QCOMPARE(object->property("errors").toBool(), true);
-    QCOMPARE(object->property("noParent").toBool(), true);
-    QCOMPARE(object->property("notAvailable").toBool(), true);
-    QCOMPARE(object->property("runtimeError").toBool(), true);
     QCOMPARE(object->property("success").toBool(), true);
 
     QDeclarativeItem *item = qobject_cast<QDeclarativeItem *>(object);
@@ -368,6 +417,21 @@ void tst_qdeclarativeqt::consoleLog()
 void tst_qdeclarativeqt::formatting()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("formatting.qml"));
+
+    QString warning1 = component.url().toString() + ":22: Error: Qt.formatDate(): Invalid date format";
+    QString warning2 = component.url().toString() + ":21: Error: Qt.formatDate(): Invalid arguments";
+    QString warning3 = component.url().toString() + ":28: Error: Qt.formatDateTime(): Invalid datetime format";
+    QString warning4 = component.url().toString() + ":27: Error: Qt.formatDateTime(): Invalid arguments";
+    QString warning5 = component.url().toString() + ":25: Error: Qt.formatTime(): Invalid time format";
+    QString warning6 = component.url().toString() + ":24: Error: Qt.formatTime(): Invalid arguments";
+
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning3));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning4));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning5));
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning6));
+
     QObject *object = component.create();
     QVERIFY(object != 0);
 
@@ -404,6 +468,52 @@ void tst_qdeclarativeqt::isQtObject()
     QCOMPARE(object->property("test3").toBool(), false);
     QCOMPARE(object->property("test4").toBool(), false);
     QCOMPARE(object->property("test5").toBool(), false);
+
+    delete object;
+}
+
+void tst_qdeclarativeqt::btoa()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("btoa.qml"));
+
+    QString warning1 = component.url().toString() + ":4: Error: Qt.btoa(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+
+    QCOMPARE(object->property("test2").toString(), QString("SGVsbG8gd29ybGQh"));
+
+    delete object;
+}
+
+void tst_qdeclarativeqt::atob()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("atob.qml"));
+
+    QString warning1 = component.url().toString() + ":4: Error: Qt.atob(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+
+    QCOMPARE(object->property("test2").toString(), QString("Hello world!"));
+
+    delete object;
+}
+
+void tst_qdeclarativeqt::fontFamilies()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("fontFamilies.qml"));
+
+    QString warning1 = component.url().toString() + ":4: Error: Qt.fontFamilies(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+
+    QFontDatabase database;
+    QCOMPARE(object->property("test2"), QVariant::fromValue(database.families()));
 
     delete object;
 }
