@@ -62,6 +62,9 @@ extern bool qt_wince_is_pocket_pc();  //qguifunctions_wince.cpp
 #include <private/qkde_p.h>
 #include <private/qgtkstyle_p.h>
 #include <private/qt_x11_p.h>
+#ifdef Q_WS_MAEMO_5
+#  include <private/qmaemo5style_p.h>
+#endif
 #endif
 
 
@@ -217,6 +220,11 @@ QString QGuiPlatformPlugin::systemIconThemeName()
         settings.beginGroup(QLatin1String("Icons"));
         result = settings.value(QLatin1String("Theme"), result).toString();
     }
+#ifdef Q_WS_MAEMO_5
+    else if (X11->desktopEnvironment == DE_MAEMO5) {
+        result = QMaemo5StylePrivate::systemIconThemeName();
+    }
+#endif
 #endif
     return result;
 }

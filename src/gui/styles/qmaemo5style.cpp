@@ -117,6 +117,21 @@ GtkWidget *QMaemo5StylePrivate::radioButtonMiddle = 0;
 GtkWidget *QMaemo5StylePrivate::radioButtonRight = 0;
 
 
+QString QMaemo5StylePrivate::systemIconThemeName()
+{
+    // this function is static plus it is called way before the style object
+    // is instantiated, so we have to resolve this function ourselves:
+    static Ptr_gtk_settings_get_default my_gtk_settings_get_default = (Ptr_gtk_settings_get_default)QLibrary(QLS("gtk-x11-2.0"), 0, 0).resolve("gtk_settings_get_default");
+
+    QString qicontheme;
+    gchar *gicontheme = 0;
+    g_object_get(my_gtk_settings_get_default(), "gtk-icon-theme-name", &gicontheme, NULL);
+    if (gicontheme)
+        qicontheme = QString::fromUtf8(gicontheme);
+    g_free(gicontheme);
+    return qicontheme;
+}
+
 /*!
     \internal
 */
@@ -616,6 +631,9 @@ void ScrollBarFader::show()
     m_delay_timer->start();
 }
 
+/*!
+    \internal
+*/
 void QMaemo5Style::showScrollIndicators(QAbstractScrollArea *area)
 {
     Q_D(QMaemo5Style);

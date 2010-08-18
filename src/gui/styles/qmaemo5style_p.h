@@ -111,7 +111,7 @@ class ScrollBarFader;
 class QMaemo5StylePrivate : public QGtkStylePrivate
 {
 public:
-
+    static QString systemIconThemeName();
     virtual void resolveGtk() const;
     virtual void initGtkMenu() const;
     virtual void initGtkWidgets() const;
