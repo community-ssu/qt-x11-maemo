@@ -60,4 +60,5 @@ opt/qt4-maemo5/lib/pkgconfig/QtXml.pc
 opt/qt4-maemo5/lib/pkgconfig/QtMaemo5.pc
 opt/qt4-maemo5/lib/pkgconfig/QtOpenGL.pc
 opt/qt4-maemo5/lib/pkgconfig/QtDeclarative.pc
+opt/qt4-maemo5/lib/pkgconfig/QtUiTools.pc
 opt/qt4-maemo5/mkspecs
