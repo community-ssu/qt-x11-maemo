@@ -1599,12 +1599,14 @@ void QWidgetPrivate::toggleDrawers(bool visible)
             continue;
         QWidget *widget = static_cast<QWidget*>(object);
         if(qt_mac_is_macdrawer(widget)) {
+            bool oldState = widget->testAttribute(Qt::WA_WState_ExplicitShowHide);
             if(visible) {
                 if (!widget->testAttribute(Qt::WA_WState_ExplicitShowHide))
                     widget->show();
             } else {
                 widget->hide();
-                widget->setAttribute(Qt::WA_WState_ExplicitShowHide, false);
+                if(!oldState)
+                    widget->setAttribute(Qt::WA_WState_ExplicitShowHide, false);
             }
         }
     }
@@ -2794,10 +2796,16 @@ void QWidgetPrivate::setSubWindowStacking(bool set)
 
     if (QWidget *parent = q->parentWidget()) {
         if (parent->testAttribute(Qt::WA_WState_Created)) {
-            if (set)
-                [qt_mac_window_for(parent) addChildWindow:qt_mac_window_for(q) ordered:NSWindowAbove];
-            else
+            if (set) {
+                if (parent->isVisible()) {
+                    NSWindow *childwin = qt_mac_window_for(q);
+                    int childLevel = [childwin level];
+                    [qt_mac_window_for(parent) addChildWindow:childwin ordered:NSWindowAbove];
+                    [childwin setLevel:childLevel];
+                }
+            } else {
                 [qt_mac_window_for(parent) removeChildWindow:qt_mac_window_for(q)];
+            }
         }
     }
 
@@ -2805,10 +2813,14 @@ void QWidgetPrivate::setSubWindowStacking(bool set)
     for (int i=0; i<widgets.size(); ++i) {
         QWidget *child = widgets.at(i);
         if (child->isWindow() && child->testAttribute(Qt::WA_WState_Created) && child->isVisibleTo(q)) {
-            if (set)
-                [qt_mac_window_for(q) addChildWindow:qt_mac_window_for(child) ordered:NSWindowAbove];
-            else
+            if (set) {
+                NSWindow *childwin = qt_mac_window_for(child);
+                int childLevel = [childwin level];
+                [qt_mac_window_for(q) addChildWindow:childwin ordered:NSWindowAbove];
+                [childwin setLevel:childLevel];
+            } else {
                 [qt_mac_window_for(q) removeChildWindow:qt_mac_window_for(child)];
+            }
         }
     }
 }
