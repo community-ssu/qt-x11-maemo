@@ -71,9 +71,9 @@
     for QGraphicsObjects will take care of this and is done in the
     \c FingerSwipeGestureRecognizer.
 
-    Note that only the \l{TapGesture} and the \l{TapAndHoldGesture} Qt standard gestures are
-    usefull because they can be triggered with one touch point.
-    Also you will need to setAcceptTouchEvents for \l{QGraphicsItems} for those gestures by
+    Note that only the QTapGesture and the QTapAndHoldGesture standard gestures are
+    useful because they can be triggered with one touch point.
+    Also you will need to QGraphicsItem::setAcceptTouchEvents() for those gestures by
     yourself.
 
     \section1 The graphics items
