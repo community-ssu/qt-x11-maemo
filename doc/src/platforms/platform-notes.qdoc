@@ -672,6 +672,15 @@
 
     The \c textedit example in \c examples/maemo5 shows how to dynamically
     resize QTextEdits the Maemo 5 way.
+
+    \o Despite the QtWebKit User Agent string containing "Mobile Safari", some
+    video sites send high-res videos, which render slowly on the N900. For some video
+    sites, a work around exists by telling the site to send embedded friendly video streams.
+    For YouTube, the \c{fmt=5} query item (see QUrl::addQueryItem()) can be appended
+    to greatly increase video frame rates. Example: Instead of
+    \c{http://www.youtube.com/watch?v=DN40PH4wfr8}, request
+    \c{http://www.youtube.com/watch?v=DN40PH4wfr8&fmt=5} for a smooth video experience.
+
     \endlist
 
     \section2 Known Limitations
