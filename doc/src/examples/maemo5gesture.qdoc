@@ -72,7 +72,7 @@
     \c FingerSwipeGestureRecognizer.
 
     Note that only the \l{TapGesture} and the \l{TapAndHoldGesture} Qt standard gestures are
-    usefull because they can be triggered with one touch point.
+    useful because they can be triggered with one touch point.
     Also you will need to setAcceptTouchEvents for \l{QGraphicsItems} for those gestures by
     yourself.
 
