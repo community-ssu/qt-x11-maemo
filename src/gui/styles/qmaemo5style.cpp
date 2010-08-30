@@ -244,7 +244,7 @@ void QMaemo5StylePrivate::applyCustomPaletteHash()
     QGtkStylePrivate::applyCustomPaletteHash();
 
     QPalette textpalette = gtkWidgetPalette("GtkTextView");
-    qApp->setPalette(textpalette, "QSpinBox");
+    qApp->setPalette(textpalette, "QAbstractSpinBox");
     qApp->setPalette(textpalette, "QLineEdit");
     qApp->setPalette(textpalette, "QTextEdit");
     qApp->setPalette(textpalette, "QPlainTextEdit");
