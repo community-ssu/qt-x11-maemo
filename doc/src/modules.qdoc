@@ -135,8 +135,7 @@
 
     \snippet doc/src/snippets/code/doc_src_qtmaemo5.qdoc 0
 
-    The QtMaemo5 module is part of the \l{Qt GUI Framework Edition},
-    the \l{Qt Full Framework Edition}, and the \l{Open Source Versions of Qt}.
+    The QtMaemo5 module is part of all \l{Qt editions}.
 */
 
 /*!
