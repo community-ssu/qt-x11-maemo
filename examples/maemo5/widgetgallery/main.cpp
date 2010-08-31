@@ -49,6 +49,7 @@
 #include "dialogs.h"
 #include "display.h"
 #include "others.h"
+#include "qml.h"
 #include "maemo5.h"
 
 class WidgetPreviewButton : public QPushButton
@@ -171,6 +172,7 @@ int main(int argc, char *argv[])
         { "Display", displayWidgets },
         { "Dialogs", dialogs },
         { "Others", otherWidgets },
+        { "Declarative", qmlWidgets },
 #ifdef Q_WS_MAEMO_5
         { "Maemo 5", maemo5Widgets },
 #endif

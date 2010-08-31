@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>snippets/textinput.qml</file>
+    <file>snippets/textedit.qml</file>
+</qresource>
+</RCC>
