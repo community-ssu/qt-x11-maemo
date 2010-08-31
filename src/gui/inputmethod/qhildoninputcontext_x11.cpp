@@ -143,6 +143,17 @@ static const char *debugNameForCommunicationId(HildonIMCommunication id)
     return 0;
 }
 
+static QGraphicsObject *qDeclarativeTextEdit_cast(QWidget *w)
+{
+    if (QGraphicsView *view = qobject_cast<QGraphicsView *>(w)) {
+        if (QGraphicsObject *item = qgraphicsitem_cast<QGraphicsObject *>(view->scene()->focusItem())) {
+            if (item->inherits("QDeclarativeTextEdit"))
+                return item;
+        }
+    }
+    return 0;
+}
+
 
 #define LOGMESSAGE1(x)       qHimDebug() << x;
 #define LOGMESSAGE2(x, y)    qHimDebug() << x << "(" << y << ")";
@@ -542,8 +553,11 @@ void QHildonInputContext::updateInputMethodHints()
         // TODO: this really needs to fixed in Qt
         QWidget *testmulti = realFocus ? realFocus.data() : QInputContext::focusWidget();
 
-        if (qobject_cast<QTextEdit *>(testmulti) || qobject_cast<QPlainTextEdit *>(testmulti))
+        if (qobject_cast<QTextEdit *>(testmulti)
+                || qobject_cast<QPlainTextEdit *>(testmulti)
+                || qDeclarativeTextEdit_cast(testmulti)) {
             inputMode |= HILDON_GTK_INPUT_MODE_MULTILINE;
+        }
 
         qHimDebug("HIM: Mapped hint: 0x%x to mode: 0x%x", int(hints), int(inputMode));
     } else {
@@ -1473,6 +1487,9 @@ void QHildonInputContext::sendSurrounding(bool sendAllContents)
         } else if (QPlainTextEdit *pte = qobject_cast<QPlainTextEdit*>(w)) {
             surrounding = pte->toPlainText();
             cpos = pte->textCursor().position();
+        } else if (QGraphicsObject *declarativeTextEdit = qDeclarativeTextEdit_cast(w)) {
+            surrounding = declarativeTextEdit->property("text").toString();
+            cpos = declarativeTextEdit->property("cursorPosition").toInt();
         } else {
             surrounding = w->inputMethodQuery(Qt::ImSurroundingText).toString();
             cpos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();

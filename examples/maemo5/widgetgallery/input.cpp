@@ -56,6 +56,9 @@ static const Properties plainTextProperties = Properties()
 static const Properties valueProperties = Properties()
             << Property("value", 42);
 
+static const Properties doubleProperties = Properties()
+            << Property("value", 42.42);
+
 static const Properties sliderProperties = Properties()
             << Property("orientation", Qt::Horizontal)
             << Property("value", 42);
@@ -138,7 +141,7 @@ const PreviewWidget inputWidgets[] =
     { "QTextEdit",          WidgetCreator<QTextEdit>::createWidget, &plainTextProperties },
     { "QPlainTextEdit",     WidgetCreator<QPlainTextEdit>::createWidget, &plainTextProperties },
     { "QSpinBox",           WidgetCreator<QSpinBox>::createWidget, &valueProperties },
-    // ### DoubleSpinBox
+    { "QDoubleSpinBox",      WidgetCreator<QDoubleSpinBox>::createWidget, &doubleProperties },
     // time & date only
     { "QDateTimeEdit",      WidgetCreator<QDateTimeEdit>::createWidget, 0 },
     { "QDial",              WidgetCreator<QDial>::createWidget, 0 },

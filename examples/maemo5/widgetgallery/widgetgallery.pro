@@ -8,7 +8,10 @@ SOURCES += main.cpp \
            container.cpp \
            dialogs.cpp \
            display.cpp \
-           others.cpp
+           others.cpp \
+           qml.cpp
+
+QT += declarative
 
 maemo5:SOURCES += maemo5.cpp
            
@@ -20,8 +23,12 @@ contains(QT_CONFIG, webkit) {
     DEFINES += QT_NO_WEBKIT
 }
 
+SNIPPETS += snippets/textinput.qml snippets/textedit.qml
+
+RESOURCES += widgetgallery.qrc
+
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/maemo5/widgetgallery
-sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS widgetgallery.pro
+sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS $$SNIPPETS widgetgallery.pro
 sources.path = $$[QT_INSTALL_EXAMPLES]/maemo5/widgetgallery
 INSTALLS += target sources
