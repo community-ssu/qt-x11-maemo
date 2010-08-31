@@ -6,35 +6,21 @@
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** $QT_BEGIN_LICENSE:FDL$
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in a
+** written agreement between you and Nokia.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of this
+** file.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -43,51 +29,53 @@
     \example maemo5/gesture
     \title Maemo 5 Gesture Example
 
-    The Maemo 5 Menu example shows how to create and use a custom gesture for a Maemo 5 device.
+    The Maemo 5 Menu example shows how to create and use a custom gesture for a
+    Maemo 5 device.
 
-    Current Maemo 5 devices do consider every touch to be a mouse press.  This is fine since
-    none of the devices has multi touch capabilites.
+    Current Maemo 5 devices consider every touch to be a mouse press. This
+    is fine since none of the devices has multipoint-touch capabilites.
 
-    From Qt 4.7 on the qt library will generate touch evens for every mouse event which
-    allows the use of gestures on Maemo 5 devices. The generated touch events will only have
-    one touch point.
+    From Qt 4.7 and later, the Qt library will generate touch events for every
+    mouse event which allows the use of gestures on Maemo 5 devices. The
+    generated touch events will only have one touch point.
 
-    The example will show three rectangles (\l{QGraphicsObject}) that grab a custom
-    gesture and react on it.
-    The custom gesture will detect horizontal gestures and depending on the direction strike
-    through the rectangles or remove the strike through mark.
+    The example will show three rectangles (\l{QGraphicsObject}) that grab a
+    custom gesture and react on it.
+    The custom gesture will detect horizontal gestures and depending on the
+    direction strike through the rectangles or remove the strike through mark.
 
-    \section1 The custom gesture
+    \section1 The Custom Gesture
 
-    The custom gesture is called \c FingerSwipeGesture and it's implementation can be seen
-    in fingerswipegesture.cpp. This gesture triggers on a near horizontal drawn line.
-    It will be used to implement a "strike through" functionality.
+    The custom gesture is called \c FingerSwipeGesture and it's implementation
+    can be seen in \c fingerswipegesture.cpp. This gesture triggers on a near
+    horizontal drawn line. It will be used to implement a "strike through"
+    functionality.
 
-    The target widgets need to accept touch events or else the gesture won't see them
-    afterwards. The call to
+    The target widgets need to accept touch events or else the gesture won't
+    see them afterwards. The call to
     \snippet examples/maemo5/gesture/fingerswipegesture.cpp 0
     for QWidgets or
     \snippet examples/maemo5/gesture/fingerswipegesture.cpp 1
     for QGraphicsObjects will take care of this and is done in the
     \c FingerSwipeGestureRecognizer.
 
-    Note that only the QTapGesture and the QTapAndHoldGesture standard gestures are
-    useful because they can be triggered with one touch point.
-    Also you will need to QGraphicsItem::setAcceptTouchEvents() for those gestures by
-    yourself.
+    Note that only the QTapGesture and the QTapAndHoldGesture standard gestures
+    are useful because they can be triggered with one touch point.
+    Also you will need to QGraphicsItem::setAcceptTouchEvents() for those
+    gestures by yourself.
 
-    \section1 The graphics items
+    \section1 The Graphics Items
 
-    The rectangles are of the type \c RectObject which is implemented in main.cpp.
-    RectObject extends \l{QGraphicsObject}.
+    The rectangles are of the type \c RectObject which is implemented in
+    \c main.cpp. \c RectObject extends \l{QGraphicsObject}.
 
-    We will need to register the new custom gesture and then grab the gesture for
-    the graphics items.
+    We will need to register the new custom gesture and then grab the gesture
+    for the graphics items.
     This is done in the constructor of \c RectObject
     \snippet examples/maemo5/gesture/main.cpp 0
 
-    In order to receive touch updates and touch end events we will need to accept
-    the touch begin events.
+    In order to receive touch updates and touch end events we will need to
+    accept the touch begin events.
     This is done in a re-implementation of \l{QGraphicsItem::}{sceneEvent()}.
     \snippet examples/maemo5/gesture/main.cpp 1
 
@@ -96,6 +84,4 @@
 
     The only thing left to do is to create the graphics items and show them inside a QGraphicsView.
     \snippet examples/maemo5/gesture/main.cpp 3
-
 */
-
