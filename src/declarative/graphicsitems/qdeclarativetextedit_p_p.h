@@ -81,6 +81,9 @@ public:
             showInputPanelOnFocus = false;
         }
 #endif
+#ifdef Q_WS_MAEMO_5
+        showInputPanelOnFocus = false;
+#endif
     }
 
     void init();
