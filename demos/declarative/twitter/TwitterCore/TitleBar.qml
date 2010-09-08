@@ -7,11 +7,11 @@
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -58,56 +58,58 @@ Item {
             rssModel.tags = editor.text
         }
 
+        Item {
+            id:imageBox
+            x: 6; width: 0; height: 50; smooth: true
+            anchors.verticalCenter: parent.verticalCenter
+
+            UserModel { user: rssModel.from; id: userModel }
+            Component {
+                id: imgDelegate;
+                Item {
+                    id:imageitem
+                    visible:true
+                    Loading { width:48; height:48; visible: realImage.status != Image.Ready }
+                    Image { id: realImage; source: image; width:48; height:48; opacity:0; }
+                    states:
+                        State {
+                        name: "loaded"
+                        when:  (realImage.status == Image.Ready)
+                        PropertyChanges { target: realImage; opacity:1 }
+                    }
+                    transitions: Transition {
+                        NumberAnimation { target: realImage; property: "opacity"; duration: 200 }
+                    }
+                }
+            }
+            ListView { id:view; model: userModel.model; x:1; y:1; delegate: imgDelegate }
+            states:
+            State {
+                when: !userModel.user==""
+                PropertyChanges { target: imageBox; width: 50; }
+            }
+            transitions:
+            Transition {
+                NumberAnimation { target: imageBox; property: "width"; duration: 200 }
+            }
+        }
+
         Text {
             id: categoryText
             anchors {
-                left: parent.left; right: tagButton.left; leftMargin: 10; rightMargin: 10
+                left: imageBox.right; right: parent.right; leftMargin: 10; rightMargin: 10
                 verticalCenter: parent.verticalCenter
             }
             elide: Text.ElideLeft
-            text: (rssModel.tags=="" ? untaggedString : taggedString + rssModel.tags)
+            text: (rssModel.from=="" ? untaggedString : taggedString + rssModel.from)
             font.bold: true; color: "White"; style: Text.Raised; styleColor: "Black"
             font.pixelSize: 12
-        }
-
-        Button {
-            id: tagButton; x: titleBar.width - 50; width: 45; height: 32; text: "..."
-            onClicked: if (titleBar.state == "Tags") container.accept(); else titleBar.state = "Tags"
-            anchors.verticalCenter: parent.verticalCenter
-        }
-
-        Item {
-            id: lineEdit
-            y: 4; height: parent.height - 9
-            anchors { left: tagButton.right; leftMargin: 5; right: parent.right; rightMargin: 5 }
-
-            BorderImage { source: "images/lineedit.sci"; anchors.fill: parent }
-
-            TextInput {
-                id: editor
-                anchors {
-                    left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10
-                    verticalCenter: parent.verticalCenter
-                }
-                cursorVisible: true; font.bold: true
-                color: "#151515"; selectionColor: "Green"
-            }
-
-            Keys.forwardTo: [ (returnKey), (editor)]
-
-            Item {
-                id: returnKey
-                Keys.onReturnPressed: container.accept()
-                Keys.onEnterPressed: container.accept()
-                Keys.onEscapePressed: titleBar.state = ""
-            }
         }
     }
 
     states: State {
         name: "Tags"
         PropertyChanges { target: container; x: -tagButton.x + 5 }
-        PropertyChanges { target: tagButton; text: "OK" }
         PropertyChanges { target: editor; focus: true }
     }
 

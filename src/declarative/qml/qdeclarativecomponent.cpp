@@ -7,11 +7,11 @@
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -192,7 +192,7 @@ class QByteArray;
     \value Null This QDeclarativeComponent has no data.  Call loadUrl() or setData() to add QML content.
     \value Ready This QDeclarativeComponent is ready and create() may be called.
     \value Loading This QDeclarativeComponent is loading network data.
-    \value Error An error has occured.  Call errors() to retrieve a list of \{QDeclarativeError}{errors}.
+    \value Error An error has occurred.  Call errors() to retrieve a list of \{QDeclarativeError}{errors}.
 */
 
 void QDeclarativeComponentPrivate::typeDataReady()
@@ -518,7 +518,7 @@ void QDeclarativeComponent::loadUrl(const QUrl &url)
 }
 
 /*!
-    Return the list of errors that occured during the last compile or create
+    Return the list of errors that occurred during the last compile or create
     operation.  An empty list is returned if isError() is not set.
 */
 QList<QDeclarativeError> QDeclarativeComponent::errors() const
@@ -599,7 +599,7 @@ QDeclarativeComponent::QDeclarativeComponent(QDeclarativeComponentPrivate &dd, Q
     property, or else the object will not be visible.
 
     Dynamically created instances can be deleted with the \c destroy() method.
-    See \l {Dynamic Object Management} for more information.
+    See \l {Dynamic Object Management in QML} for more information.
 */
 
 /*!

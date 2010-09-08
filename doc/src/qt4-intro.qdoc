@@ -455,10 +455,10 @@
 
     \image quick_screens.png
 
-    Qt 4.7 introduces Quick, the Qt UI Creation Kit. that enables the creation
-    of dynamic user interfaces, easier and more effective than possible
-    with existing UI technologies. This UI Creation Kit consist of three
-    technologies:
+    Qt 4.7 introduces \l{Qt Quick}, the Qt UI Creation Kit. that enables
+    the creation of dynamic user interfaces, easier and more effective
+    than possible with existing UI technologies. This UI Creation Kit
+    consists of three technologies:
 
     \list
     \i QML is a declarative language oriented on JavaScript that utilizes
@@ -475,7 +475,8 @@
     \i Qt Creator has been improved to support interactive editing of
     QML UIs through drag-and-drop. The text editor supports the QML
     syntax and provides authoring assistance such as auto-completion,
-    error lookup, help lookup and easy preview of QML UI's.
+    error lookup, help lookup and easy preview of QML UI's. The Qt
+	Quick features in Qt Creator will be released with Qt Creator 2.1
     \endlist
 
     \section1 Network Bearer Management
@@ -597,9 +598,9 @@
 
     See \l{The State Machine Framework} documentation for more information.
 
-    \section1 Multi-Touch and Gestures
+    \section1 Touch and Gestures
 
-    Support for multi-touch input enables users to interact with many
+    Support for touch input enables users to interact with many
     parts of a user interface at the same time, and provides the basis
     for gestures. Additional infrastructure for gesture recognition
     allows a sequence of touch inputs to be combined to create gestures
@@ -613,12 +614,12 @@
     \list
         \o Allows users to interact with applications in more natural ways.
         \o Simplifies finger-based interaction with UI components.
-        \o Combines support for common basic gestures and multi-touch gestures
+        \o Combines support for common basic gestures and touch gestures
            in a single general framework.
         \o Enables extensibility by design.
     \endlist
 
-    See the QTouchEvent class documentation for more information on multi-touch
+    See the QTouchEvent class documentation for more information on touch
     input and QGestureEvent for gestures.
 
     \section1 DOM access API

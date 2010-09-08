@@ -7,11 +7,11 @@
 ** This file is part of the demonstration applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -356,6 +356,7 @@ void MenuManager::launchExample(const QString &name)
 
 void MenuManager::launchQmlExample(const QString &name)
 {
+#ifndef QT_NO_DECLARATIVE
     if(!qmlRoot){
         exampleError(QProcess::UnknownError);
         return;
@@ -382,6 +383,9 @@ void MenuManager::launchQmlExample(const QString &name)
     qmlRoot->setProperty("qmlFile", QVariant(""));//unload component
     qmlRoot->setProperty("show", QVariant(true));
     qmlRoot->setProperty("qmlFile", QUrl::fromLocalFile(file.fileName()));
+#else
+    exampleError(QProcess::UnknownError);
+#endif
 }
 
 void MenuManager::exampleFinished()
@@ -427,21 +431,26 @@ void MenuManager::init(MainWindow *window)
         level2MenuNode = level2MenuNode.nextSibling();
     }
 
+    qmlRoot = 0;
+#ifndef QT_NO_DECLARATIVE
     // Create QML Loader
     declarativeEngine = new QDeclarativeEngine(this);
 
     QDeclarativeComponent component(declarativeEngine, QUrl("qrc:qml/qmlShell.qml"), this);
-    qmlRoot = 0;
-    if(component.isReady())
-        qmlRoot = qobject_cast<QDeclarativeItem*>(component.create());
-    else
+    QDeclarativeItem* qmlRootItem = 0;
+    if(component.isReady()){
+        qmlRoot = component.create();
+        qmlRootItem = qobject_cast<QDeclarativeItem*>(qmlRoot);
+    }else{
         qDebug() << component.status() << component.errorString();
-    if(qmlRoot){
-        qmlRoot->setHeight(this->window->scene->sceneRect().height());
-        qmlRoot->setWidth(this->window->scene->sceneRect().width());
-        qmlRoot->setZValue(101);//Above other items
-        qmlRoot->setCursor(Qt::ArrowCursor);
-        window->scene->addItem(qmlRoot);
+    }
+
+    if(qmlRootItem){
+        qmlRootItem->setHeight(this->window->scene->sceneRect().height());
+        qmlRootItem->setWidth(this->window->scene->sceneRect().width());
+        qmlRootItem->setZValue(101);//Above other items
+        qmlRootItem->setCursor(Qt::ArrowCursor);
+        window->scene->addItem(qmlRootItem);
 
         //Note that QML adds key handling to the app.
         window->viewport()->setFocusPolicy(Qt::NoFocus);//Correct keyboard focus handling
@@ -449,8 +458,9 @@ void MenuManager::init(MainWindow *window)
         window->scene->setStickyFocus(true);
         window->setFocus();
     }else{
-        qDebug() << "Error intializing QML subsystem, Declarative examples will not work";
+        qDebug() << "Error initializing QML subsystem, Declarative examples will not work";
     }
+#endif
 }
 
 void MenuManager::readInfoAboutExample(const QDomElement &example)

@@ -7,11 +7,11 @@
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -42,6 +42,7 @@
 #include <QtTest/QtTest>
 #include <private/qdeclarativepixmapcache_p.h>
 #include <QtDeclarative/qdeclarativeengine.h>
+#include <QtDeclarative/qdeclarativeimageprovider.h>
 #include <QNetworkReply>
 #include "testhttpserver.h"
 #include "../../../shared/util.h"
@@ -72,6 +73,7 @@ private slots:
     void parallel_data();
     void massive();
     void cancelcrash();
+    void shrinkcache();
 
 private:
     QDeclarativeEngine engine;
@@ -323,6 +325,31 @@ void tst_qdeclarativepixmapcache::cancelcrash()
     QUrl url("http://127.0.0.1:14452/cancelcrash_notexist.png");
     for (int ii = 0; ii < 1000; ++ii) {
         QDeclarativePixmap pix(&engine, url);
+    }
+}
+
+class MyPixmapProvider : public QDeclarativeImageProvider
+{
+public:
+    MyPixmapProvider()
+    : QDeclarativeImageProvider(Pixmap) {}
+
+    virtual QPixmap requestPixmap(const QString &d, QSize *, const QSize &) {
+        QPixmap pix(800, 600);
+        pix.fill(Qt::red);
+        return pix;
+    }
+};
+
+// QTBUG-13345
+void tst_qdeclarativepixmapcache::shrinkcache()
+{
+    QDeclarativeEngine engine;
+    engine.addImageProvider(QLatin1String("mypixmaps"), new MyPixmapProvider);
+
+    for (int ii = 0; ii < 4000; ++ii) {
+        QUrl url("image://mypixmaps/" + QString::number(ii));
+        QDeclarativePixmap p(&engine, url);
     }
 }
 

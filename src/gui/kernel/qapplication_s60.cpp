@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -87,6 +87,10 @@
 #include <hal.h>
 #include <hal_data.h>
 
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#include <graphics/wstfxconst.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 // Goom Events through Window Server
@@ -110,6 +114,63 @@ QSymbianControl *QSymbianControl::lastFocusedControl = 0;
 QS60Data* qGlobalS60Data()
 {
     return qt_s60Data();
+}
+
+#ifdef Q_WS_S60
+void QS60Data::setStatusPaneAndButtonGroupVisibility(bool statusPaneVisible, bool buttonGroupVisible)
+{
+    bool buttonGroupVisibilityChanged = false;
+    if (CEikButtonGroupContainer *const b = buttonGroupContainer()) {
+        buttonGroupVisibilityChanged = (b->IsVisible() != buttonGroupVisible);
+        b->MakeVisible(buttonGroupVisible);
+    }
+    bool statusPaneVisibilityChanged = false;
+    if (CEikStatusPane *const s = statusPane()) {
+        statusPaneVisibilityChanged = (s->IsVisible() != statusPaneVisible);
+        s->MakeVisible(statusPaneVisible);
+    }
+    if (buttonGroupVisibilityChanged  || statusPaneVisibilityChanged) {
+        const QSize size = qt_TRect2QRect(static_cast<CEikAppUi*>(S60->appUi())->ClientRect()).size();
+        const QSize oldSize; // note that QDesktopWidget::resizeEvent ignores the QResizeEvent contents
+        QResizeEvent event(size, oldSize);
+        QApplication::instance()->sendEvent(QApplication::desktop(), &event);
+    }
+    if (buttonGroupVisibilityChanged  && !statusPaneVisibilityChanged && QApplication::activeWindow())
+        // Ensure that control rectangle is updated
+        static_cast<QSymbianControl *>(QApplication::activeWindow()->winId())->handleClientAreaChange();
+}
+#endif
+
+void QS60Data::controlVisibilityChanged(CCoeControl *control, bool visible)
+{
+    if (QWidgetPrivate::mapper && QWidgetPrivate::mapper->contains(control)) {
+        QWidget *const widget = QWidgetPrivate::mapper->value(control);
+        QWidget *const window = widget->window();
+        if (QTLWExtra *topData = qt_widget_private(window)->maybeTopData()) {
+            QWidgetBackingStoreTracker &backingStore = topData->backingStore;
+            if (visible) {
+                if (backingStore.data()) {
+                    backingStore.registerWidget(widget);
+                } else {
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+                    S60->wsSession().SendEffectCommand(ETfxCmdRestoreLayer);
+#endif
+                    backingStore.create(window);
+                    backingStore.registerWidget(widget);
+                    qt_widget_private(widget)->invalidateBuffer(widget->rect());
+                    widget->repaint();
+                }
+            } else {
+#ifdef  SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+                S60->wsSession().SendEffectCommand(ETfxCmdDeallocateLayer);
+#endif
+                backingStore.unregisterWidget(widget);
+                // In order to ensure that any resources used by the window surface
+                // are immediately freed, we flush the WSERV command buffer.
+                S60->wsSession().Flush();
+            }
+        }
+    }
 }
 
 bool qt_nograb()                                // application no-grab option
@@ -206,8 +267,6 @@ void QS60Beep::MatoPlayComplete(TInt aError)
     iState = EBeepPrepared;
 }
 
-
-QHash<TInt, TUint> QApplicationPrivate::scanCodeCache;
 
 static Qt::KeyboardModifiers mapToQtModifiers(TUint s60Modifiers)
 {
@@ -355,7 +414,7 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
 {
     if (!desktop)
     {
-        if (isWindowOwning or !qwidget->parentWidget())
+        if (isWindowOwning || !qwidget->parentWidget())
             CreateWindowL(S60->windowGroup());
         else
             /**
@@ -378,6 +437,34 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
 
         DrawableWindow()->SetPointerGrab(ETrue);
     }
+
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    if (OwnsWindow()) {
+        TTfxWindowPurpose windowPurpose(ETfxPurposeNone);
+        switch (qwidget->windowType()) {
+        case Qt::Dialog:
+            windowPurpose = ETfxPurposeDialogWindow;
+            break;
+        case Qt::Popup:
+            windowPurpose = ETfxPurposePopupWindow;
+            break;
+        case Qt::Tool:
+            windowPurpose = ETfxPurposeToolWindow;
+            break;
+        case Qt::ToolTip:
+            windowPurpose = ETfxPurposeToolTipWindow;
+            break;
+        case Qt::SplashScreen:
+            windowPurpose = ETfxPurposeSplashScreenWindow;
+            break;
+        default:
+            windowPurpose = (isWindowOwning || !qwidget->parentWidget())
+                            ? ETfxPurposeWindow : ETfxPurposeChildWindow;
+            break;
+        }
+        Window().SetPurpose(windowPurpose);
+    }
+#endif
 }
 
 QSymbianControl::~QSymbianControl()
@@ -1018,7 +1105,7 @@ void QSymbianControl::Draw(const TRect& controlRect) const
         if (QApplicationPrivate::runtime_graphics_system) {
             QRuntimeWindowSurface *rtSurface =
                     static_cast<QRuntimeWindowSurface*>(qwidget->windowSurface());
-            s60Surface = static_cast<QS60WindowSurface *>(rtSurface->m_windowSurface);
+            s60Surface = static_cast<QS60WindowSurface *>(rtSurface->m_windowSurface.data());
         } else
 #endif
             s60Surface = static_cast<QS60WindowSurface *>(qwidget->windowSurface());
@@ -1038,7 +1125,8 @@ void QSymbianControl::Draw(const TRect& controlRect) const
             break;
 
         case QWExtra::ZeroFill:
-            if (Window().DisplayMode() == EColor16MA) {
+            if (Window().DisplayMode() == EColor16MA
+                || Window().DisplayMode() == Q_SYMBIAN_ECOLOR16MAP) {
                 gc.SetBrushStyle(CGraphicsContext::ESolidBrush);
                 gc.SetDrawMode(CGraphicsContext::EDrawModeWriteAlpha);
                 gc.SetBrushColor(TRgb::Color16MA(0));
@@ -1151,17 +1239,12 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
         qwidget->d_func()->setWindowTitle_sys(qwidget->windowTitle());
 #ifdef Q_WS_S60
         // If widget is fullscreen/minimized, hide status pane and button container otherwise show them.
-        CEikStatusPane *statusPane = S60->statusPane();
-        CEikButtonGroupContainer *buttonGroup = S60->buttonGroupContainer();
-        TBool visible = !(qwidget->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
-        if (statusPane)
-            statusPane->MakeVisible(visible);
-        if (buttonGroup) {
-            // Visibility
-            const TBool isFullscreen = qwidget->windowState() & Qt::WindowFullScreen;
-            const TBool cbaVisibilityHint = qwidget->windowFlags() & Qt::WindowSoftkeysVisibleHint;
-            buttonGroup->MakeVisible(visible || (isFullscreen && cbaVisibilityHint));
-        }
+        const bool visible = !(qwidget->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
+        const bool statusPaneVisibility = visible;
+        const bool isFullscreen = qwidget->windowState() & Qt::WindowFullScreen;
+        const bool cbaVisibilityHint = qwidget->windowFlags() & Qt::WindowSoftkeysVisibleHint;
+        const bool buttonGroupVisibility = (visible || (isFullscreen && cbaVisibilityHint));
+        S60->setStatusPaneAndButtonGroupVisibility(statusPaneVisibility, buttonGroupVisibility);
 #endif
     } else if (QApplication::activeWindow() == qwidget->window()) {
         if (CCoeEnv::Static()->AppUi()->IsDisplayingMenuOrDialog() || S60->menuBeingConstructed) {
@@ -1316,7 +1399,7 @@ void qt_init(QApplicationPrivate * /* priv */, int)
         // framework destruction.
         TTrapHandler *origTrapHandler = User::TrapHandler();
 
-        // The S60 framework has not been initalized. We need to do it.
+        // The S60 framework has not been initialized. We need to do it.
         TApaApplicationFactory factory(S60->s60ApplicationFactory ?
                 S60->s60ApplicationFactory : newS60Application);
         CApaCommandLine* commandLine = 0;
@@ -1430,6 +1513,8 @@ void qt_init(QApplicationPrivate * /* priv */, int)
             S60->avkonComponentsSupportTransparency = (value==1) ? true : false;
         }
     }
+    delete repository;
+    repository = 0;
 #endif
 
 #ifdef QT_KEYPAD_NAVIGATION
@@ -1471,6 +1556,10 @@ void qt_init(QApplicationPrivate * /* priv */, int)
     systemFont.setFamily(systemFont.defaultFamily());
     QApplicationPrivate::setSystemFont(systemFont);
 
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    QObject::connect(qApp, SIGNAL(aboutToQuit()), qApp, SLOT(_q_aboutToQuit()));
+#endif
+
 /*
  ### Commented out for now as parameter handling not needed in SOS(yet). Code below will break testlib with -o flag
     int argc = priv->argc;
@@ -1494,7 +1583,7 @@ void qt_init(QApplicationPrivate * /* priv */, int)
 */
 
     // Register WId with the metatype system.  This is to enable
-    // QWidgetPrivate::create_sys to used delayed slot invokation in order
+    // QWidgetPrivate::create_sys to used delayed slot invocation in order
     // to destroy WId objects during reparenting.
     qRegisterMetaType<WId>("WId");
 }
@@ -1511,6 +1600,8 @@ void qt_cleanup()
         qt_S60Beep = 0;
     }
     QFontCache::cleanup(); // Has to happen now, since QFontEngineS60 has FBS handles
+    QPixmapCache::clear(); // Has to happen now, since QS60PixmapData has FBS handles
+
     qt_cleanup_symbianFontDatabaseExtras();
 // S60 structure and window server session are freed in eventdispatcher destructor as they are needed there
 
@@ -1558,6 +1649,9 @@ bool QApplicationPrivate::modalState()
 
 void QApplicationPrivate::enterModal_sys(QWidget *widget)
 {
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    S60->wsSession().SendEffectCommand(ETfxCmdAppModalModeEnter);
+#endif
     if (widget) {
         static_cast<QSymbianControl *>(widget->effectiveWinId())->FadeBehindPopup(ETrue);
         // Modal partial screen dialogs (like queries) capture pointer events.
@@ -1573,6 +1667,9 @@ void QApplicationPrivate::enterModal_sys(QWidget *widget)
 
 void QApplicationPrivate::leaveModal_sys(QWidget *widget)
 {
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    S60->wsSession().SendEffectCommand(ETfxCmdAppModalModeExit);
+#endif
     if (widget) {
         static_cast<QSymbianControl *>(widget->effectiveWinId())->FadeBehindPopup(EFalse);
         // ### FixMe: Add specialized behaviour for fullscreen modal dialogs
@@ -1863,29 +1960,10 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
             if (callSymbianEventFilters(symbianEvent))
                 return 1;
             const TWsVisibilityChangedEvent *visChangedEvent = event->VisibilityChanged();
-            QWidget *w = QWidgetPrivate::mapper->value(control);
-            QWidget *const window = w->window();
-            if (!window->d_func()->maybeTopData())
-                break;
-            QRefCountedWidgetBackingStore &backingStore = window->d_func()->maybeTopData()->backingStore;
-            if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::ENotVisible) {
-                // Decrement backing store reference count
-                backingStore.deref();
-                // In order to ensure that any resources used by the window surface
-                // are immediately freed, we flush the WSERV command buffer.
-                S60->wsSession().Flush();
-            } else if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::EPartiallyVisible) {
-                if (backingStore.data()) {
-                    // Increment backing store reference count
-                    backingStore.ref();
-                } else {
-                    // Create backing store with an initial reference count of 1
-                    backingStore.create(window);
-                    backingStore.ref();
-                    w->d_func()->invalidateBuffer(w->rect());
-                    w->repaint();
-                }
-            }
+            if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::ENotVisible)
+                S60->controlVisibilityChanged(control, false);
+            else if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::EPartiallyVisible)
+                S60->controlVisibilityChanged(control, true);
             return 1;
         }
         break;
@@ -1939,13 +2017,6 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
             if (switchToSwRendering) {
                 QRuntimeGraphicsSystem *gs =
                    static_cast<QRuntimeGraphicsSystem*>(QApplicationPrivate::graphics_system);
-
-                uint memoryUsage = gs->memoryUsage();
-                uint memoryForFullscreen = ( S60->screenDepth / 8 )
-                                           * S60->screenWidthInPixels
-                                           * S60->screenHeightInPixels;
-
-                S60->memoryLimitForHwRendering = memoryUsage - memoryForFullscreen;
                 gs->setGraphicsSystem(QLatin1String("raster"));
             }
         }
@@ -1961,8 +2032,7 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
         if(QApplicationPrivate::runtime_graphics_system) {
             QRuntimeGraphicsSystem *gs =
                    static_cast<QRuntimeGraphicsSystem*>(QApplicationPrivate::graphics_system);
-            gs->setGraphicsSystem(QLatin1String("openvg"), S60->memoryLimitForHwRendering);
-            S60->memoryLimitForHwRendering = 0;
+            gs->setGraphicsSystem(QLatin1String("openvg"));
         }
 #endif
         break;
@@ -2131,13 +2201,18 @@ void QApplication::setEffectEnabled(Qt::UIEffect /* effect */, bool /* enable */
 
 TUint QApplicationPrivate::resolveS60ScanCode(TInt scanCode, TUint keysym)
 {
+    if (!scanCode)
+        return keysym;
+
+    QApplicationPrivate *d = QApplicationPrivate::instance();
+
     if (keysym) {
         // If keysym is specified, cache it.
-        scanCodeCache.insert(scanCode, keysym);
+        d->scanCodeCache.insert(scanCode, keysym);
         return keysym;
     } else {
         // If not, retrieve the cached version.
-        return scanCodeCache[scanCode];
+        return d->scanCodeCache[scanCode];
     }
 }
 
@@ -2256,6 +2331,14 @@ void QApplication::restoreOverrideCursor()
 }
 
 #endif // QT_NO_CURSOR
+
+void QApplicationPrivate::_q_aboutToQuit()
+{
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    // Send the shutdown tfx command
+    S60->wsSession().SendEffectCommand(ETfxCmdAppShutDown);
+#endif
+}
 
 QS60ThreadLocalData::QS60ThreadLocalData()
 {

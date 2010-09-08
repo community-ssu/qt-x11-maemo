@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -305,10 +305,10 @@ void QPanGesture::setAcceleration(qreal value)
     \class QPinchGesture
     \since 4.6
     \brief The QPinchGesture class describes a pinch gesture made my the user.
-    \ingroup multitouch
+    \ingroup touch
     \ingroup gestures
 
-    A pinch gesture is a form of multitouch user input in which the user typically
+    A pinch gesture is a form of touch user input in which the user typically
     touches two points on the input device with a thumb and finger, before moving
     them closer together or further apart to change the scale factor, zoom, or level
     of detail of the user interface.
@@ -388,7 +388,7 @@ void QPanGesture::setAcceleration(qreal value)
     \brief the current scale factor
 
     The scale factor measures the scale factor associated with the distance
-    between two of the user's inputs on a multitouch device.
+    between two of the user's inputs on a touch device.
 
     \sa totalScaleFactor, lastScaleFactor
 */

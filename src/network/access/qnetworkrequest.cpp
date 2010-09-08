@@ -7,11 +7,11 @@
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -174,12 +174,12 @@ QT_BEGIN_NAMESPACE
         When using this flag with sequential upload data, the ContentLengthHeader
         header must be set.
 
-     \value HttpPipeliningAllowedAttribute
+    \value HttpPipeliningAllowedAttribute
         Requests only, type: QVariant::Bool (default: false)
         Indicates whether the QNetworkAccessManager code is
         allowed to use HTTP pipelining with this request.
 
-     \value HttpPipeliningWasUsedAttribute
+    \value HttpPipeliningWasUsedAttribute
         Replies only, type: QVariant::Bool
         Indicates whether the HTTP pipelining was used for receiving
         this reply.
@@ -200,9 +200,9 @@ QT_BEGIN_NAMESPACE
 
         See http://www.w3.org/TR/XMLHttpRequest2/#credentials-flag for more information.
 
-        \since 4.7
+        (This value was introduced in 4.7.)
 
-     \value CookieSaveControlAttribute
+    \value CookieSaveControlAttribute
         Requests only, type: QVariant::Int (default: QNetworkRequest::Automatic)
         Indicates whether to save 'Cookie' headers received from the server in reply
         to the request.
@@ -213,9 +213,9 @@ QT_BEGIN_NAMESPACE
 
         See http://www.w3.org/TR/XMLHttpRequest2/#credentials-flag for more information.
 
-        \since 4.7
+        (This value was introduced in 4.7.)
 
-     \value AuthenticationReuseControlAttribute
+    \value AuthenticationReuseAttribute
         Requests only, type: QVariant::Int (default: QNetworkRequest::Automatic)
         Indicates whether to use cached authorization credentials in the request,
         if available. If this is set to QNetworkRequest::Manual and the authentication
@@ -228,7 +228,13 @@ QT_BEGIN_NAMESPACE
 
         See http://www.w3.org/TR/XMLHttpRequest2/#credentials-flag for more information.
 
-        \since 4.7
+        (This value was introduced in 4.7.)
+
+    \omitvalue MaximumDownloadBufferSizeAttribute
+        (This value was introduced in 4.7.)
+
+    \omitvalue DownloadBufferAttribute
+        (This value was introduced in 4.7.)
 
     \value User
         Special type. Additional information can be passed in

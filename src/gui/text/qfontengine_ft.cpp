@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -92,6 +92,13 @@ QT_BEGIN_NAMESPACE
 #else
 #define X_SIZE(face,i) ((face)->available_sizes[i].width << 6)
 #define Y_SIZE(face,i) ((face)->available_sizes[i].height << 6)
+#endif
+
+/* FreeType 2.1.10 starts to provide FT_GlyphSlot_Embolden */
+#if (FREETYPE_MAJOR*10000+FREETYPE_MINOR*100+FREETYPE_PATCH) >= 20110
+#define Q_FT_GLYPHSLOT_EMBOLDEN(slot)   FT_GlyphSlot_Embolden(slot)
+#else
+#define Q_FT_GLYPHSLOT_EMBOLDEN(slot)
 #endif
 
 #define FLOOR(x)    ((x) & -64)
@@ -794,7 +801,7 @@ QFontEngineFT::Glyph *QFontEngineFT::loadGlyphMetrics(QGlyphSet *set, uint glyph
     }
 
     FT_GlyphSlot slot = face->glyph;
-    if (embolden) FT_GlyphSlot_Embolden(slot);
+    if (embolden) Q_FT_GLYPHSLOT_EMBOLDEN(slot);
     int left  = slot->metrics.horiBearingX;
     int right = slot->metrics.horiBearingX + slot->metrics.width;
     int top    = slot->metrics.horiBearingY;
@@ -940,7 +947,7 @@ QFontEngineFT::Glyph *QFontEngineFT::loadGlyph(QGlyphSet *set, uint glyph, Glyph
         return 0;
 
     FT_GlyphSlot slot = face->glyph;
-    if (embolden) FT_GlyphSlot_Embolden(slot);
+    if (embolden) Q_FT_GLYPHSLOT_EMBOLDEN(slot);
     FT_Library library = qt_getFreetype();
 
     info.xOff = TRUNC(ROUND(slot->advance.x));

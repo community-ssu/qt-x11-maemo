@@ -7,11 +7,11 @@
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -51,7 +51,6 @@ Image {
 
     x: webView.contentX < 0 ? -webView.contentX : webView.contentX > webView.contentWidth-webView.width
        ? -webView.contentX+webView.contentWidth-webView.width : 0
-
     y: {
         if (webView.progress < 1.0)
             return 0;
@@ -59,7 +58,6 @@ Image {
             webView.contentY < 0 ? -webView.contentY : webView.contentY > height ? -height : -webView.contentY
         }
     }
-
     Column {
         width: parent.width
 
@@ -101,14 +99,38 @@ Image {
 
             Button {
                 id: reloadButton
-                anchors { right: parent.right; rightMargin: 4 }
+                anchors { right: quitButton.left; rightMargin: 10 }
                 action: webView.reload; image: "pics/view-refresh.png"
                 visible: webView.progress == 1.0 && !header.urlChanged
+            }
+            Text {
+                id: quitButton
+                color: "white"
+                style: Text.Sunken
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
+                font.pixelSize: 18
+                width: 60
+                text: "Quit"
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: Qt.quit()
+                }
+                Rectangle {
+                    width: 1
+                    y: 5
+                    height: parent.height-10
+                    anchors.right: parent.left
+                    color: "darkgray"
+                }
             }
 
             Button {
                 id: stopButton
-                anchors { right: parent.right; rightMargin: 4 }
+                anchors { right: quitButton.left; rightMargin: 10 }
                 action: webView.stop; image: "pics/edit-delete.png"
                 visible: webView.progress < 1.0 && !header.urlChanged
             }

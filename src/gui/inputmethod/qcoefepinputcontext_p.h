@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -66,10 +66,10 @@
 
 QT_BEGIN_NAMESPACE
 
-class QCoeFepInputContext : public QInputContext,
-                            public MCoeFepAwareTextEditor,
-                            public MCoeFepAwareTextEditor_Extension1,
-                            public MObjectProvider
+class Q_AUTOTEST_EXPORT QCoeFepInputContext : public QInputContext,
+                                              public MCoeFepAwareTextEditor,
+                                              public MCoeFepAwareTextEditor_Extension1,
+                                              public MObjectProvider
 {
     Q_OBJECT
 
@@ -151,9 +151,10 @@ private:
     int m_inlinePosition;
     MFepInlineTextFormatRetriever *m_formatRetriever;
     MFepPointerEventHandlerDuringInlineEdit *m_pointerHandler;
-    int m_cursorPos;
     QBasicTimer m_tempPreeditStringTimeout;
     bool m_hasTempPreeditString;
+
+    friend class tst_QInputContext;
 };
 
 QT_END_NAMESPACE

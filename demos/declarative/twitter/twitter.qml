@@ -7,11 +7,11 @@
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -46,28 +46,18 @@ Item {
     id: screen; width: 320; height: 480
     property bool userView : false
     property variant tmpStr
-    function setMode(m){
-        screen.userView = m;
-        if(m == false){
-            rssModel.tags='my timeline';
-            rssModel.reload();
-            toolBar.button2Label = "View others";
-        } else {
-            toolBar.button2Label = "Return home";
-        }
-    }
     function setUser(str){hack.running = true; tmpStr = str}
-    function reallySetUser(){rssModel.tags = tmpStr;}
-
+    function reallySetUser(){rssModel.from = tmpStr;rssModel.to = ""; rssModel.phrase = ""}
+    state:"searchquery"
     //Workaround for bug 260266
     Timer{ interval: 1; running: false; repeat: false; onTriggered: screen.reallySetUser(); id:hack }
-
-    //TODO: better way to return to the auth screen
-    Keys.onEscapePressed: rssModel.authName=''
+    Keys.onEscapePressed: screen.state="searchquery"
+    Keys.onBacktabPressed: screen.state="searchquery"
     Rectangle {
         id: background
         anchors.fill: parent; color: "#343434";
 
+        state:"searchquery"
         Image { source: "TwitterCore/images/stripes.png"; fillMode: Image.Tile; anchors.fill: parent; opacity: 0.3 }
 
         MouseArea {
@@ -90,8 +80,16 @@ Item {
             y:60 //Below the title bars
             height: 380
 
-            Twitter.AuthView{
-                id: authView
+            Text {
+                id:title
+                text: "Search Twitter"
+                anchors.horizontalCenter: parent.horizontalCenter
+                font.pixelSize: 20; font.bold: true; color: "#bbb"; style: Text.Raised; styleColor: "black"
+                opacity:0
+            }
+
+            Twitter.SearchView{
+                id: searchView
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width; height: parent.height-60;
                 x: -(screen.width * 1.5)
@@ -110,31 +108,27 @@ Item {
             //TODO: Use anchor changes instead of hard coding
             y: screen.height - 40
             width: parent.width; opacity: 0.9
-            button1Label: "Update"
-            button2Label: "View others"
-            onButton1Clicked: rssModel.reload();
-            onButton2Clicked:
+            button1Label: "New Search"
+            button2Label: "Update"
+            onButton1Clicked:
             {
-                if(screen.userView == true){
-                    screen.setMode(false);
-                }else{
-                    rssModel.tags='';
-                    screen.setMode(true);
-                }
+                screen.state="searchquery"
             }
+            onButton2Clicked: rssModel.reload();
         }
-
-        states: [
-            State {
-                name: "unauthed"; when: rssModel.authName==""
-                PropertyChanges { target: authView; x: 0 }
-                PropertyChanges { target: mainView; x: -(parent.width * 1.5) }
-                PropertyChanges { target: titleBar; y: -80 }
-                PropertyChanges { target: toolBar; y: screen.height }
-            }
-        ]
-        transitions: [
-            Transition { NumberAnimation { properties: "x,y"; duration: 500; easing.type: Easing.InOutQuad } }
-        ]
     }
+    states: [
+        State {
+            name: "searchquery";
+            PropertyChanges { target: searchView; x: 0; focus:true}
+            PropertyChanges { target: mainView; x: -(parent.width * 1.5) }
+            PropertyChanges { target: titleBar; y: -80 }
+            PropertyChanges { target: toolBar; y: screen.height }
+            PropertyChanges { target: toolBar }
+            PropertyChanges { target: title; opacity:1}
+        }
+    ]
+    transitions: [
+        Transition { NumberAnimation { properties: "x,y,opacity"; duration: 500; easing.type: Easing.InOutQuad } }
+    ]
 }

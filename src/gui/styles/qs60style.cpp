@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -2340,16 +2340,20 @@ void QS60Style::drawPrimitive(PrimitiveElement element, const QStyleOption *opti
                     tableView = true;
 
                 QS60StylePrivate::SkinElements element;
+                bool themeGraphicDefined = false;
                 QRect elementRect = option->rect;
 
                 //draw item is drawn as pressed, if it already has focus.
                 if (isPressed && (hasFocus || isSelected)) {
+                    themeGraphicDefined = true;
                     element = tableView ? QS60StylePrivate::SE_TableItemPressed : QS60StylePrivate::SE_ListItemPressed;
                 } else if (hasFocus || (isSelected && selectionBehavior != QAbstractItemView::SelectItems)) {
                     element = QS60StylePrivate::SE_ListHighlight;
                     elementRect = highlightRect;
+                    themeGraphicDefined = true;
                 }
-                QS60StylePrivate::drawSkinElement(element, painter, elementRect, flags);
+                if (themeGraphicDefined)
+                    QS60StylePrivate::drawSkinElement(element, painter, elementRect, flags);
             } else {
                 QCommonStyle::drawPrimitive(element, option, painter, widget);
             }

@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -87,7 +87,7 @@ const TInt KInternalStatusPaneChange = 0x50000000;
 //this macro exists because EColor16MAP enum value doesn't exist in Symbian OS 9.2
 #define Q_SYMBIAN_ECOLOR16MAP TDisplayMode(13)
 
-class QS60ThreadLocalData
+class Q_AUTOTEST_EXPORT QS60ThreadLocalData
 {
 public:
     QS60ThreadLocalData();
@@ -141,7 +141,6 @@ public:
     int supportsPremultipliedAlpha : 1;
     int avkonComponentsSupportTransparency : 1;
     int menuBeingConstructed : 1;
-    int memoryLimitForHwRendering;
     QApplication::QS60MainApplicationFactory s60ApplicationFactory; // typedef'ed pointer type
 
     enum ScanCodeState {
@@ -163,14 +162,16 @@ public:
     static inline CAknTitlePane* titlePane();
     static inline CAknContextPane* contextPane();
     static inline CEikButtonGroupContainer* buttonGroupContainer();
+    static void setStatusPaneAndButtonGroupVisibility(bool statusPaneVisible, bool buttonGroupVisible);
 #endif
+    static void controlVisibilityChanged(CCoeControl *control, bool visible);
 
 #ifdef Q_OS_SYMBIAN
     TTrapHandler *s60InstalledTrapHandler;
 #endif
 };
 
-QS60Data* qGlobalS60Data();
+Q_AUTOTEST_EXPORT QS60Data* qGlobalS60Data();
 #define S60 qGlobalS60Data()
 
 class QAbstractLongTapObserver
@@ -246,6 +247,8 @@ private:
 #ifdef QT_SYMBIAN_SUPPORTS_ADVANCED_POINTER
     void translateAdvancedPointerEvent(const TAdvancedPointerEvent *event);
 #endif
+
+public:
     void handleClientAreaChange();
 
 private:
@@ -288,7 +291,6 @@ inline QS60Data::QS60Data()
   supportsPremultipliedAlpha(0),
   avkonComponentsSupportTransparency(0),
   menuBeingConstructed(0),
-  memoryLimitForHwRendering(0),
   s60ApplicationFactory(0)
 #ifdef Q_OS_SYMBIAN
   ,s60InstalledTrapHandler(0)

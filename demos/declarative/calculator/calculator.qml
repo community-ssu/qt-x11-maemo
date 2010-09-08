@@ -7,11 +7,11 @@
 ** This file is part of the QtDeclarative module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -58,7 +58,7 @@ Rectangle {
     property string plusminus : "\u00b1"
 
     function doOp(operation) { CalcEngine.doOperation(operation) }
-    
+
     Item {
         id: main
         state: "orientation " + runtime.orientation
@@ -70,8 +70,10 @@ Rectangle {
 
             anchors { fill: parent; topMargin: 6; bottomMargin: 6; leftMargin: 6; rightMargin: 6 }
 
-            Row {
-                Display { id: display; width: box.width; height: 64 }
+            Display {
+                id: display
+                width: box.width-3
+                height: 64
             }
 
             Column {
@@ -82,11 +84,7 @@ Rectangle {
 
                 Row {
                     spacing: 6
-
-                    Button {
-                        id: rotateButton
-                        width: column.w; height: column.h; color: 'purple'; operation: rotateRight
-                    }
+                    Button { width: column.w; height: column.h; color: 'purple'; operation: "Off" }
                     Button { width: column.w; height: column.h; color: 'purple'; operation: leftArrow }
                     Button { width: column.w; height: column.h; color: 'purple'; operation: "C" }
                     Button { width: column.w; height: column.h; color: 'purple'; operation: "AC" }
@@ -103,7 +101,7 @@ Rectangle {
                 }
 
                 Grid {
-                    id: grid; rows: 4; columns: 5; spacing: 6
+                    id: grid; rows: 5; columns: 5; spacing: 6
 
                     property real w: (box.width / columns) - ((spacing * (columns - 1)) / columns)
 

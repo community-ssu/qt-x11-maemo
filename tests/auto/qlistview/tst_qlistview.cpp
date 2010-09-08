@@ -7,11 +7,11 @@
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -45,6 +45,7 @@
 #include <qabstractitemmodel.h>
 #include <qapplication.h>
 #include <qlistview.h>
+#include <qlistwidget.h>
 #include <qitemdelegate.h>
 #include <qstandarditemmodel.h>
 #include <qstringlistmodel.h>
@@ -125,6 +126,8 @@ private slots:
     void taskQTBUG_5877_skippingItemInPageDownUp();
     void taskQTBUG_9455_wrongScrollbarRanges();
     void styleOptionViewItem();
+    void taskQTBUG_12308_artihmeticException();
+    void taskQTBUG_12308_wrongFlowLayout();
 };
 
 // Testing get/set functions
@@ -1665,8 +1668,8 @@ void tst_QListView::task254449_draggingItemToNegativeCoordinates()
     //we'll make sure the item is repainted
     delegate.numPaints = 0;
     QApplication::processEvents();
+    QTRY_COMPARE(delegate.numPaints, 1);
     QCOMPARE(list.visualRect(index).topLeft(), topLeft);
-    QCOMPARE(delegate.numPaints, 1);
 }
 
 
@@ -2019,6 +2022,54 @@ void tst_QListView::styleOptionViewItem()
     // Run test
     view.showMaximized();
     QApplication::processEvents();
+}
+
+void tst_QListView::taskQTBUG_12308_artihmeticException()
+{
+    QListWidget lw;
+    lw.setLayoutMode(QListView::Batched);
+    lw.setViewMode(QListView::IconMode);
+    for (int i = 0; i < lw.batchSize() + 1; i++) {
+        QListWidgetItem *item = new QListWidgetItem();
+        item->setText(QString("Item %L1").arg(i));
+        lw.addItem(item);
+        item->setHidden(true);
+    }
+    lw.show();
+    QTest::qWaitForWindowShown(&lw);
+    // No crash, it's all right.
+}
+
+class Delegate12308 : public QStyledItemDelegate
+{
+    Q_OBJECT
+public:
+    Delegate12308(QObject *parent = 0) : QStyledItemDelegate(parent)
+    { }
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+    {
+        QVERIFY(option.rect.topLeft() != QPoint(-1, -1));
+        QStyledItemDelegate::paint(painter, option, index);
+    }
+};
+
+void tst_QListView::taskQTBUG_12308_wrongFlowLayout()
+{
+    QListWidget lw;
+    Delegate12308 delegate;
+    lw.setLayoutMode(QListView::Batched);
+    lw.setViewMode(QListView::IconMode);
+    lw.setItemDelegate(&delegate);
+    for (int i = 0; i < lw.batchSize() + 1; i++) {
+        QListWidgetItem *item = new QListWidgetItem();
+        item->setText(QString("Item %L1").arg(i));
+        lw.addItem(item);
+        if (!item->text().contains(QString::fromAscii("1")))
+            item->setHidden(true);
+    }
+    lw.show();
+    QTest::qWaitForWindowShown(&lw);
 }
 
 QTEST_MAIN(tst_QListView)

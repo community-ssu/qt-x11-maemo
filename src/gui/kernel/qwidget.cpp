@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -162,47 +162,76 @@ static inline bool hasBackingStoreSupport()
 extern bool qt_sendSpontaneousEvent(QObject*, QEvent*); // qapplication.cpp
 extern QDesktopWidget *qt_desktopWidget; // qapplication.cpp
 
+/*!
+    \internal
+    \class QWidgetBackingStoreTracker
+    \brief Class which allows tracking of which widgets are using a given backing store
 
-QRefCountedWidgetBackingStore::QRefCountedWidgetBackingStore()
+    QWidgetBackingStoreTracker is a thin wrapper around a QWidgetBackingStore pointer,
+    which maintains a list of the QWidgets which are currently using the backing
+    store.  This list is modified via the registerWidget and unregisterWidget functions.
+ */
+
+QWidgetBackingStoreTracker::QWidgetBackingStoreTracker()
     :   m_ptr(0)
-    ,   m_count(0)
 {
 
 }
 
-QRefCountedWidgetBackingStore::~QRefCountedWidgetBackingStore()
+QWidgetBackingStoreTracker::~QWidgetBackingStoreTracker()
 {
     delete m_ptr;
 }
 
-void QRefCountedWidgetBackingStore::create(QWidget *widget)
+/*!
+    \internal
+    Destroy the contained QWidgetBackingStore, if not null, and clear the list of
+    widgets using the backing store, then create a new QWidgetBackingStore, providing
+    the QWidget.
+ */
+void QWidgetBackingStoreTracker::create(QWidget *widget)
 {
     destroy();
     m_ptr = new QWidgetBackingStore(widget);
-    m_count = 0;
 }
 
-void QRefCountedWidgetBackingStore::destroy()
+/*!
+    \internal
+    Destroy the contained QWidgetBackingStore, if not null, and clear the list of
+    widgets using the backing store.
+ */
+void QWidgetBackingStoreTracker::destroy()
 {
     delete m_ptr;
     m_ptr = 0;
-    m_count = 0;
+    m_widgets.clear();
 }
 
-void QRefCountedWidgetBackingStore::ref()
+/*!
+    \internal
+    Add the widget to the list of widgets currently using the backing store.
+    If the widget was already in the list, this function is a no-op.
+ */
+void QWidgetBackingStoreTracker::registerWidget(QWidget *w)
 {
     Q_ASSERT(m_ptr);
-    ++m_count;
+    Q_ASSERT(w->internalWinId());
+    Q_ASSERT(qt_widget_private(w)->maybeBackingStore() == m_ptr);
+    m_widgets.insert(w);
 }
 
-void QRefCountedWidgetBackingStore::deref()
+/*!
+    \internal
+    Remove the widget from the list of widgets currently using the backing store.
+    If the widget was in the list, and removing it causes the list to be empty,
+    the backing store is deleted.
+    If the widget was not in the list, this function is a no-op.
+ */
+void QWidgetBackingStoreTracker::unregisterWidget(QWidget *w)
 {
-    if (m_count) {
-        Q_ASSERT(m_ptr);
-        if (0 == --m_count) {
-            delete m_ptr;
-            m_ptr = 0;
-        }
+    if (m_widgets.remove(w) && m_widgets.isEmpty()) {
+        delete m_ptr;
+        m_ptr = 0;
     }
 }
 

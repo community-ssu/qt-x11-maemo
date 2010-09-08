@@ -7,11 +7,11 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and Nokia.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -25,16 +25,16 @@
 ** rights.  These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3.0 as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU General Public License version 3.0 requirements will be
+** met: http://www.gnu.org/copyleft/gpl.html.
+**
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -79,7 +79,6 @@ QCoeFepInputContext::QCoeFepInputContext(QObject *parent)
       m_inlinePosition(0),
       m_formatRetriever(0),
       m_pointerHandler(0),
-      m_cursorPos(0),
       m_hasTempPreeditString(false)
 {
     m_fepState->SetObjectProvider(this);
@@ -237,11 +236,17 @@ bool QCoeFepInputContext::filterEvent(const QEvent *event)
             break;
         }
 
+        QString widgetText = focusWidget()->inputMethodQuery(Qt::ImSurroundingText).toString();
+        int maxLength = focusWidget()->inputMethodQuery(Qt::ImMaximumTextLength).toInt();
+        if (!keyEvent->text().isEmpty() && widgetText.size() + m_preeditString.size() >= maxLength) {
+            // Don't send key events with string content if the widget is "full".
+            return true;
+        }
+
         if (keyEvent->type() == QEvent::KeyPress
             && focusWidget()->inputMethodHints() & Qt::ImhHiddenText
             && !keyEvent->text().isEmpty()) {
             // Send some temporary preedit text in order to make text visible for a moment.
-            m_cursorPos = focusWidget()->inputMethodQuery(Qt::ImCursorPosition).toInt();
             m_preeditString = keyEvent->text();
             QList<QInputMethodEvent::Attribute> attributes;
             QInputMethodEvent imEvent(m_preeditString, attributes);
@@ -297,10 +302,6 @@ void QCoeFepInputContext::commitTemporaryPreeditString()
         return;
 
     commitCurrentString(false);
-
-    //update cursor position, now this pre-edit text has been committed.
-    //this prevents next keypress overwriting it (QTBUG-11673)
-    m_cursorPos = focusWidget()->inputMethodQuery(Qt::ImCursorPosition).toInt();
 }
 
 void QCoeFepInputContext::mouseHandler( int x, QMouseEvent *event)
@@ -581,8 +582,6 @@ void QCoeFepInputContext::StartFepInlineEditL(const TDesC& aInitialInlineText,
 
     commitTemporaryPreeditString();
 
-    m_cursorPos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
-    
     QList<QInputMethodEvent::Attribute> attributes;
 
     m_cursorVisibility = aCursorVisibility ? 1 : 0;
@@ -597,9 +596,10 @@ void QCoeFepInputContext::StartFepInlineEditL(const TDesC& aInitialInlineText,
     // Let's remove the selected text if aInitialInlineText is empty and there is selected text
     if (m_preeditString.isEmpty()) {
         int anchor = w->inputMethodQuery(Qt::ImAnchorPosition).toInt();
-        int replacementLength = qAbs(m_cursorPos-anchor);
+        int cursorPos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
+        int replacementLength = qAbs(cursorPos-anchor);
         if (replacementLength > 0) {
-            int replacementStart = m_cursorPos < anchor ? 0 : -replacementLength;
+            int replacementStart = cursorPos < anchor ? 0 : -replacementLength;
             QList<QInputMethodEvent::Attribute> clearSelectionAttributes;
             QInputMethodEvent clearSelectionEvent(QLatin1String(""), clearSelectionAttributes);
             clearSelectionEvent.setCommitString(QLatin1String(""), replacementStart, replacementLength);
@@ -632,8 +632,13 @@ void QCoeFepInputContext::UpdateFepInlineTextL(const TDesC& aNewInlineText,
                                                    m_inlinePosition,
                                                    m_cursorVisibility,
                                                    QVariant()));
-    m_preeditString = qt_TDesC2QString(aNewInlineText);
-    QInputMethodEvent event(m_preeditString, attributes);
+    QString newPreeditString = qt_TDesC2QString(aNewInlineText);
+    QInputMethodEvent event(newPreeditString, attributes);
+    if (newPreeditString.isEmpty() && m_preeditString.isEmpty()) {
+        // In Symbian world this means "erase last character".
+        event.setCommitString("", -1, 1);
+    }
+    m_preeditString = newPreeditString;
     sendEvent(event);
 }
 
@@ -805,23 +810,13 @@ void QCoeFepInputContext::commitCurrentString(bool cancelFepTransaction)
 {
     int longPress = 0;
 
-    if (m_preeditString.size() == 0) {
-        QWidget *w = focusWidget();
-        if (!cancelFepTransaction && w) {
-            // We must replace the last character only if the input box has already accepted one 
-            if (w->inputMethodQuery(Qt::ImCursorPosition).toInt() != m_cursorPos)
-                longPress = 1;
-        }
-    }
-
     QList<QInputMethodEvent::Attribute> attributes;
     QInputMethodEvent event(QLatin1String(""), attributes);
-    event.setCommitString(m_preeditString, 0-longPress, longPress);
+    event.setCommitString(m_preeditString, 0, 0);
     m_preeditString.clear();
     sendEvent(event);
 
     m_hasTempPreeditString = false;
-    longPress = 0;
 
     if (cancelFepTransaction) {
         CCoeFep* fep = CCoeEnv::Static()->Fep();
