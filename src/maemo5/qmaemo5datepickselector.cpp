@@ -70,7 +70,24 @@ void QMaemo5DatePickSelectorPrivate::emitSelected()
     emit q->selected(q->currentValueText());
 }
 
+/*!
+    \class QMaemo5DatePickSelector
+    \since 4.6
+    \ingroup qtmaemo5
+    \brief The QMaemo5DatePickSelector class can be used together with a
+    QMaemo5ValueButton to allow the selection of a date.
 
+    The Maemo5 date pick selector is a Maemo 5 specific class that is mainly
+    used together with the so called "picker buttons" on this platform.
+    The picker will handle all internal communication, such as setting the value
+    of the picker button after the user has selected the new date.
+
+    \sa QMaemo5AbstractPickSelector
+*/
+
+/*!
+    Constructs a new date pick selector with the given \a parent object.
+*/
 QMaemo5DatePickSelector::QMaemo5DatePickSelector(QObject *parent)
     : QMaemo5AbstractPickSelector(*new QMaemo5DatePickSelectorPrivate, parent)
 {
@@ -78,6 +95,8 @@ QMaemo5DatePickSelector::QMaemo5DatePickSelector(QObject *parent)
     d->init();
 }
 
+/*! \internal
+ */
 QMaemo5DatePickSelector::QMaemo5DatePickSelector(QMaemo5DatePickSelectorPrivate &dd, QObject *parent)
     : QMaemo5AbstractPickSelector(dd, parent)
 {
@@ -85,8 +104,32 @@ QMaemo5DatePickSelector::QMaemo5DatePickSelector(QMaemo5DatePickSelectorPrivate 
     d->init();
 }
 
+/*!
+   Destroys the pick selector.
+*/
 QMaemo5DatePickSelector::~QMaemo5DatePickSelector()
 { }
+
+/*!
+    \property QMaemo5DatePickSelector::minimumYear
+    \brief The minimum year
+
+    This property holds the minimum year a user can choose.
+*/
+
+/*!
+    \property QMaemo5DatePickSelector::maximumYear
+    \brief The maximum year
+
+    This property holds the maximum year a user can choose.
+*/
+
+/*!
+    \property QMaemo5DatePickSelector::currentDate
+    \brief The currently selected date
+
+    This property holds the date that is currently selected.
+*/
 
 QDate QMaemo5DatePickSelector::currentDate() const
 {
@@ -134,12 +177,16 @@ void QMaemo5DatePickSelector::setMaximumYear(int y)
     }
 }
 
+/*! \reimp
+*/
 QWidget *QMaemo5DatePickSelector::widget(QWidget *parent)
 {
     Q_D(QMaemo5DatePickSelector);
     return d->widget(parent);
 }
 
+/*! \reimp
+*/
 QString QMaemo5DatePickSelector::currentValueText() const
 {
     Q_D(const QMaemo5DatePickSelector);
