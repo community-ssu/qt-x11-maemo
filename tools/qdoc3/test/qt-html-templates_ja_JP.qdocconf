@@ -144,6 +144,7 @@ HTML.footer             = "        <!-- /div -->\n" \
 			  "          [+] Documentation Feedback</div>\n" \
 			  "      </div>\n" \
 			  "    </div>\n" \
+			  "    </div>\n" \
 			  "    <div class=\"ft\">\n" \
 			  "      <span></span>\n" \
 			  "    </div>\n" \
