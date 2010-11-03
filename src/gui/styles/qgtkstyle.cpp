@@ -229,6 +229,7 @@ QPalette QGtkStyle::standardPalette() const
 #else
         GtkWidget *gtkEntry = d->getTextColorWidget();
 #endif
+        GdkColor gdkBg, gdkBase, gdkText, gdkForeground, gdkSbg, gdkSfg, gdkaSbg, gdkaSfg;
         QColor bg, base, text, fg, highlight, highlightText, inactiveHighlight, inactiveHighlightedTExt;
         gdkBg = style->bg[GTK_STATE_NORMAL];
         gdkForeground = gtkButton->style->fg[GTK_STATE_NORMAL];

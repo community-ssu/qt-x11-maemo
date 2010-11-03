@@ -159,7 +159,7 @@ static bool launchWebBrowser(const QUrl &url)
 
     // Use the X11->desktopEnvironment value if X11 is non-NULL,
     //  otherwise just attempt to launch command regardless of the desktop environment
-    if ((!X11 || (X11->desktopEnvironment == DE_GNOME)) && launch(url, QLatin1String("gnome-open"))) {
+    if ((!X11 || (X11->desktopEnvironment == DE_GNOME)) && launch(url, QLatin1String("gnome-open")))
         return true;
     else if ((!X11 || (X11->desktopEnvironment == DE_KDE)) && launch(url, QLatin1String("kfmclient openURL")))
         return true;
