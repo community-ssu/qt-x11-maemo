@@ -387,6 +387,7 @@ private: //data members
 class QFocusFrame;
 class QProgressBar;
 class QS60StyleAnimation;
+class TactileFeedbackInterface;
 
 // Private class
 #ifdef Q_OS_SYMBIAN
@@ -571,6 +572,9 @@ public:
     void startAnimation(QS60StyleEnums::SkinParts animation);
     void stopAnimation(QS60StyleEnums::SkinParts animation);
     static QS60StyleAnimation* animationDefinition(QS60StyleEnums::SkinParts part);
+    static void removeAnimations();
+    //No support for tactile feedback in emulated style
+    void touchFeedback(QEvent *event, const QWidget *widget);
 
 #endif
 
@@ -597,6 +601,8 @@ private:
     void setThemePaletteHash(QPalette *palette) const;
     static void storeThemePalette(QPalette *palette);
     static void deleteThemePalette();
+    static bool equalToThemePalette(QColor color, QPalette::ColorRole role);
+    static bool equalToThemePalette(qint64 cacheKey, QPalette::ColorRole role);
 
     static QSize partSize(QS60StyleEnums::SkinParts part,
         SkinElementFlags flags = KDefaultSkinElementFlags);
@@ -623,6 +629,7 @@ private:
 #ifdef Q_WS_S60
     //list of progress bars having animation running
     QList<QProgressBar *> m_bars;
+    TactileFeedbackInterface *m_feedbackPlugin;
 #endif
 
 };

@@ -67,6 +67,9 @@
 
 #if defined(Q_OS_SYMBIAN)
 #define SRCDIR ""
+#define XMLPATTERNSDIR "xmlpatterns"
+#else
+#define XMLPATTERNSDIR SRCDIR "../xmlpatterns"
 #endif
 
 /*!
@@ -264,7 +267,7 @@ void tst_QXmlQuery::checkBaseURI(const QUrl &baseURI, const QString &candidate)
     QVERIFY(QDir(baseURI.toLocalFile()).relativeFilePath(QFileInfo(candidate).canonicalFilePath()).startsWith("../"));
 }
 
-const char *const tst_QXmlQuery::queriesDirectory = SRCDIR "../xmlpatterns/queries/";
+const char *const tst_QXmlQuery::queriesDirectory = XMLPATTERNSDIR "/queries/";
 
 QStringList tst_QXmlQuery::queries()
 {
@@ -857,7 +860,7 @@ void tst_QXmlQuery::bindVariableXSLTSuccess() const
     stylesheet.bindVariable(QLatin1String("paramSelectWithTypeIntBoundWithBindVariableRequired"),
                                           QVariant(QLatin1String("param5")));
 
-    stylesheet.setQuery(QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/stylesheets/parameters.xsl"))));
+    stylesheet.setQuery(QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/stylesheets/parameters.xsl"))));
 
     QVERIFY(stylesheet.isValid());
 
@@ -1811,11 +1814,11 @@ void tst_QXmlQuery::setFocusQUrl() const
     {
         QXmlQuery query(QXmlQuery::XSLT20);
 
-        const TestURIResolver resolver(QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/stylesheets/documentElement.xml"))));
+        const TestURIResolver resolver(QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/stylesheets/documentElement.xml"))));
         query.setUriResolver(&resolver);
 
         QVERIFY(query.setFocus(QUrl(QLatin1String("arbitraryURI"))));
-        query.setQuery(QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/stylesheets/copyWholeDocument.xsl"))));
+        query.setQuery(QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/stylesheets/copyWholeDocument.xsl"))));
         QVERIFY(query.isValid());
 
         QBuffer result;
@@ -3010,7 +3013,7 @@ void tst_QXmlQuery::setInitialTemplateNameQXmlName() const
 
     QCOMPARE(query.initialTemplateName(), name);
 
-    query.setQuery(QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/stylesheets/namedTemplate.xsl"))));
+    query.setQuery(QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/stylesheets/namedTemplate.xsl"))));
     QVERIFY(query.isValid());
 
     QBuffer result;
@@ -3072,7 +3075,7 @@ void tst_QXmlQuery::setNetworkAccessManager() const
     /* Ensure fn:doc() picks up the right QNetworkAccessManager. */
     {
         NetworkOverrider networkOverrider(QUrl(QLatin1String("tag:example.com:DOESNOTEXIST")),
-                                          QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/queries/simpleDocument.xml"))));
+                                          QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/queries/simpleDocument.xml"))));
 
         QXmlQuery query;
         query.setNetworkAccessManager(&networkOverrider);
@@ -3088,7 +3091,7 @@ void tst_QXmlQuery::setNetworkAccessManager() const
     /* Ensure setQuery() is using the right network manager. */
     {
         NetworkOverrider networkOverrider(QUrl(QLatin1String("tag:example.com:DOESNOTEXIST")),
-                                          QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/queries/concat.xq"))));
+                                          QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/queries/concat.xq"))));
 
         QXmlQuery query;
         query.setNetworkAccessManager(&networkOverrider);
@@ -3146,9 +3149,9 @@ void tst_QXmlQuery::multipleDocsAndFocus() const
     /* We use string concatenation, since variable bindings might disturb what
      * we're testing. */
     query.setQuery(QLatin1String("string(doc('") +
-                   inputFile(QLatin1String(SRCDIR "../xmlpatterns/queries/simpleDocument.xml")) +
+                   inputFile(QLatin1String(XMLPATTERNSDIR "/queries/simpleDocument.xml")) +
                    QLatin1String("'))"));
-    query.setFocus(QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/stylesheets/documentElement.xml"))));
+    query.setFocus(QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/stylesheets/documentElement.xml"))));
     query.setQuery(QLatin1String("string(.)"));
 
     QStringList result;
@@ -3172,11 +3175,11 @@ void tst_QXmlQuery::multipleEvaluationsWithDifferentFocus() const
     QXmlQuery query;
     QStringList result;
 
-    query.setFocus(QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/stylesheets/documentElement.xml"))));
+    query.setFocus(QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/stylesheets/documentElement.xml"))));
     query.setQuery(QLatin1String("string(.)"));
     QVERIFY(query.evaluateTo(&result));
 
-    query.setFocus(QUrl(inputFileAsURI(QLatin1String(SRCDIR "../xmlpatterns/stylesheets/documentElement.xml"))));
+    query.setFocus(QUrl(inputFileAsURI(QLatin1String(XMLPATTERNSDIR "/stylesheets/documentElement.xml"))));
     QVERIFY(query.evaluateTo(&result));
 }
 

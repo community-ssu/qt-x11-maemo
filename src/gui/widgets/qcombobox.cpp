@@ -2490,7 +2490,7 @@ void QComboBox::showPopup()
             listRect.setWidth(listRect.height());
             //by default popup is centered on screen in landscape
             listRect.moveCenter(screen.center());
-            if (staConTopRect.IsEmpty()) {
+            if (staConTopRect.IsEmpty() && AknLayoutUtils::CbaLocation() != AknLayoutUtils::EAknCbaLocationBottom) {
                 // landscape without stacon, menu should be at the right
                 (opt.direction == Qt::LeftToRight) ? listRect.setRight(screen.right()) :
                                                      listRect.setLeft(screen.left());
@@ -2992,7 +2992,8 @@ void QComboBox::mousePressEvent(QMouseEvent *e)
         if (sc == QStyle::SC_ComboBoxArrow)
             d->updateArrow(QStyle::State_Sunken);
 #ifdef QT_KEYPAD_NAVIGATION
-        if (!d->lineEdit) {
+        //if the container already exists, then d->viewContainer() is safe to call
+        if (d->container) {
 #endif
             // We've restricted the next couple of lines, because by not calling
             // viewContainer(), we avoid creating the QComboBoxPrivateContainer.

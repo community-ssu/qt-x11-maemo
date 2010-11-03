@@ -70,6 +70,7 @@
 #include <qtoolbar.h>
 #include <QtGui/qpaintengine.h>
 #include <private/qbackingstore_p.h>
+#include <qmenubar.h>
 
 #include <QtGui/QGraphicsView>
 #include <QtGui/QGraphicsProxyWidget>
@@ -81,8 +82,14 @@
 #include <avkon.hrh>                // EEikStatusPaneUidTitle
 #include <akntitle.h>               // CAknTitlePane
 #include <akncontext.h>             // CAknContextPane
+#endif
+
+#ifdef Q_OS_SYMBIAN
 #include <eikspane.h>               // CEikStatusPane
 #include <eikbtgpc.h>               // CEikButtonGroupContainer
+#include <eikenv.h>                 // CEikonEnv
+#include <eikaufty.h>               // MEikAppUiFactory
+#include <eikmenub.h>               // CEikMenuBar
 #endif
 
 #ifdef Q_WS_QWS
@@ -387,6 +394,7 @@ private slots:
     void maximizedWindowModeTransitions();
     void minimizedWindowModeTransitions();
     void normalWindowModeTransitions();
+    void focusSwitchClosesPopupMenu();
 #endif
 
     void focusProxyAndInputMethods();
@@ -401,6 +409,8 @@ private slots:
     void taskQTBUG_11373();
 #endif // QT_MAC_USE_COCOA
 #endif
+
+    void nativeChildFocus();
 
 private:
     bool ensureScreenSize(int width, int height);
@@ -9773,14 +9783,25 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     child.setAutoFillBackground(true);
     child.setPalette(Qt::blue);
 
+    QWidget grandChild(&child);
+    grandChild.setAutoFillBackground(true);
+    grandChild.setPalette(Qt::yellow);
+
     QVBoxLayout layout(&parent);
     layout.setContentsMargins(10, 10, 10, 10);
     layout.addWidget(&child);
     parent.setLayout(&layout);
 
-    child.winId();
+    QVBoxLayout childLayout(&child);
+    childLayout.setContentsMargins(10, 10, 10, 10);
+    childLayout.addWidget(&grandChild);
+    child.setLayout(&childLayout);
+
+    // Ensure that this widget and all its ancestors are native
+    grandChild.winId();
 
     parent.show();
+
     QTest::qWaitForWindowShown(&parent);
 
     // Check that child window does not obscure parent window
@@ -9789,25 +9810,30 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     // Native child widget should share parent's backing store
     QVERIFY(0 != backingStore(parent));
     QVERIFY(0 == backingStore(child));
+    QVERIFY(0 == backingStore(grandChild));
 
     // Make child widget full screen
     child.setWindowFlags((child.windowFlags() | Qt::Window) ^ Qt::SubWindow);
     child.setWindowState(child.windowState() | Qt::WindowFullScreen);
     child.show();
+
+    // Paint into the child to ensure that it gets a backing store
+    QPainter painter(&child);
+    painter.fillRect(QRect(0, 0, 90, 90), Qt::white);
+
     QTest::qWaitForWindowShown(&child);
 
     // Ensure that 'window hidden' event is received by parent
     qApp->processEvents();
 
     // Check that child window obscures parent window
-    QVERIFY(parent.visibleRegion().subtracted(child.visibleRegion()).isEmpty());
+    QVERIFY(parent.visibleRegion().subtracted(child.visibleRegion() + grandChild.visibleRegion()).isEmpty());
 
     // Now that extent of child widget goes beyond parent's extent,
     // a new backing store should be created for the child widget.
     QVERIFY(0 != backingStore(child));
 
     // Parent is obscured, therefore its backing store should be destroyed
-    QEXPECT_FAIL("", "QTBUG-12406", Continue);
     QVERIFY(0 == backingStore(parent));
 
     // Disable full screen
@@ -9817,11 +9843,12 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     QTest::qWaitForWindowShown(&child);
 
     // Check that parent is now visible again
-    QVERIFY(!parent.visibleRegion().subtracted(child.visibleRegion()).isEmpty());
+    QVERIFY(!parent.visibleRegion().subtracted(child.visibleRegion() + grandChild.visibleRegion()).isEmpty());
 
     // Native child widget should once again share parent's backing store
     QVERIFY(0 != backingStore(parent));
     QVERIFY(0 == backingStore(child));
+    QVERIFY(0 == backingStore(grandChild));
     }
 
     // 6. Partial reveal followed by full reveal
@@ -10320,6 +10347,31 @@ void tst_QWidget::normalWindowModeTransitions()
     QVERIFY(!buttonGroup->IsVisible());
     QVERIFY(!statusPane->IsVisible());
 }
+
+void tst_QWidget::focusSwitchClosesPopupMenu()
+{
+    QMainWindow mainWindow;
+    QAction action("Test action", &mainWindow);
+    mainWindow.menuBar()->addAction(&action);
+
+    mainWindow.show();
+    QT_TRAP_THROWING(CEikonEnv::Static()->AppUiFactory()->MenuBar()->TryDisplayMenuBarL());
+    QVERIFY(CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
+
+    // Close the popup by opening a new window.
+    QMainWindow mainWindow2;
+    QAction action2("Test action", &mainWindow2);
+    mainWindow2.menuBar()->addAction(&action2);
+    mainWindow2.show();
+    QVERIFY(!CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
+
+    QT_TRAP_THROWING(CEikonEnv::Static()->AppUiFactory()->MenuBar()->TryDisplayMenuBarL());
+    QVERIFY(CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
+
+    // Close the popup by switching focus.
+    mainWindow.activateWindow();
+    QVERIFY(!CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
+}
 #endif
 
 class InputContextTester : public QInputContext
@@ -10602,6 +10654,29 @@ void tst_QWidget::taskQTBUG_11373()
 }
 #endif // QT_MAC_USE_COCOA
 #endif
+
+void tst_QWidget::nativeChildFocus()
+{
+    QWidget w;
+    QLayout *layout = new QVBoxLayout;
+    w.setLayout(layout);
+    QLineEdit *p1 = new QLineEdit;
+    QLineEdit *p2 = new QLineEdit;
+    layout->addWidget(p1);
+    layout->addWidget(p2);
+    p1->setObjectName("p1");
+    p2->setObjectName("p2");
+    w.show();
+    w.activateWindow();
+    p1->setFocus();
+    p1->setAttribute(Qt::WA_NativeWindow);
+    p2->setAttribute(Qt::WA_NativeWindow);
+    QApplication::processEvents();
+    QTest::qWaitForWindowShown(&w);
+
+    QCOMPARE(QApplication::activeWindow(), &w);
+    QCOMPARE(QApplication::focusWidget(), p1);
+}
 
 QTEST_MAIN(tst_QWidget)
 #include "tst_qwidget.moc"

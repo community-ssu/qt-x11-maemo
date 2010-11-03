@@ -1,5 +1,7 @@
 include(../../spectrum.pri)
 
+static: error(This library cannot be built for static linkage)
+
 TEMPLATE = lib
 TARGET   = fftreal
 
@@ -38,7 +40,7 @@ symbian {
 macx {
     CONFIG += lib_bundle
 } else {
-    !symbian: DESTDIR = ../..
+    !symbian: DESTDIR = ../..$${spectrum_build_dir}
 }
 
 # Install

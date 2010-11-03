@@ -40,7 +40,6 @@
 ****************************************************************************/
 
 #include "qstringmatcher.h"
-#include "qunicodetables_p.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -208,7 +207,7 @@ QStringMatcher &QStringMatcher::operator=(const QStringMatcher &other)
     if (this != &other) {
         q_pattern = other.q_pattern;
         q_cs = other.q_cs;
-        qMemCopy(q_data, other.q_data, sizeof(q_data));
+        memcpy(q_data, other.q_data, sizeof(q_data));
     }
     return *this;
 }

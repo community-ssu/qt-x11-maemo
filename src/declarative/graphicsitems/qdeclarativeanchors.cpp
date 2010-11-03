@@ -148,15 +148,6 @@ static qreal adjustedPosition(QGraphicsObject *item, QDeclarativeAnchorLine::Anc
     return ret;
 }
 
-/*!
-    \internal
-    \class QDeclarativeAnchors
-    \since 4.7
-    \brief The QDeclarativeAnchors class provides a way to lay out items relative to other items.
-
-    \warning Currently, only anchoring to siblings or parent is supported.
-*/
-
 QDeclarativeAnchors::QDeclarativeAnchors(QObject *parent)
   : QObject(*new QDeclarativeAnchorsPrivate(0), parent)
 {
@@ -281,7 +272,7 @@ void QDeclarativeAnchorsPrivate::addDepend(QGraphicsObject *item)
     } else if(itemPrivate->isWidget) {
         Q_Q(QDeclarativeAnchors);
         QGraphicsWidget *widget = static_cast<QGraphicsWidget *>(item);
-        QObject::connect(widget, SIGNAL(destroyed(QObject *)), q, SLOT(_q_widgetDestroyed(QObject *)));
+        QObject::connect(widget, SIGNAL(destroyed(QObject*)), q, SLOT(_q_widgetDestroyed(QObject*)));
         QObject::connect(widget, SIGNAL(geometryChanged()), q, SLOT(_q_widgetGeometryChanged()));
     }
 }
@@ -298,7 +289,7 @@ void QDeclarativeAnchorsPrivate::remDepend(QGraphicsObject *item)
     } else if(itemPrivate->isWidget) {
         Q_Q(QDeclarativeAnchors);
         QGraphicsWidget *widget = static_cast<QGraphicsWidget *>(item);
-        QObject::disconnect(widget, SIGNAL(destroyed(QObject *)), q, SLOT(_q_widgetDestroyed(QObject *)));
+        QObject::disconnect(widget, SIGNAL(destroyed(QObject*)), q, SLOT(_q_widgetDestroyed(QObject*)));
         QObject::disconnect(widget, SIGNAL(geometryChanged()), q, SLOT(_q_widgetGeometryChanged()));
     }
 }

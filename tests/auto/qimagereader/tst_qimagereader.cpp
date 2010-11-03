@@ -178,6 +178,8 @@ private slots:
     void testIgnoresFormatAndExtension_data();
     void testIgnoresFormatAndExtension();
 
+    void saveFormat_data();
+    void saveFormat();
 };
 
 static const QLatin1String prefix(SRCDIR "/images/");
@@ -239,6 +241,7 @@ void tst_QImageReader::readImage_data()
 
 #if defined QTEST_HAVE_JPEG
     QTest::newRow("JPEG: beavis") << QString("beavis.jpg") << true << QByteArray("jpeg");
+    QTest::newRow("JPEG: qtbug13653") << QString("qtbug13653-no_eoi.jpg") << true << QByteArray("jpeg");
 #endif
 #if defined QTEST_HAVE_GIF
     QTest::newRow("GIF: earth") << QString("earth.gif") << true << QByteArray("gif");
@@ -316,7 +319,24 @@ void tst_QImageReader::jpegRgbCmyk()
     QEXPECT_FAIL("","libpng or libjpg on the device seems to be corrupt",Continue);
 #endif
 
-    QCOMPARE(image1, image2);
+    // first, do some obvious tests
+    QCOMPARE(image1.height(), image2.height());
+    QCOMPARE(image1.width(), image2.width());
+    QCOMPARE(image1.format(), image2.format());
+    QCOMPARE(image1.format(), QImage::Format_RGB32);
+
+    // compare all the pixels with a slack of 3. This ignores rounding errors in libjpeg/libpng
+    for (int h = 0; h < image1.height(); ++h) {
+        const uchar *s1 = image1.constScanLine(h);
+        const uchar *s2 = image2.constScanLine(h);
+        for (int w = 0; w < image1.width() * 4; ++w) {
+            if (*s1 != *s2) {
+                QVERIFY2(qAbs(*s1 - *s2) <= 3, qPrintable(QString("images differ in line %1, col %2 (image1: %3, image2: %4)").arg(h).arg(w).arg(*s1, 0, 16).arg(*s2, 0, 16)));
+            }
+            s1++;
+            s2++;
+        }
+    }
 }
 
 void tst_QImageReader::setScaledSize_data()
@@ -1026,6 +1046,7 @@ void tst_QImageReader::readFromDevice_data()
     QTest::newRow("jpeg-1") << QString("beavis.jpg") << QByteArray("jpeg");
     QTest::newRow("jpeg-2") << QString("YCbCr_cmyk.jpg") << QByteArray("jpeg");
     QTest::newRow("jpeg-3") << QString("YCbCr_rgb.jpg") << QByteArray("jpeg");
+    QTest::newRow("jpeg-4") << QString("qtbug13653-no_eoi.jpg") << QByteArray("jpeg");
 #endif // QTEST_HAVE_JPEG
 #ifdef QTEST_HAVE_GIF
     QTest::newRow("gif-1") << QString("earth.gif") << QByteArray("gif");
@@ -1301,6 +1322,9 @@ void tst_QImageReader::readFromResources_data()
     QTest::newRow("YCbCr_rgb.jpg") << QString("YCbCr_rgb.jpg")
                                           << QByteArray("jpg") << QSize(75, 50)
                                           << QString("");
+    QTest::newRow("qtbug13653-no_eoi.jpg") << QString("qtbug13653-no_eoi.jpg")
+                                        << QByteArray("jpg") << QSize(240, 180)
+                                        << QString("");
 #endif
 #ifdef QTEST_HAVE_MNG
     QTest::newRow("corrupt.mng") << QString("corrupt.mng")
@@ -1886,6 +1910,47 @@ void tst_QImageReader::testIgnoresFormatAndExtension()
         QCOMPARE(format, expected);
     }
 }
+
+
+void tst_QImageReader::saveFormat_data()
+{
+    QTest::addColumn<QImage::Format>("format");
+
+    QTest::newRow("Format_Mono") << QImage::Format_Mono;
+    QTest::newRow("Format_MonoLSB") << QImage::Format_MonoLSB;
+    QTest::newRow("Format_Indexed8") << QImage::Format_Indexed8;
+    QTest::newRow("Format_RGB32") << QImage::Format_RGB32;
+    QTest::newRow("Format_ARGB32") << QImage::Format_ARGB32;
+    QTest::newRow("Format_ARGB32_Premultiplied") << QImage::Format_ARGB32_Premultiplied;
+    QTest::newRow("Format_RGB16") << QImage::Format_RGB16;
+    QTest::newRow("Format_ARGB8565_Premultiplied") << QImage::Format_ARGB8565_Premultiplied;
+    QTest::newRow("Format_RGB666") << QImage::Format_RGB666;
+    QTest::newRow("Format_ARGB6666_Premultiplied") << QImage::Format_ARGB6666_Premultiplied;
+    QTest::newRow("Format_RGB555") << QImage::Format_RGB555;
+    QTest::newRow("Format_ARGB8555_Premultiplied") << QImage::Format_ARGB8555_Premultiplied;
+    QTest::newRow("Format_RGB888") << QImage::Format_RGB888;
+    QTest::newRow("Format_RGB444") << QImage::Format_RGB444;
+    QTest::newRow("Format_ARGB4444_Premultiplied") << QImage::Format_ARGB4444_Premultiplied;
+}
+
+void tst_QImageReader::saveFormat()
+{
+    QFETCH(QImage::Format, format);
+
+    QImage orig(":/images/kollada.png");
+
+    QImage converted = orig.convertToFormat(format);
+    QBuffer buf;
+    buf.open(QIODevice::WriteOnly);
+    QVERIFY(converted.save(&buf, "png"));
+    buf.close();
+    QImage stored = QImage::fromData(buf.buffer(), "png");
+
+    stored = stored.convertToFormat(QImage::Format_ARGB32);
+    converted = converted.convertToFormat(QImage::Format_ARGB32);
+    QCOMPARE(stored, converted);
+}
+
 
 QTEST_MAIN(tst_QImageReader)
 #include "tst_qimagereader.moc"

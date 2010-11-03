@@ -55,7 +55,7 @@ QT_BEGIN_NAMESPACE
 
 QT_MODULE(DBus)
 
-class QDBUS_EXPORT QDBusPendingReplyData: public QDBusPendingCall
+class Q_DBUS_EXPORT QDBusPendingReplyData: public QDBusPendingCall
 {
 protected:
     QDBusPendingReplyData();
@@ -85,7 +85,7 @@ namespace QDBusPendingReplyTypes {
 
     template<typename T1> inline int metaTypeFor(T1 * = 0)
     { return qMetaTypeId<T1>(); }
-    // specialise for QVariant, allowing it to be used in place of QDBusVariant
+    // specialize for QVariant, allowing it to be used in place of QDBusVariant
     template<> inline int metaTypeFor<QVariant>(QVariant *)
     { return qMetaTypeId<QDBusVariant>(); }
 

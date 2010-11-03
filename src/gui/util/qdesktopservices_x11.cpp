@@ -120,9 +120,11 @@ static bool openDocument(const QUrl &url)
     if (launch(url, QLatin1String("xdg-open")))
         return true;
 
-    if (X11->desktopEnvironment == DE_GNOME && launch(url, QLatin1String("gnome-open")))
+    // Use the X11->desktopEnvironment value if X11 is non-NULL,
+    //  otherwise just attempt to launch command regardless of the desktop environment
+    if ((!X11 || (X11->desktopEnvironment == DE_GNOME)) && launch(url, QLatin1String("gnome-open")))
         return true;
-    else if (X11->desktopEnvironment == DE_KDE && launch(url, QLatin1String("kfmclient exec")))
+    else if ((!X11 || (X11->desktopEnvironment == DE_KDE)) && launch(url, QLatin1String("kfmclient exec")))
         return true;
 #ifdef Q_WS_MAEMO_5
     else if (X11->desktopEnvironment == DE_MAEMO5 && maemo5Launch(url))
@@ -155,9 +157,11 @@ static bool launchWebBrowser(const QUrl &url)
     if (launch(url, QString::fromLocal8Bit(getenv("BROWSER"))))
         return true;
 
-    if (X11->desktopEnvironment == DE_GNOME && launch(url, QLatin1String("gnome-open")))
+    // Use the X11->desktopEnvironment value if X11 is non-NULL,
+    //  otherwise just attempt to launch command regardless of the desktop environment
+    if ((!X11 || (X11->desktopEnvironment == DE_GNOME)) && launch(url, QLatin1String("gnome-open"))) {
         return true;
-    else if (X11->desktopEnvironment == DE_KDE && launch(url, QLatin1String("kfmclient openURL")))
+    else if ((!X11 || (X11->desktopEnvironment == DE_KDE)) && launch(url, QLatin1String("kfmclient openURL")))
         return true;
 #ifdef Q_WS_MAEMO_5
     else if (X11->desktopEnvironment == DE_MAEMO5 && maemo5Launch(url))

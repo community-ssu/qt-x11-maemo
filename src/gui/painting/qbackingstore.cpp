@@ -352,7 +352,7 @@ void QWidgetBackingStore::beginPaint(QRegion &toClean, QWidget *widget, QWindowS
     // Always flush repainted areas.
     dirtyOnScreen += toClean;
 
-#ifdef Q_WS_QWS
+#if defined(Q_WS_QWS) && !defined(Q_BACKINGSTORE_SUBSURFACES)
     toClean.translate(tlwOffset);
 #endif
 
@@ -446,7 +446,7 @@ QRegion QWidgetBackingStore::dirtyRegion(QWidget *widget) const
 
 /*!
     Returns the static content inside the \a parent if non-zero; otherwise the static content
-    for the entire backing store is returned. The content will be clipped to \a withingClipRect
+    for the entire backing store is returned. The content will be clipped to \a withinClipRect
     if non-empty.
 */
 QRegion QWidgetBackingStore::staticContents(QWidget *parent, const QRect &withinClipRect) const
@@ -1294,7 +1294,12 @@ void QWidgetBackingStore::sync()
 #ifdef Q_BACKINGSTORE_SUBSURFACES
         QWindowSurface *subSurface = w->windowSurface();
         BeginPaintInfo beginPaintInfo;
-        beginPaint(toBePainted, w, subSurface, &beginPaintInfo, false);
+
+        QPoint off = w->mapTo(tlw, QPoint());
+        toBePainted.translate(off);
+        beginPaint(toBePainted, w, subSurface, &beginPaintInfo, true);
+        toBePainted.translate(-off);
+
         if (beginPaintInfo.nothingToPaint)
             continue;
 

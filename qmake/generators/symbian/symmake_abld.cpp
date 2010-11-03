@@ -70,10 +70,6 @@ SymbianAbldMakefileGenerator::~SymbianAbldMakefileGenerator() { }
 
 void SymbianAbldMakefileGenerator::writeMkFile(const QString& wrapperFileName, bool deploymentOnly)
 {
-    QString gnuMakefileName = QLatin1String("Makefile_") + uid3;
-    removeEpocSpecialCharacters(gnuMakefileName);
-    gnuMakefileName.append(".mk");
-
     QFile ft(gnuMakefileName);
     if (ft.open(QIODevice::WriteOnly)) {
         generatedFiles << ft.fileName();
@@ -209,8 +205,11 @@ void SymbianAbldMakefileGenerator::writeWrapperMakefile(QFile& wrapperFile, bool
 #ifdef Q_OS_WIN32
     t << "XCOPY             = xcopy /d /f /h /r /y /i" << endl;
     t << "ABLD              = ABLD.BAT" << endl;
+#elif defined(Q_OS_MAC)
+    t << "XCOPY             = cp -R -v" << endl;
+    t << "ABLD              = abld" << endl;
 #else
-    t << "XCOPY             = cp -u -v" << endl;
+    t << "XCOPY             = cp -R -u -v" << endl;
     t << "ABLD              = abld" << endl;
 #endif
     t << "DEBUG_PLATFORMS   = " << debugPlatforms.join(" ") << endl;
@@ -327,6 +326,7 @@ void SymbianAbldMakefileGenerator::writeWrapperMakefile(QFile& wrapperFile, bool
                     QString fixedValue(QDir::toNativeSeparators(values.at(i)));
                     dirsToClean << fixedValue;
                     t << "\t-@ " << dirExists << " \""  << fixedValue << "\" "
+                      << (isWindowsShell() ? "" : "|| ")
                       << mkdir << " \"" << fixedValue << "\"" << endl;
                 }
             }
@@ -430,7 +430,8 @@ bool SymbianAbldMakefileGenerator::writeDeploymentTargets(QTextStream &t, bool i
         t << WINSCW_DEPLOYMENT_TARGET ":" << endl;
 
     QString remoteTestPath = epocRoot()
-        + QLatin1String(isRom ? "epoc32\\data\\z\\private\\" : "epoc32\\winscw\\c\\private\\")
+        + QDir::toNativeSeparators(QLatin1String(isRom ? "epoc32/data/z/private/"
+                                                       : "epoc32/winscw/c/private/"))
         + privateDirUid;
     DeploymentList depList;
 
@@ -442,11 +443,21 @@ bool SymbianAbldMakefileGenerator::writeDeploymentTargets(QTextStream &t, bool i
         t << "\t-echo Deploying changed files..." << endl;
 
     for (int i = 0; i < depList.size(); ++i) {
+#ifdef Q_OS_WIN32
         // Xcopy prompts for selecting file or directory if target doesn't exist,
         // and doesn't provide switch to force file selection. It does provide dir forcing, though,
         // so strip the last part of the destination.
         t << "\t-$(XCOPY) \"" << depList.at(i).from << "\" \""
           << depList.at(i).to.left(depList.at(i).to.lastIndexOf("\\") + 1) << "\"" << endl;
+#else
+        QString dirExists = var("QMAKE_CHK_DIR_EXISTS");
+        QString mkdir = var("QMAKE_MKDIR");
+        QString dir = QFileInfo(depList.at(i).to).dir().path();
+        t << "\t-@ " << dirExists << " \""  << dir << "\" || "
+                      << mkdir << " \"" << dir << "\"" << endl;
+        t << "\t-$(XCOPY) \"" << QDir::toNativeSeparators(depList.at(i).from) << "\" \""
+          << QDir::toNativeSeparators(depList.at(i).to) << "\"" << endl;
+#endif
     }
 
     t << endl;
@@ -458,7 +469,7 @@ bool SymbianAbldMakefileGenerator::writeDeploymentTargets(QTextStream &t, bool i
 
     QStringList cleanList;
     for (int i = 0; i < depList.size(); ++i) {
-        cleanList.append(depList.at(i).to);
+        cleanList.append(QDir::toNativeSeparators(depList.at(i).to));
     }
     generateCleanCommands(t, cleanList, "$(DEL_FILE)", "", "", "");
 
@@ -475,9 +486,8 @@ void SymbianAbldMakefileGenerator::writeBldInfMkFilePart(QTextStream& t, bool ad
     // Normally emulator deployment gets done via regular makefile, but since subdirs
     // do not get that, special deployment only makefile is generated for them if needed.
     if (targetType != TypeSubdirs || addDeploymentExtension) {
-        QString gnuMakefileName = QLatin1String("Makefile_") + uid3;
-        removeEpocSpecialCharacters(gnuMakefileName);
-        gnuMakefileName.append(".mk");
+        gnuMakefileName = QLatin1String("Makefile_") + fileInfo(mmpFileName).completeBaseName()
+            + QLatin1String(".mk");
         t << "gnumakefile " << gnuMakefileName << endl;
     }
 }

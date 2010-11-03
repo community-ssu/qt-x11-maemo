@@ -19,7 +19,6 @@ SUBDIRS       = \
                 linguist \
                 mainwindows \
                 painting \
-                qtconcurrent \
                 richtext \
                 sql \
                 tools \
@@ -68,6 +67,7 @@ win32: SUBDIRS += activeqt
 maemo5: SUBDIRS += maemo5
 contains(QT_CONFIG, xmlpatterns):!contains(QT_CONFIG, no-gui): SUBDIRS += xmlpatterns
 contains(DEFINES, QT_NO_CURSOR): SUBDIRS -= mainwindows
+contains(QT_CONFIG, concurrent): SUBDIRS += qtconcurrent
 
 # install
 sources.files = README *.pro

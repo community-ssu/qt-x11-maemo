@@ -44,7 +44,6 @@
 
 #include "private/qdeclarativecompiler_p.h"
 #include "private/qdeclarativecontext_p.h"
-#include "private/qdeclarativecompositetypedata_p.h"
 #include "private/qdeclarativeengine_p.h"
 #include "private/qdeclarativevme_p.h"
 #include "qdeclarative.h"
@@ -54,10 +53,10 @@
 #include "private/qdeclarativeglobal_p.h"
 #include "private/qdeclarativescriptparser_p.h"
 #include "private/qdeclarativedebugtrace_p.h"
+#include "private/qdeclarativeenginedebug_p.h"
 
 #include <QStack>
 #include <QStringList>
-#include <QFileInfo>
 #include <QtCore/qdebug.h>
 #include <QApplication>
 
@@ -78,7 +77,7 @@ class QByteArray;
     For example, if there is a \c main.qml file like this:
 
     \qml
-    import Qt 4.7
+    import QtQuick 1.0
 
     Item {
         width: 200
@@ -104,6 +103,7 @@ class QByteArray;
 
 /*!
     \qmlclass Component QDeclarativeComponent
+    \ingroup qml-utility-elements
     \since 4.7
     \brief The Component element encapsulates a QML component definition.
 
@@ -195,7 +195,7 @@ class QByteArray;
     \value Error An error has occurred.  Call errors() to retrieve a list of \{QDeclarativeError}{errors}.
 */
 
-void QDeclarativeComponentPrivate::typeDataReady()
+void QDeclarativeComponentPrivate::typeDataReady(QDeclarativeTypeData *)
 {
     Q_Q(QDeclarativeComponent);
 
@@ -207,28 +207,25 @@ void QDeclarativeComponentPrivate::typeDataReady()
     emit q->statusChanged(q->status());
 }
 
-void QDeclarativeComponentPrivate::updateProgress(qreal p)
+void QDeclarativeComponentPrivate::typeDataProgress(QDeclarativeTypeData *, qreal p)
 {
     Q_Q(QDeclarativeComponent);
 
     progress = p;
+
     emit q->progressChanged(p);
 }
 
-void QDeclarativeComponentPrivate::fromTypeData(QDeclarativeCompositeTypeData *data)
+void QDeclarativeComponentPrivate::fromTypeData(QDeclarativeTypeData *data)
 {
-    url = data->imports.baseUrl();
-    QDeclarativeCompiledData *c = data->toCompiledComponent(engine);
+    url = data->finalUrl();
+    QDeclarativeCompiledData *c = data->compiledData();
 
     if (!c) {
-        Q_ASSERT(data->status == QDeclarativeCompositeTypeData::Error);
-
-        state.errors = data->errors;
-
+        Q_ASSERT(data->isError());
+        state.errors = data->errors();
     } else {
-
         cc = c;
-
     }
 
     data->release();
@@ -237,7 +234,7 @@ void QDeclarativeComponentPrivate::fromTypeData(QDeclarativeCompositeTypeData *d
 void QDeclarativeComponentPrivate::clear()
 {
     if (typeData) {
-        typeData->remWaiter(this);
+        typeData->unregisterCallback(this);
         typeData->release();
         typeData = 0;
     }
@@ -269,7 +266,7 @@ QDeclarativeComponent::~QDeclarativeComponent()
     }
 
     if (d->typeData) {
-        d->typeData->remWaiter(d);
+        d->typeData->unregisterCallback(d);
         d->typeData->release();
     }
     if (d->cc)
@@ -441,19 +438,13 @@ void QDeclarativeComponent::setData(const QByteArray &data, const QUrl &url)
 
     d->url = url;
 
-    QDeclarativeCompositeTypeData *typeData = 
-        QDeclarativeEnginePrivate::get(d->engine)->typeManager.getImmediate(data, url);
+    QDeclarativeTypeData *typeData = QDeclarativeEnginePrivate::get(d->engine)->typeLoader.get(data, url);
     
-    if (typeData->status == QDeclarativeCompositeTypeData::Waiting
-     || typeData->status == QDeclarativeCompositeTypeData::WaitingResources)
-    {
-        d->typeData = typeData;
-        d->typeData->addWaiter(d);
-
-    } else {
-
+    if (typeData->isCompleteOrError()) {
         d->fromTypeData(typeData);
-
+    } else {
+        d->typeData = typeData;
+        d->typeData->registerCallback(d);
     }
 
     d->progress = 1.0;
@@ -499,18 +490,15 @@ void QDeclarativeComponent::loadUrl(const QUrl &url)
         return;
     }
 
-    QDeclarativeCompositeTypeData *data = 
-        QDeclarativeEnginePrivate::get(d->engine)->typeManager.get(d->url);
+    QDeclarativeTypeData *data = QDeclarativeEnginePrivate::get(d->engine)->typeLoader.get(d->url);
 
-    if (data->status == QDeclarativeCompositeTypeData::Waiting
-     || data->status == QDeclarativeCompositeTypeData::WaitingResources)
-    {
-        d->typeData = data;
-        d->typeData->addWaiter(d);
-        d->progress = data->progress;
-    } else {
+    if (data->isCompleteOrError()) {
         d->fromTypeData(data);
         d->progress = 1.0;
+    } else {
+        d->typeData = data;
+        d->typeData->registerCallback(d);
+        d->progress = data->progress();
     }
 
     emit statusChanged(status());
@@ -584,7 +572,7 @@ QDeclarativeComponent::QDeclarativeComponent(QDeclarativeComponentPrivate &dd, Q
 }
 
 /*!
-    \qmlmethod object Component::createObject(parent)
+    \qmlmethod object Component::createObject(Item parent)
 
     Creates and returns an object instance of this component that will have the given 
     \a parent. Returns null if object creation fails.
@@ -618,10 +606,11 @@ QScriptValue QDeclarativeComponent::createObject(QObject* parent)
         ctxt = d->engine->rootContext();
     if (!ctxt)
         return QScriptValue(QScriptValue::NullValue);
-    QObject* ret = create(ctxt);
-    if (!ret)
+    QObject* ret = beginCreate(ctxt);
+    if (!ret) {
+        completeCreate();
         return QScriptValue(QScriptValue::NullValue);
-
+    }
 
     if (parent) {
         ret->setParent(parent);
@@ -642,6 +631,7 @@ QScriptValue QDeclarativeComponent::createObject(QObject* parent)
         if (needParent) 
             qWarning("QDeclarativeComponent: Created graphical object was not placed in the graphics scene.");
     }
+    completeCreate();
 
     QDeclarativeEnginePrivate *priv = QDeclarativeEnginePrivate::get(d->engine);
     QDeclarativeData::get(ret, true)->setImplicitDestructible();
@@ -743,45 +733,45 @@ QDeclarativeComponentPrivate::beginCreate(QDeclarativeContextData *context, cons
         return 0;
     }
 
-    QDeclarativeEnginePrivate *ep = QDeclarativeEnginePrivate::get(engine);
+    return begin(context, creationContext, cc, start, count, &state, 0, bindings);
+}
 
-    bool isRoot = !ep->inBeginCreate;
+QObject * QDeclarativeComponentPrivate::begin(QDeclarativeContextData *parentContext, 
+                                              QDeclarativeContextData *componentCreationContext,
+                                              QDeclarativeCompiledData *component, int start, int count,
+                                              ConstructionState *state, QList<QDeclarativeError> *errors,
+                                              const QBitField &bindings)
+{
+    QDeclarativeEnginePrivate *enginePriv = QDeclarativeEnginePrivate::get(parentContext->engine);
+    bool isRoot = !enginePriv->inBeginCreate;
+
+    Q_ASSERT(!isRoot || state); // Either this isn't a root component, or a state data must be provided
+    Q_ASSERT((state != 0) ^ (errors != 0)); // One of state or errors (but not both) must be provided
+
     if (isRoot) 
         QDeclarativeDebugTrace::startRange(QDeclarativeDebugTrace::Creating);
-    QDeclarativeDebugTrace::rangeData(QDeclarativeDebugTrace::Creating, cc->url);
 
     QDeclarativeContextData *ctxt = new QDeclarativeContextData;
     ctxt->isInternal = true;
-    ctxt->url = cc->url;
-    ctxt->imports = cc->importCache;
+    ctxt->url = component->url;
+    ctxt->imports = component->importCache;
 
     // Nested global imports
-    if (creationContext && start != -1) 
-        ctxt->importedScripts = creationContext->importedScripts;
+    if (componentCreationContext && start != -1) 
+        ctxt->importedScripts = componentCreationContext->importedScripts;
 
-    cc->importCache->addref();
-    ctxt->setParent(context);
+    component->importCache->addref();
+    ctxt->setParent(parentContext);
 
-    QObject *rv = begin(ctxt, ep, cc, start, count, &state, bindings);
-
-    if (rv && !context->isInternal && ep->isDebugging)
-        context->asQDeclarativeContextPrivate()->instances.append(rv);
-
-    return rv;
-}
-
-QObject * QDeclarativeComponentPrivate::begin(QDeclarativeContextData *ctxt, QDeclarativeEnginePrivate *enginePriv,
-                                              QDeclarativeCompiledData *component, int start, int count,
-                                              ConstructionState *state, const QBitField &bindings)
-{
-    bool isRoot = !enginePriv->inBeginCreate;
     enginePriv->inBeginCreate = true;
 
     QDeclarativeVME vme;
     QObject *rv = vme.run(ctxt, component, start, count, bindings);
 
-    if (vme.isError()) 
-        state->errors = vme.errors();
+    if (vme.isError()) {
+       if(errors) *errors = vme.errors();
+       else state->errors = vme.errors();
+    }
 
     if (isRoot) {
         enginePriv->inBeginCreate = false;
@@ -799,6 +789,12 @@ QObject * QDeclarativeComponentPrivate::begin(QDeclarativeContextData *ctxt, QDe
         enginePriv->finalizedParserStatus.clear();
         state->completePending = true;
         enginePriv->inProgressCreations++;
+    }
+
+    if (enginePriv->isDebugging && rv) {
+        if  (!parentContext->isInternal)
+            parentContext->asQDeclarativeContextPrivate()->instances.append(rv);
+        QDeclarativeEngineDebugServer::instance()->objectCreated(parentContext->engine, rv);
     }
 
     return rv;

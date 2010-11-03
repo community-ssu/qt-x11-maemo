@@ -67,7 +67,13 @@
        when the pbuffer contents change, eliminating the need for
        additional copy operations. This is supported only on Windows
        and Mac OS X systems that provide the \c render_texture
-       extension.
+       extension. Note that under Windows, a multi-sampled pbuffer
+       can't be used in conjunction with the \c render_texture
+       extension. If a multi-sampled pbuffer is requested under
+       Windows, the \c render_texture extension is turned off for that
+       pbuffer.
+
+
     \endlist
 
     Pbuffers are provided by the OpenGL \c pbuffer extension; call
@@ -410,8 +416,8 @@ QPaintEngine *QGLPixelBuffer::paintEngine() const
 #endif
 }
 
-extern int qt_defaultDpiX();
-extern int qt_defaultDpiY();
+Q_DECL_IMPORT extern int qt_defaultDpiX();
+Q_DECL_IMPORT extern int qt_defaultDpiY();
 
 /*! \reimp */
 int QGLPixelBuffer::metric(PaintDeviceMetric metric) const

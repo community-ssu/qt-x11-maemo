@@ -447,6 +447,9 @@ public:
     static bool animate_toolbox;
     static bool widgetCount; // Coupled with -widgetcount switch
     static bool load_testability; // Coupled with -testability switch
+    static QString qmljs_debug_arguments; // a string containing arguments for js/qml debugging.
+    static QString qmljsDebugArgumentsString(); // access string from other libraries
+
 #ifdef Q_WS_MAC
     static bool native_modal_dialog_active;
 #endif
@@ -531,11 +534,11 @@ public:
 #ifndef QT_NO_GESTURES
     QGestureManager *gestureManager;
     QWidget *gestureWidget;
+#endif
 #if defined(Q_WS_X11) || defined(Q_WS_WIN)
     QPixmap *move_cursor;
     QPixmap *copy_cursor;
     QPixmap *link_cursor;
-#endif
 #endif
 #if defined(Q_WS_WIN)
     QPixmap *ignore_cursor;

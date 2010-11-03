@@ -7,11 +7,11 @@
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** Commercial Usage
-** Licensees holding valid Qt Commercial licenses may use this file in
-** accordance with the Qt Commercial License Agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in a
-** written agreement between you and Nokia.
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
 **
 ** GNU Free Documentation License
 ** Alternatively, this file may be used under the terms of the GNU Free
@@ -41,7 +41,7 @@
     \row \o \l{QtCore} \o Core non-graphical classes used by other modules
     \row \o \l{QtGui} \o Graphical user interface (GUI) components
     \row \o \l{QtMaemo5} \o Maemo 5 specific (GUI) components
-    \row \o \l{QtMultimedia} \o Classes for low-level multimedia functionality
+    \row \o \l{qtmultimedia-module.html}{QtMultimedia} \o Classes for low-level multimedia functionality
     \row \o \l{QtNetwork} \o Classes for network programming
     \row \o \l{QtOpenGL} \o OpenGL support classes
     \row \o \l{QtOpenVG} \o OpenVG support classes
@@ -83,9 +83,6 @@
 /*!
     \module QtCore
     \title QtCore Module
-    \contentspage All Modules
-    \previouspage All Modules
-    \nextpage QtGui
     \ingroup modules
 
     \keyword QtCore
@@ -102,9 +99,6 @@
 /*!
     \module QtGui
     \title QtGui Module
-    \contentspage All Modules
-    \previouspage QtCore
-    \nextpage QtMaemo5
     \ingroup modules
 
     \brief The QtGui module extends QtCore with GUI functionality.
@@ -141,9 +135,6 @@
 /*!
     \module QtMultimedia
     \title QtMultimedia Module
-    \contentspage All Modules
-    \previouspage QtMaemo5
-    \nextpage QtNetwork
     \ingroup modules
 
     \brief The QtMultimedia module provides low-level multimedia functionality.
@@ -165,9 +156,6 @@
 /*!
     \module QtNetwork
     \title QtNetwork Module
-    \contentspage All Modules
-    \previouspage QtMultimedia
-    \nextpage QtOpenGL
     \ingroup modules
 
     \brief The QtNetwork module provides classes to make network programming
@@ -187,10 +175,8 @@
 /*!
     \module QtOpenGL
     \title QtOpenGL Module
-    \contentspage All Modules
-    \previouspage QtNetwork
-    \nextpage QtOpenVG
     \ingroup modules
+	\ingroup technology-apis
 
     \brief The QtOpenGL module offers classes that make it easy to
     use OpenGL in Qt applications.
@@ -240,10 +226,8 @@
     \module QtOpenVG
     \title QtOpenVG Module
     \since 4.6
-    \contentspage All Modules
-    \previouspage QtOpenGL
-    \nextpage QtScript
     \ingroup modules
+	\ingroup technology-apis
 
     \brief The QtOpenVG module is a plugin that provides support for
     OpenVG painting.
@@ -295,9 +279,6 @@
 	\module QtScript
 	\title QtScript Module
 	\since 4.3
-	\contentspage All Modules
-	\previouspage QtOpenVG
-	\nextpage QtScriptTools
 	\ingroup modules
 
 	\brief The QtScript module provides classes for making Qt applications scriptable.
@@ -355,9 +336,6 @@
   \module QtScriptTools
   \title QtScriptTools Module
   \since 4.5
-  \contentspage All Modules
-  \previouspage QtScript
-  \nextpage QtSql
   \ingroup modules
 
   \brief The QtScriptTools module provides additional components for applications that use Qt Script.
@@ -379,9 +357,6 @@
 /*!
     \module QtSql
     \title QtSql Module
-    \contentspage All Modules
-    \previouspage QtScript
-    \nextpage QtSvg
     \ingroup modules
 
     To include the definitions of the module's classes, use the
@@ -402,10 +377,9 @@
         \module QtSvg
         \title QtSvg Module
         \since 4.1
-        \contentspage All Modules
-        \previouspage QtSql
-        \nextpage QtWebKit
         \ingroup modules
+		\ingroup technology-apis
+		\ingroup best-practices
 
         \brief The QtSvg module provides classes for displaying and creating SVG files.
 
@@ -453,10 +427,8 @@
 /*!
     \module QtXml
     \title QtXml Module
-    \contentspage All Modules
-    \previouspage QtSvg
-    \nextpage QtXmlPatterns
     \ingroup modules
+	\ingroup technology-apis
 
     \brief The QtXml module provides a stream reader and writer for
     XML documents, and C++ implementations of SAX and DOM.
@@ -480,10 +452,8 @@
     \module QtXmlPatterns
     \title QtXmlPatterns Module
     \since 4.4
-    \contentspage All Modules
-    \previouspage QtXml
-    \nextpage Phonon Module
     \ingroup modules
+	\ingroup technology-apis
 
     \brief The QtXmlPatterns module provides support for XPath,
     XQuery, XSLT and XML Schema validation.
@@ -501,7 +471,7 @@
     \section1 Further Reading
 
     General overviews of XQuery and XSchema can be found in the
-    \l{Using XML Technologies} document.
+    \l{XQuery} document.
 
     An introduction to the XQuery language can be found in
     \l{A Short Path to XQuery}.
@@ -560,9 +530,6 @@
     \page phonon-module.html
     \module Phonon
     \title Phonon Module
-    \contentspage All Modules
-    \previouspage QtXmlPatterns
-    \nextpage Qt3Support
     \ingroup modules
 
     \brief The Phonon module contains namespaces and classes for multimedia functionality.
@@ -630,9 +597,6 @@
 /*!
     \module Qt3Support
     \title Qt3Support Module
-    \contentspage All Modules
-    \previouspage Phonon Module
-    \nextpage QtDesigner
     \ingroup modules
 
     \keyword Qt3Support
@@ -663,9 +627,6 @@
 /*!
     \module QtDesigner
     \title QtDesigner Module
-    \contentspage All Modules
-    \previouspage Qt3Support
-    \nextpage QtUiTools
     \ingroup modules
 
     \brief The QtDesigner module provides classes that allow you to
@@ -690,9 +651,6 @@
     \module QtUiTools
     \title QtUiTools Module
     \since 4.1
-    \contentspage All Modules
-    \previouspage QtDesigner
-    \nextpage QtHelp
     \ingroup modules
 
     \brief The QtUiTools module provides classes to handle forms created 
@@ -726,13 +684,14 @@
 /*!
     \module QtHelp
     \title QtHelp Module
-    \contentspage All Modules
-    \previouspage QtUiTools
-    \nextpage QtTest
     \ingroup modules
 
     \brief The QtHelp module provides classes for integrating
     online documentation in applications.
+
+    The classes and tools supplied with Qt to enable developers to include
+    online help and documentation in their applications are described in
+    more detail in \l{The Qt Help Framework} overview document.
 
     To include the definitions of the module's classes, use the
     following directive:
@@ -785,9 +744,6 @@
 /*!
     \module QtTest
     \title QtTest Module
-    \contentspage All Modules
-    \previouspage QtHelp
-    \nextpage QAxContainer
     \ingroup modules
 
     \keyword QtTest
@@ -815,9 +771,6 @@
 /*!
     \module QAxContainer
     \title QAxContainer Module
-    \contentspage All Modules
-    \previouspage QtTest
-    \nextpage QAxServer
     \ingroup modules
 
     \brief The QAxContainer module is a Windows-only extension for
@@ -867,9 +820,6 @@
 /*!
     \module QAxServer
     \title QAxServer Module
-    \contentspage All Modules
-    \previouspage QAxContainer
-    \nextpage QtDBus module
     \ingroup modules
 
     \brief The QAxServer module is a Windows-only static library that
@@ -919,16 +869,13 @@
 /*!
     \module QtDBus
     \title QtDBus module
-    \contentspage All Modules
-    \previouspage QAxServer
     \ingroup modules
 
     \keyword QtDBus
     \target The QDBus compiler
 
     \brief The QtDBus module is a Unix-only library that you can use
-    to perform Inter-Process Communication using the \l{Introduction to
-    D-Bus}{D-Bus} protocol.
+    to perform Inter-Process Communication using the \l{D-Bus} protocol.
 
     Applications using the QtDBus module can provide services to
     other, remote applications by exporting objects, as well as use
@@ -954,7 +901,7 @@
     directory. When installing Qt from source, this module is built when Qt's
     tools are built.
 
-    See the \l {Introduction to D-Bus} page for detailed information on
+    See the \l {D-Bus} page for detailed information on
     how to use this module.
 
     This module is part of all \l{Qt editions}.

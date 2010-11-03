@@ -86,6 +86,9 @@ private slots:
     void errors_data();
     void errors();
 
+    void insertedSemicolon_data();
+    void insertedSemicolon();
+
     void simpleObject();
     void simpleContainer();
     void interfaceProperty();
@@ -118,6 +121,8 @@ private slots:
     void valueTypes();
     void cppnamespace();
     void aliasProperties();
+    void aliasPropertiesAndSignals();
+    void aliasPropertyChangeSignals();
     void componentCompositeType();
     void i18n();
     void i18n_data();
@@ -126,6 +131,9 @@ private slots:
     void scriptString();
     void defaultPropertyListOrder();
     void declaredPropertyValues();
+    void dontDoubleCallClassBegin();
+    void reservedWords_data();
+    void reservedWords();
 
     void basicRemote_data();
     void basicRemote();
@@ -139,10 +147,11 @@ private slots:
     void importsInstalled();
     void importsOrder_data();
     void importsOrder();
+    void importIncorrectCase();
 
     void qmlAttachedPropertiesObjectMethod();
-
     void customOnProperty();
+    void variantNotify();
 
     // regression tests for crashes
     void crash1();
@@ -203,6 +212,31 @@ inline QUrl TEST_FILE(const char *filename)
 void tst_qdeclarativelanguage::cleanupTestCase()
 {
     QVERIFY(QFile::remove(TEST_FILE(QString::fromUtf8("I18nType\303\201\303\242\303\243\303\244\303\245.qml")).toLocalFile()));
+}
+
+void tst_qdeclarativelanguage::insertedSemicolon_data()
+{
+    QTest::addColumn<QString>("file");
+    QTest::addColumn<QString>("errorFile");
+    QTest::addColumn<bool>("create");
+
+    QTest::newRow("insertedSemicolon.1") << "insertedSemicolon.1.qml" << "insertedSemicolon.1.errors.txt" << false;
+}
+
+void tst_qdeclarativelanguage::insertedSemicolon()
+{
+    QFETCH(QString, file);
+    QFETCH(QString, errorFile);
+    QFETCH(bool, create);
+
+    QDeclarativeComponent component(&engine, TEST_FILE(file));
+
+    if(create) {
+        QObject *object = component.create();
+        QVERIFY(object == 0);
+    }
+
+    VERIFY_ERRORS(errorFile.toLatin1().constData());
 }
 
 void tst_qdeclarativelanguage::errors_data()
@@ -342,6 +376,10 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("invalidAlias.4") << "invalidAlias.4.qml" << "invalidAlias.4.errors.txt" << false;
     QTest::newRow("invalidAlias.5") << "invalidAlias.5.qml" << "invalidAlias.5.errors.txt" << false;
     QTest::newRow("invalidAlias.6") << "invalidAlias.6.qml" << "invalidAlias.6.errors.txt" << false;
+    QTest::newRow("invalidAlias.7") << "invalidAlias.7.qml" << "invalidAlias.7.errors.txt" << false;
+    QTest::newRow("invalidAlias.8") << "invalidAlias.8.qml" << "invalidAlias.8.errors.txt" << false;
+    QTest::newRow("invalidAlias.9") << "invalidAlias.9.qml" << "invalidAlias.9.errors.txt" << false;
+    QTest::newRow("invalidAlias.10") << "invalidAlias.10.qml" << "invalidAlias.10.errors.txt" << false;
 
     QTest::newRow("invalidAttachedProperty.1") << "invalidAttachedProperty.1.qml" << "invalidAttachedProperty.1.errors.txt" << false;
     QTest::newRow("invalidAttachedProperty.2") << "invalidAttachedProperty.2.qml" << "invalidAttachedProperty.2.errors.txt" << false;
@@ -372,6 +410,17 @@ void tst_qdeclarativelanguage::errors_data()
     QTest::newRow("assignToNamespace") << "assignToNamespace.qml" << "assignToNamespace.errors.txt" << false;
     QTest::newRow("invalidOn") << "invalidOn.qml" << "invalidOn.errors.txt" << false;
     QTest::newRow("invalidProperty") << "invalidProperty.qml" << "invalidProperty.errors.txt" << false;
+    QTest::newRow("nonScriptableProperty") << "nonScriptableProperty.qml" << "nonScriptableProperty.errors.txt" << false;
+    QTest::newRow("notAvailable") << "notAvailable.qml" << "notAvailable.errors.txt" << false;
+    QTest::newRow("singularProperty") << "singularProperty.qml" << "singularProperty.errors.txt" << false;
+    QTest::newRow("singularProperty.2") << "singularProperty.2.qml" << "singularProperty.2.errors.txt" << false;
+    QTest::newRow("incorrectCase") << "incorrectCase.qml" 
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
+        << "incorrectCase.errors.insensitive.txt" 
+#else
+        << "incorrectCase.errors.sensitive.txt" 
+#endif
+        << false;
 }
 
 
@@ -1046,6 +1095,58 @@ void tst_qdeclarativelanguage::aliasProperties()
 
         delete object;
     }
+
+    // Valuetype alias
+    // Simple "int" alias
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("alias.10.qml"));
+        VERIFY_ERRORS(0);
+        QObject *object = component.create();
+        QVERIFY(object != 0);
+
+        // Read through alias
+        QCOMPARE(object->property("valueAlias").toRect(), QRect(10, 11, 9, 8));
+        object->setProperty("rectProperty", QVariant(QRect(33, 12, 99, 100)));
+        QCOMPARE(object->property("valueAlias").toRect(), QRect(33, 12, 99, 100));
+
+        // Write throught alias
+        object->setProperty("valueAlias", QVariant(QRect(3, 3, 4, 9)));
+        QCOMPARE(object->property("valueAlias").toRect(), QRect(3, 3, 4, 9));
+        QCOMPARE(object->property("rectProperty").toRect(), QRect(3, 3, 4, 9));
+
+        delete object;
+    }
+
+    // Valuetype sub-alias
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("alias.11.qml"));
+        VERIFY_ERRORS(0);
+        QObject *object = component.create();
+        QVERIFY(object != 0);
+
+        // Read through alias
+        QCOMPARE(object->property("aliasProperty").toInt(), 19);
+        object->setProperty("rectProperty", QVariant(QRect(33, 8, 102, 111)));
+        QCOMPARE(object->property("aliasProperty").toInt(), 33);
+
+        // Write throught alias
+        object->setProperty("aliasProperty", QVariant(4));
+        QCOMPARE(object->property("aliasProperty").toInt(), 4);
+        QCOMPARE(object->property("rectProperty").toRect(), QRect(4, 8, 102, 111));
+
+        delete object;
+    }
+}
+
+// QTBUG-13374 Test that alias properties and signals can coexist
+void tst_qdeclarativelanguage::aliasPropertiesAndSignals()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("aliasPropertiesAndSignals.qml"));
+    VERIFY_ERRORS(0);
+    QObject *o = component.create();
+    QVERIFY(o);
+    QCOMPARE(o->property("test").toBool(), true);
+    delete o;
 }
 
 // Test that the root element in a composite type can be a Component
@@ -1190,6 +1291,94 @@ void tst_qdeclarativelanguage::declaredPropertyValues()
 {
     QDeclarativeComponent component(&engine, TEST_FILE("declaredPropertyValues.qml"));
     VERIFY_ERRORS(0);
+}
+
+void tst_qdeclarativelanguage::dontDoubleCallClassBegin()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("dontDoubleCallClassBegin.qml"));
+    QObject *o = component.create();
+    QVERIFY(o);
+
+    MyParserStatus *o2 = qobject_cast<MyParserStatus *>(qvariant_cast<QObject *>(o->property("object")));
+    QVERIFY(o2);
+    QCOMPARE(o2->classBeginCount(), 1);
+    QCOMPARE(o2->componentCompleteCount(), 1);
+
+    delete o;
+}
+
+void tst_qdeclarativelanguage::reservedWords_data()
+{
+    QTest::addColumn<QByteArray>("word");
+
+    QTest::newRow("abstract") << QByteArray("abstract");
+    QTest::newRow("as") << QByteArray("as");
+    QTest::newRow("boolean") << QByteArray("boolean");
+    QTest::newRow("break") << QByteArray("break");
+    QTest::newRow("byte") << QByteArray("byte");
+    QTest::newRow("case") << QByteArray("case");
+    QTest::newRow("catch") << QByteArray("catch");
+    QTest::newRow("char") << QByteArray("char");
+    QTest::newRow("class") << QByteArray("class");
+    QTest::newRow("continue") << QByteArray("continue");
+    QTest::newRow("const") << QByteArray("const");
+    QTest::newRow("debugger") << QByteArray("debugger");
+    QTest::newRow("default") << QByteArray("default");
+    QTest::newRow("delete") << QByteArray("delete");
+    QTest::newRow("do") << QByteArray("do");
+    QTest::newRow("double") << QByteArray("double");
+    QTest::newRow("else") << QByteArray("else");
+    QTest::newRow("enum") << QByteArray("enum");
+    QTest::newRow("export") << QByteArray("export");
+    QTest::newRow("extends") << QByteArray("extends");
+    QTest::newRow("false") << QByteArray("false");
+    QTest::newRow("final") << QByteArray("final");
+    QTest::newRow("finally") << QByteArray("finally");
+    QTest::newRow("float") << QByteArray("float");
+    QTest::newRow("for") << QByteArray("for");
+    QTest::newRow("function") << QByteArray("function");
+    QTest::newRow("goto") << QByteArray("goto");
+    QTest::newRow("if") << QByteArray("if");
+    QTest::newRow("implements") << QByteArray("implements");
+    QTest::newRow("import") << QByteArray("import");
+    QTest::newRow("in") << QByteArray("in");
+    QTest::newRow("instanceof") << QByteArray("instanceof");
+    QTest::newRow("int") << QByteArray("int");
+    QTest::newRow("interface") << QByteArray("interface");
+    QTest::newRow("long") << QByteArray("long");
+    QTest::newRow("native") << QByteArray("native");
+    QTest::newRow("new") << QByteArray("new");
+    QTest::newRow("null") << QByteArray("null");
+    QTest::newRow("package") << QByteArray("package");
+    QTest::newRow("private") << QByteArray("private");
+    QTest::newRow("protected") << QByteArray("protected");
+    QTest::newRow("public") << QByteArray("public");
+    QTest::newRow("return") << QByteArray("return");
+    QTest::newRow("short") << QByteArray("short");
+    QTest::newRow("static") << QByteArray("static");
+    QTest::newRow("super") << QByteArray("super");
+    QTest::newRow("switch") << QByteArray("switch");
+    QTest::newRow("synchronized") << QByteArray("synchronized");
+    QTest::newRow("this") << QByteArray("this");
+    QTest::newRow("throw") << QByteArray("throw");
+    QTest::newRow("throws") << QByteArray("throws");
+    QTest::newRow("transient") << QByteArray("transient");
+    QTest::newRow("true") << QByteArray("true");
+    QTest::newRow("try") << QByteArray("try");
+    QTest::newRow("typeof") << QByteArray("typeof");
+    QTest::newRow("var") << QByteArray("var");
+    QTest::newRow("void") << QByteArray("void");
+    QTest::newRow("volatile") << QByteArray("volatile");
+    QTest::newRow("while") << QByteArray("while");
+    QTest::newRow("with") << QByteArray("with");
+}
+
+void tst_qdeclarativelanguage::reservedWords()
+{
+    QFETCH(QByteArray, word);
+    QDeclarativeComponent component(&engine);
+    component.setData("import QtQuick 1.0\nQtObject { property string " + word + " }", QUrl());
+    QCOMPARE(component.errorString(), QLatin1String(":2 Expected token `identifier'\n"));
 }
 
 // Check that first child of qml is of given type. Empty type insists on error.
@@ -1355,12 +1544,12 @@ void tst_qdeclarativelanguage::importsLocal_data()
         << "QDeclarativeRectangle"
         << "";
     QTest::newRow("local import second")
-        << "import Qt 4.7\nimport \"subdir\"\n"
+        << "import QtQuick 1.0\nimport \"subdir\"\n"
            "Test {}"
         << "QDeclarativeRectangle"
         << "";
     QTest::newRow("local import subsubdir")
-        << "import Qt 4.7\nimport \"subdir/subsubdir\"\n"
+        << "import QtQuick 1.0\nimport \"subdir/subsubdir\"\n"
            "SubTest {}"
         << "QDeclarativeRectangle"
         << "";
@@ -1408,6 +1597,7 @@ void tst_qdeclarativelanguage::basicRemote_data()
     QString serverdir = "http://127.0.0.1:14447/qtest/declarative/qmllanguage/";
 
     QTest::newRow("no need for qmldir") << QUrl(serverdir+"Test.qml") << "" << "";
+    QTest::newRow("absent qmldir") << QUrl(serverdir+"/noqmldir/Test.qml") << "" << "";
     QTest::newRow("need qmldir") << QUrl(serverdir+"TestLocal.qml") << "" << "";
 }
 
@@ -1574,24 +1764,24 @@ void tst_qdeclarativelanguage::importsOrder_data()
 
     QTest::newRow("installed import versus builtin 1") <<
            "import com.nokia.installedtest 1.5\n"
-           "import Qt 4.7\n"
+           "import QtQuick 1.0\n"
            "Rectangle {}"
            << (!qmlCheckTypes()?"QDeclarativeRectangle":"")
            << (!qmlCheckTypes()?"":"Rectangle is ambiguous. Found in Qt and in lib/com/nokia/installedtest");
     QTest::newRow("installed import versus builtin 2") <<
-           "import Qt 4.7\n"
+           "import QtQuick 1.0\n"
            "import com.nokia.installedtest 1.5\n"
            "Rectangle {}"
            << (!qmlCheckTypes()?"QDeclarativeText":"")
            << (!qmlCheckTypes()?"":"Rectangle is ambiguous. Found in lib/com/nokia/installedtest and in Qt");
     QTest::newRow("namespaces cannot be overridden by types 1") <<
-           "import Qt 4.7 as Rectangle\n"
+           "import QtQuick 1.0 as Rectangle\n"
            "import com.nokia.installedtest 1.5\n"
            "Rectangle {}"
         << ""
         << "Namespace Rectangle cannot be used as a type";
     QTest::newRow("namespaces cannot be overridden by types 2") <<
-           "import Qt 4.7 as Rectangle\n"
+           "import QtQuick 1.0 as Rectangle\n"
            "import com.nokia.installedtest 1.5\n"
            "Rectangle.Image {}"
         << "QDeclarativeImage"
@@ -1613,6 +1803,22 @@ void tst_qdeclarativelanguage::importsOrder()
     QFETCH(QString, type);
     QFETCH(QString, error);
     testType(qml,type,error);
+}
+
+void tst_qdeclarativelanguage::importIncorrectCase()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("importIncorrectCase.qml"));
+
+    QList<QDeclarativeError> errors = component.errors();
+    QCOMPARE(errors.count(), 1);
+
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
+    QString expectedError = QLatin1String("cannot load module \"com.Nokia.installedtest\": File name case mismatch for \"") + QFileInfo(__FILE__).absoluteDir().filePath("data/lib/com/Nokia/installedtest/qmldir") + QLatin1String("\"");
+#else
+    QString expectedError = QLatin1String("module \"com.Nokia.installedtest\" is not installed");
+#endif
+
+    QCOMPARE(errors.at(0).description(), expectedError);
 }
 
 void tst_qdeclarativelanguage::qmlAttachedPropertiesObjectMethod()
@@ -1646,7 +1852,7 @@ void tst_qdeclarativelanguage::qmlAttachedPropertiesObjectMethod()
 void tst_qdeclarativelanguage::crash1()
 {
     QDeclarativeComponent component(&engine);
-    component.setData("import Qt 4.7\nComponent {}", QUrl());
+    component.setData("import QtQuick 1.0\nComponent {}", QUrl());
 }
 
 void tst_qdeclarativelanguage::crash2()
@@ -1668,9 +1874,26 @@ void tst_qdeclarativelanguage::customOnProperty()
     delete object;
 }
 
+// QTBUG-12601
+void tst_qdeclarativelanguage::variantNotify()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("variantNotify.qml"));
+
+    VERIFY_ERRORS(0);
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+
+    QCOMPARE(object->property("notifyCount").toInt(), 1);
+
+    delete object;
+}
+
 void tst_qdeclarativelanguage::initTestCase()
 {
     registerTypes();
+
+    // Registering the TestType class in other modules should have no adverse effects
+    qmlRegisterType<TestType>("com.nokia.TestPre", 1, 0, "Test");
 
     qmlRegisterType<TestType>("com.nokia.Test", 0, 0, "TestTP");
     qmlRegisterType<TestType>("com.nokia.Test", 1, 0, "Test");
@@ -1678,6 +1901,9 @@ void tst_qdeclarativelanguage::initTestCase()
     qmlRegisterType<TestType2>("com.nokia.Test", 1, 8, "Test");
     qmlRegisterType<TestType>("com.nokia.Test", 1, 9, "OldTest");
     qmlRegisterType<TestType2>("com.nokia.Test", 1, 12, "Test");
+
+    // Registering the TestType class in other modules should have no adverse effects
+    qmlRegisterType<TestType>("com.nokia.TestPost", 1, 0, "Test");
 
     // Create locale-specific file
     // For POSIX, this will just be data/I18nType.qml, since POSIX is 7-bit
@@ -1688,6 +1914,34 @@ void tst_qdeclarativelanguage::initTestCase()
     QFile out(TEST_FILE(QString::fromUtf8("I18nType\303\201\303\242\303\243\303\244\303\245.qml")).toLocalFile());
     QVERIFY(out.open(QIODevice::WriteOnly));
     out.write(in.readAll());
+}
+
+void tst_qdeclarativelanguage::aliasPropertyChangeSignals()
+{
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("aliasPropertyChangeSignals.qml"));
+
+        VERIFY_ERRORS(0);
+        QObject *o = component.create();
+        QVERIFY(o != 0);
+
+        QCOMPARE(o->property("test").toBool(), true);
+
+        delete o;
+    }
+
+    // QTCREATORBUG-2769
+    {
+        QDeclarativeComponent component(&engine, TEST_FILE("aliasPropertyChangeSignals.2.qml"));
+
+        VERIFY_ERRORS(0);
+        QObject *o = component.create();
+        QVERIFY(o != 0);
+
+        QCOMPARE(o->property("test").toBool(), true);
+
+        delete o;
+    }
 }
 
 QTEST_MAIN(tst_qdeclarativelanguage)

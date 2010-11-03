@@ -7,11 +7,11 @@
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** Commercial Usage
-** Licensees holding valid Qt Commercial licenses may use this file in
-** accordance with the Qt Commercial License Agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in a
-** written agreement between you and Nokia.
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
 **
 ** GNU Free Documentation License
 ** Alternatively, this file may be used under the terms of the GNU Free
@@ -32,13 +32,15 @@
     \brief Classes that support XML, via, for example DOM and SAX.
 
     These classes are relevant to XML users.
-    
+
     \generatelist{related}
 */
 
 /*!
     \page xml-processing.html
     \title XML Processing
+    \ingroup technology-apis    
+
     \brief An Overview of the XML processing facilities in Qt.
 
     In addition to core XML support, classes for higher level querying
@@ -57,7 +59,7 @@
     \o \l {XML Streaming}
     \o \l {The SAX Interface}
     \o \l {Working with the DOM Tree}
-    \o \l {Using XML Technologies}{XQuery/XPath and XML Schema}
+    \o \l {XQuery}{XQuery/XPath and XML Schema}
         \list
         \o \l{A Short Path to XQuery}
         \endlist
@@ -525,7 +527,7 @@
 
     \previouspage The SAX Interface
     \contentspage XML Processing
-    \nextpage {Using XML Technologies}{XQuery/XPath and XML Schema}
+    \nextpage {XQuery}{XQuery/XPath and XML Schema}
 
     DOM Level 2 is a W3C Recommendation for XML interfaces that maps the
     constituents of an XML document to a tree structure. The specification

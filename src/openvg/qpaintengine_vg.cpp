@@ -44,6 +44,7 @@
 #include "qpixmapfilter_vg_p.h"
 #include "qvgcompositionhelper_p.h"
 #include "qvgimagepool_p.h"
+#include "qvgfontglyphcache_p.h"
 #if !defined(QT_NO_EGL)
 #include <QtGui/private/qeglcontext_p.h>
 #include "qwindowsurface_vgegl_p.h"
@@ -54,15 +55,13 @@
 #include <QtGui/private/qfontengine_p.h>
 #include <QtGui/private/qpainterpath_p.h>
 #include <QtGui/private/qstatictext_p.h>
+#include <QtGui/QApplication>
+#include <QtGui/QDesktopWidget>
+#include <QtCore/qmath.h>
 #include <QDebug>
 #include <QSet>
 
 QT_BEGIN_NAMESPACE
-
-// vgDrawGlyphs() only exists in OpenVG 1.1 and higher.
-#if !defined(OPENVG_VERSION_1_1) && !defined(QVG_NO_DRAW_GLYPHS)
-#define QVG_NO_DRAW_GLYPHS 1
-#endif
 
 // vgRenderToMask() only exists in OpenVG 1.1 and higher.
 // Also, disable masking completely if we are using the scissor to clip.
@@ -73,30 +72,15 @@ QT_BEGIN_NAMESPACE
 #define QVG_NO_RENDER_TO_MASK 1
 #endif
 
+// use the same rounding as in qrasterizer.cpp (6 bit fixed point)
+static const qreal aliasedCoordinateDelta = 0.5 - 0.015625;
+
 #if !defined(QVG_NO_DRAW_GLYPHS)
 
 Q_DECL_IMPORT extern int qt_defaultDpiX();
 Q_DECL_IMPORT extern int qt_defaultDpiY();
 
 class QVGPaintEnginePrivate;
-
-class QVGFontGlyphCache
-{
-public:
-    QVGFontGlyphCache();
-    ~QVGFontGlyphCache();
-
-    void cacheGlyphs(QVGPaintEnginePrivate *d, QFontEngine *fontEngine, const glyph_t *g, int count);
-
-    void setScaleFromText(const QFont &font, QFontEngine *fontEngine);
-
-    VGFont font;
-    VGfloat scaleX;
-    VGfloat scaleY;
-
-    uint cachedGlyphsMask[256 / 32];
-    QSet<glyph_t> cachedGlyphs;
-};
 
 typedef QHash<QFontEngine*, QVGFontGlyphCache*> QVGFontCache;
 
@@ -118,6 +102,7 @@ private:
 
 class QVGPaintEnginePrivate : public QPaintEngineExPrivate
 {
+    Q_DECLARE_PUBLIC(QVGPaintEngine)
 public:
     // Extra blending modes from VG_KHR_advanced_blending extension.
     // Use the QT_VG prefix to avoid conflicts with any definitions
@@ -148,7 +133,7 @@ public:
         QT_VG_BLEND_XOR_KHR           = 0x2026
     };
 
-    QVGPaintEnginePrivate();
+    QVGPaintEnginePrivate(QVGPaintEngine *q_ptr);
     ~QVGPaintEnginePrivate();
 
     void init();
@@ -169,6 +154,7 @@ public:
     void setBrushTransform(const QBrush& brush, VGMatrixMode mode);
     void setupColorRamp(const QGradient *grad, VGPaint paint);
     void setImageOptions();
+    void systemStateChanged();
 #if !defined(QVG_SCISSOR_CLIP)
     void ensureMask(QVGPaintEngine *engine, int width, int height);
     void modifyMask
@@ -257,7 +243,11 @@ public:
     inline void ensurePathTransform()
     {
         if (!pathTransformSet) {
-            setTransform(VG_MATRIX_PATH_USER_TO_SURFACE, pathTransform);
+            QTransform aliasedTransform = pathTransform;
+            if (renderingQuality == VG_RENDERING_QUALITY_NONANTIALIASED && currentPen != Qt::NoPen)
+                aliasedTransform = aliasedTransform
+                    * QTransform::fromTranslate(aliasedCoordinateDelta, -aliasedCoordinateDelta);
+            setTransform(VG_MATRIX_PATH_USER_TO_SURFACE, aliasedTransform);
             pathTransformSet = true;
         }
     }
@@ -297,6 +287,9 @@ public:
 
     // Clear all lazily-set modes.
     void clearModes();
+
+private:
+    QVGPaintEngine *q;
 };
 
 inline void QVGPaintEnginePrivate::setImageMode(VGImageMode mode)
@@ -312,6 +305,7 @@ inline void QVGPaintEnginePrivate::setRenderingQuality(VGRenderingQuality mode)
     if (renderingQuality != mode) {
         vgSeti(VG_RENDERING_QUALITY, mode);
         renderingQuality = mode;
+        pathTransformSet = false; // need to tweak transform for aliased stroking
     }
 }
 
@@ -348,7 +342,7 @@ void QVGPaintEnginePrivate::clearModes()
     imageQuality = (VGImageQuality)0;
 }
 
-QVGPaintEnginePrivate::QVGPaintEnginePrivate()
+QVGPaintEnginePrivate::QVGPaintEnginePrivate(QVGPaintEngine *q_ptr) : q(q_ptr)
 {
     init();
 }
@@ -966,7 +960,7 @@ VGPath QVGPaintEnginePrivate::roundedRectPath(const QRectF &rect, qreal xRadius,
         x1, y2 - (1 - KAPPA) * yRadius,
         x1, y2 - yRadius,
         x1, y1 + yRadius,                   // LineTo
-        x1, y1 + KAPPA * yRadius,           // CurveTo
+        x1, y1 + (1 - KAPPA) * yRadius,     // CurveTo
         x1 + (1 - KAPPA) * xRadius, y1,
         x1 + xRadius, y1
     };
@@ -1447,7 +1441,7 @@ QVGPainterState::~QVGPainterState()
 }
 
 QVGPaintEngine::QVGPaintEngine()
-    : QPaintEngineEx(*new QVGPaintEnginePrivate)
+    : QPaintEngineEx(*new QVGPaintEnginePrivate(this))
 {
 }
 
@@ -2990,6 +2984,11 @@ void QVGPaintEnginePrivate::setImageOptions()
     }
 }
 
+void QVGPaintEnginePrivate::systemStateChanged()
+{
+    q->updateScissor();
+}
+
 static void drawVGImage(QVGPaintEnginePrivate *d,
                         const QRectF& r, VGImage vgImg,
                         const QSize& imageSize, const QRectF& sr)
@@ -3063,6 +3062,21 @@ void qt_vg_drawVGImageStencil
     vgDrawImage(vgImg);
 }
 
+bool QVGPaintEngine::canVgWritePixels(const QImage &image) const
+{
+    Q_D(const QVGPaintEngine);
+    // vgWritePixels ignores masking, blending and xforms so we can only use it if
+    // ALL of the following conditions are true:
+    // - It is a simple translate, or a scale of -1 on the y-axis (inverted)
+    // - The opacity is totally opaque
+    // - The composition mode is "source" OR "source over" provided the image is opaque
+    return ( d->imageTransform.type() <= QTransform::TxScale
+            && d->imageTransform.m11() == 1.0 && qAbs(d->imageTransform.m22()) == 1.0)
+            && d->opacity == 1.0f
+            && (d->blendMode == VG_BLEND_SRC || (d->blendMode == VG_BLEND_SRC_OVER &&
+                                                !image.hasAlphaChannel()));
+}
+
 void QVGPaintEngine::drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr)
 {
     QPixmapData *pd = pm.pixmapData();
@@ -3077,9 +3091,18 @@ void QVGPaintEngine::drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF
             drawVGImage(d, r, vgpd->toVGImage(), vgpd->size(), sr);
         else
             drawVGImage(d, r, vgpd->toVGImage(d->opacity), vgpd->size(), sr);
-    } else {
-        drawImage(r, *(pd->buffer()), sr, Qt::AutoColor);
+
+        if(!vgpd->failedToAlloc)
+            return;
+
+        // try to reallocate next time if reasonable small pixmap
+        QSize screenSize = QApplication::desktop()->screenGeometry().size();
+        if (pm.size().width() <= screenSize.width()
+            && pm.size().height() <= screenSize.height())
+            vgpd->failedToAlloc = false;
     }
+
+    drawImage(r, *(pd->buffer()), sr, Qt::AutoColor);
 }
 
 void QVGPaintEngine::drawPixmap(const QPointF &pos, const QPixmap &pm)
@@ -3096,9 +3119,18 @@ void QVGPaintEngine::drawPixmap(const QPointF &pos, const QPixmap &pm)
             drawVGImage(d, pos, vgpd->toVGImage());
         else
             drawVGImage(d, pos, vgpd->toVGImage(d->opacity));
-    } else {
-        drawImage(pos, *(pd->buffer()));
+
+        if (!vgpd->failedToAlloc)
+            return;
+
+        // try to reallocate next time if reasonable small pixmap
+        QSize screenSize = QApplication::desktop()->screenGeometry().size();
+        if (pm.size().width() <= screenSize.width()
+            && pm.size().height() <= screenSize.height())
+            vgpd->failedToAlloc = false;
     }
+
+    drawImage(pos, *(pd->buffer()));
 }
 
 void QVGPaintEngine::drawImage
@@ -3119,9 +3151,31 @@ void QVGPaintEngine::drawImage
                         QRectF(QPointF(0, 0), sr.size()));
         }
     } else {
-        // Monochrome images need to use the vgChildImage() path.
-        vgImg = toVGImage(image, flags);
-        drawVGImage(d, r, vgImg, image.size(), sr);
+        if (canVgWritePixels(image) && (r.size() == sr.size()) && !flags) {
+            // Optimization for straight blits, no blending
+            int x = sr.x();
+            int y = sr.y();
+            int bpp = image.depth() >> 3; // bytes
+            int offset = 0;
+            int bpl = image.bytesPerLine();
+            if (d->imageTransform.m22() < 0) {
+                // inverted
+                offset = ((y + sr.height()) * bpl) - ((image.width() - x) * bpp);
+                bpl = -bpl;
+            } else {
+                offset = (y * bpl) + (x * bpp);
+            }
+            const uchar *bits = image.constBits() + offset;
+
+            QPointF mapped = d->imageTransform.map(r.topLeft());
+            vgWritePixels(bits, bpl, qt_vg_image_to_vg_format(image.format()),
+                        mapped.x(), mapped.y() - sr.height(), r.width(), r.height());
+            return;
+        } else {
+            // Monochrome images need to use the vgChildImage() path.
+            vgImg = toVGImage(image, flags);
+            drawVGImage(d, r, vgImg, image.size(), sr);
+        }
     }
     vgDestroyImage(vgImg);
 }
@@ -3130,10 +3184,21 @@ void QVGPaintEngine::drawImage(const QPointF &pos, const QImage &image)
 {
     Q_D(QVGPaintEngine);
     VGImage vgImg;
-    if (d->simpleTransform || d->opacity == 1.0f)
+    if (canVgWritePixels(image)) {
+        // Optimization for straight blits, no blending
+        bool inverted = (d->imageTransform.m22() < 0);
+        const uchar *bits = inverted ? image.constBits() + image.byteCount() : image.constBits();
+        int bpl = inverted ? -image.bytesPerLine() : image.bytesPerLine();
+
+        QPointF mapped = d->imageTransform.map(pos);
+        vgWritePixels(bits, bpl, qt_vg_image_to_vg_format(image.format()),
+                             mapped.x(), mapped.y() - image.height(), image.width(), image.height());
+        return;
+    } else if (d->simpleTransform || d->opacity == 1.0f) {
         vgImg = toVGImage(image);
-    else
+    } else {
         vgImg = toVGImageWithOpacity(image, d->opacity);
+    }
     drawVGImage(d, pos, vgImg);
     vgDestroyImage(vgImg);
 }
@@ -3292,6 +3357,7 @@ QVGFontGlyphCache::QVGFontGlyphCache()
 {
     font = vgCreateFont(0);
     scaleX = scaleY = 0.0;
+    invertedGlyphs = false;
     memset(cachedGlyphsMask, 0, sizeof(cachedGlyphsMask));
 }
 
@@ -3426,7 +3492,11 @@ void QVGPaintEngine::drawStaticTextItem(QStaticTextItem *textItem)
     if (it != d->fontCache.constEnd()) {
         glyphCache = it.value();
     } else {
+#ifdef Q_OS_SYMBIAN
+        glyphCache = new QSymbianVGFontGlyphCache();
+#else
         glyphCache = new QVGFontGlyphCache();
+#endif
         if (glyphCache->font == VG_INVALID_HANDLE) {
             qWarning("QVGPaintEngine::drawTextItem: OpenVG fonts are not supported by the OpenVG engine");
             delete glyphCache;
@@ -3442,10 +3512,22 @@ void QVGPaintEngine::drawStaticTextItem(QStaticTextItem *textItem)
 
     // Set the transformation to use for drawing the current glyphs.
     QTransform glyphTransform(d->pathTransform);
-    glyphTransform.translate(p.x(), p.y());
+    if (d->transform.type() <= QTransform::TxTranslate) {
+        // Prevent blurriness of unscaled, unrotated text by forcing integer coordinates.
+        glyphTransform.translate(
+                floor(p.x() + glyphTransform.dx() + aliasedCoordinateDelta) - glyphTransform.dx(),
+                floor(p.y() - glyphTransform.dy() + aliasedCoordinateDelta) + glyphTransform.dy());
+    } else {
+        glyphTransform.translate(p.x(), p.y());
+    }
 #if defined(QVG_NO_IMAGE_GLYPHS)
     glyphTransform.scale(glyphCache->scaleX, glyphCache->scaleY);
 #endif
+
+    // Some glyph caches can create the VGImage upright
+    if (glyphCache->invertedGlyphs)
+        glyphTransform.scale(1, -1);
+
     d->setTransform(VG_MATRIX_GLYPH_USER_TO_SURFACE, glyphTransform);
 
     // Add the glyphs from the text item into the glyph cache.
@@ -3596,6 +3678,7 @@ void QVGPaintEngine::restoreState(QPaintEngine::DirtyFlags dirty)
         d->maskIsSet = false;
         d->scissorMask = false;
         d->maskRect = QRect();
+        d->scissorDirty = true;
         clipEnabledChanged();
     }
 

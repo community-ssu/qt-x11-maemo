@@ -4,7 +4,7 @@ INCLUDEPATH *= $$QMAKE_INCDIR_QT/$$TARGET #just for today to have some compat
 isEmpty(QT_ARCH):!isEmpty(ARCH):QT_ARCH=$$ARCH #another compat that will rot for change #215700
 TEMPLATE	= lib
 isEmpty(QT_MAJOR_VERSION) {
-   VERSION=4.7.0
+   VERSION=4.7.1
 } else {
    VERSION=$${QT_MAJOR_VERSION}.$${QT_MINOR_VERSION}.$${QT_PATCH_VERSION}
 }
@@ -160,14 +160,49 @@ DEFINES *= QT_USE_FAST_OPERATOR_PLUS QT_USE_FAST_CONCATENATION
 
 TARGET = $$qtLibraryTarget($$TARGET$$QT_LIBINFIX) #do this towards the end
 
+qtPrepareTool(QMAKE_LUPDATE, lupdate)
+qtPrepareTool(QMAKE_LRELEASE, lrelease)
+
 moc_dir.name = moc_location
 moc_dir.variable = QMAKE_MOC
 
 uic_dir.name = uic_location
 uic_dir.variable = QMAKE_UIC
 
-QMAKE_PKGCONFIG_VARIABLES += moc_dir uic_dir
+rcc_dir.name = rcc_location
+rcc_dir.variable = QMAKE_RCC
+
+lupdate_dir.name = lupdate_location
+lupdate_dir.variable = QMAKE_LUPDATE
+
+lrelease_dir.name = lrelease_location
+lrelease_dir.variable = QMAKE_LRELEASE
+
+QMAKE_PKGCONFIG_VARIABLES += moc_dir uic_dir rcc_dir lupdate_dir lrelease_dir
 
 include(qt_targets.pri)
 
 win32:DEFINES+=_USE_MATH_DEFINES
+
+symbian {
+    # Make partial upgrade SIS file for all dll's except webkit and s60main
+    !contains(TARGET.UID3, 0x200267C2):!contains(TARGET.UID3, 0xE00267C2):!contains(TARGET.UID3, 0x2001E61F):!contains(TARGET.UID3, 0xE001E61F) {
+        # Partial upgrade SIS file
+        vendorinfo = \
+            "; Localised Vendor name" \
+            "%{\"Nokia, Qt\"}" \
+            " " \
+            "; Unique Vendor name" \
+            ":\"Nokia, Qt\"" \
+            " "
+        isEmpty(QT_LIBINFIX): PARTIAL_UPGRADE_UID = 0x2001E61C
+        else: PARTIAL_UPGRADE_UID = 0xE001E61C
+
+        pu_header = "; Partial upgrade package for testing $${TARGET} changes without reinstalling everything" \
+                    "$${LITERAL_HASH}{\"$${TARGET}\"}, ($$PARTIAL_UPGRADE_UID), $${QT_MAJOR_VERSION},$${QT_MINOR_VERSION},$${QT_PATCH_VERSION}, TYPE=PU"
+        partial_upgrade.pkg_prerules = pu_header vendorinfo
+        partial_upgrade.sources = $$QMAKE_LIBDIR_QT/$${TARGET}.dll
+        partial_upgrade.path = c:/sys/bin
+        DEPLOYMENT += partial_upgrade
+    }
+}

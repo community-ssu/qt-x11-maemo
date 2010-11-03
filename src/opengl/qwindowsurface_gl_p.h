@@ -67,6 +67,7 @@ class QWidget;
 struct QGLWindowSurfacePrivate;
 
 Q_OPENGL_EXPORT QGLWidget* qt_gl_share_widget();
+Q_OPENGL_EXPORT void qt_destroy_gl_share_widget();
 
 class QGLWindowSurfaceGLPaintDevice : public QGLPaintDevice
 {
@@ -106,6 +107,7 @@ private slots:
 
 private:
     void hijackWindow(QWidget *widget);
+    bool initializeOffscreenTexture(const QSize &size);
 
     QGLWindowSurfacePrivate *d_ptr;
 };

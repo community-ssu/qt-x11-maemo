@@ -1561,14 +1561,19 @@ bool QTextEngine::isRightToLeft() const
 int QTextEngine::findItem(int strPos) const
 {
     itemize();
-
-    // ##### use binary search
-    int item;
-    for (item = layoutData->items.size()-1; item > 0; --item) {
-        if (layoutData->items[item].position <= strPos)
-            break;
+    int left = 0;
+    int right = layoutData->items.size()-1;
+    while(left <= right) {
+        int middle = ((right-left)/2)+left;
+        if (strPos > layoutData->items[middle].position)
+            left = middle+1;
+        else if(strPos < layoutData->items[middle].position)
+            right = middle-1;
+        else {
+            return middle;
+        }
     }
-    return item;
+    return right;
 }
 
 QFixed QTextEngine::width(int from, int len) const
@@ -1641,7 +1646,6 @@ glyph_metrics_t QTextEngine::boundingBox(int from,  int len) const
 
     for (int i = 0; i < layoutData->items.size(); i++) {
         const QScriptItem *si = layoutData->items.constData() + i;
-        QFontEngine *fe = fontEngine(*si);
 
         int pos = si->position;
         int ilen = length(i);
@@ -1671,6 +1675,7 @@ glyph_metrics_t QTextEngine::boundingBox(int from,  int len) const
                 while (charFrom < ilen && logClusters[charFrom] == glyphStart)
                     charFrom++;
             if (charFrom < ilen) {
+                QFontEngine *fe = fontEngine(*si);
                 glyphStart = logClusters[charFrom];
                 int charEnd = from + len - 1 - pos;
                 if (charEnd >= ilen)
@@ -1689,11 +1694,6 @@ glyph_metrics_t QTextEngine::boundingBox(int from,  int len) const
                     gm.yoff += m.yoff;
                 }
             }
-
-            glyph_t glyph = glyphs.glyphs[logClusters[ilen - 1]];
-            glyph_metrics_t gi = fe->boundingBox(glyph);
-            if (gi.isValid())
-                gm.width -= qRound(gi.xoff - gi.x - gi.width);
         }
     }
     return gm;
@@ -1949,9 +1949,11 @@ void QTextEngine::justify(const QScriptLine &line)
                 if (kashida_pos >= 0) {
 //                     qDebug("kashida position at %d in word", kashida_pos);
                     set(&justificationPoints[nPoints], kashida_type, g.mid(kashida_pos), fontEngine(si));
-                    minKashida = qMin(minKashida, justificationPoints[nPoints].kashidaWidth);
-                    maxJustify = qMax(maxJustify, justificationPoints[nPoints].type);
-                    ++nPoints;
+                    if (justificationPoints[nPoints].kashidaWidth > 0) {
+                        minKashida = qMin(minKashida, justificationPoints[nPoints].kashidaWidth);
+                        maxJustify = qMax(maxJustify, justificationPoints[nPoints].type);
+                        ++nPoints;
+                    }
                 }
                 kashida_pos = -1;
                 kashida_type = HB_Arabic_Normal;
@@ -1975,9 +1977,11 @@ void QTextEngine::justify(const QScriptLine &line)
         }
         if (kashida_pos >= 0) {
             set(&justificationPoints[nPoints], kashida_type, g.mid(kashida_pos), fontEngine(si));
-            minKashida = qMin(minKashida, justificationPoints[nPoints].kashidaWidth);
-            maxJustify = qMax(maxJustify, justificationPoints[nPoints].type);
-            ++nPoints;
+            if (justificationPoints[nPoints].kashidaWidth > 0) {
+                minKashida = qMin(minKashida, justificationPoints[nPoints].kashidaWidth);
+                maxJustify = qMax(maxJustify, justificationPoints[nPoints].type);
+                ++nPoints;
+            }
         }
     }
 
@@ -2139,8 +2143,11 @@ bool QTextEngine::LayoutData::reallocate(int totalGlyphs)
 
     void **newMem = memory;
     newMem = (void **)::realloc(memory_on_stack ? 0 : memory, newAllocated*sizeof(void *));
-    Q_CHECK_PTR(newMem);
-    if (memory_on_stack && newMem)
+    if (!newMem) {
+        layoutState = LayoutFailed;
+        return false;
+    }
+    if (memory_on_stack)
         memcpy(newMem, memory, allocated*sizeof(void *));
     memory = newMem;
     memory_on_stack = false;
@@ -2260,6 +2267,9 @@ bool QTextEngine::atWordSeparator(int position) const
     case ',':
     case '?':
     case '!':
+    case '@':
+    case '#':
+    case '$':
     case ':':
     case ';':
     case '-':
@@ -2280,6 +2290,7 @@ bool QTextEngine::atWordSeparator(int position) const
     case '*':
     case '\'':
     case '"':
+    case '`':
     case '~':
     case '|':
         return true;

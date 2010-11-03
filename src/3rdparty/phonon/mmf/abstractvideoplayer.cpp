@@ -16,6 +16,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include <QDir>
 #include <QUrl>
 #include <QTimer>
 #include <QWidget>
@@ -132,6 +133,13 @@ int MMF::AbstractVideoPlayer::setDeviceVolume(int mmfVolume)
     return err;
 }
 
+int MMF::AbstractVideoPlayer::openFile(const QString &fileName)
+{
+    const QHBufC nativeFileName(QDir::toNativeSeparators(fileName));
+    TRAPD(err, m_player->OpenFileL(*nativeFileName));
+    return err;
+}
+
 int MMF::AbstractVideoPlayer::openFile(RFile &file)
 {
     TRAPD(err, m_player->OpenFileL(file));
@@ -144,6 +152,12 @@ int MMF::AbstractVideoPlayer::openUrl(const QString &url)
     return err;
 }
 
+int MMF::AbstractVideoPlayer::openDescriptor(const TDesC8 &des)
+{
+    TRAPD(err, m_player->OpenDesL(des));
+    return err;
+}
+
 int MMF::AbstractVideoPlayer::bufferStatus() const
 {
     int result = 0;
@@ -151,7 +165,7 @@ int MMF::AbstractVideoPlayer::bufferStatus() const
     return result;
 }
 
-void MMF::AbstractVideoPlayer::close()
+void MMF::AbstractVideoPlayer::doClose()
 {
     m_player->Close();
 }
@@ -161,9 +175,9 @@ bool MMF::AbstractVideoPlayer::hasVideo() const
     return true;
 }
 
-qint64 MMF::AbstractVideoPlayer::currentTime() const
+qint64 MMF::AbstractVideoPlayer::getCurrentTime() const
 {
-    TRACE_CONTEXT(AbstractVideoPlayer::currentTime, EVideoApi);
+    TRACE_CONTEXT(AbstractVideoPlayer::getCurrentTime, EVideoApi);
 
     TTimeIntervalMicroSeconds us;
     TRAPD(err, us = m_player->PositionL())
@@ -240,7 +254,9 @@ void MMF::AbstractVideoPlayer::MvpuoOpenComplete(TInt aError)
     TRACE_CONTEXT(AbstractVideoPlayer::MvpuoOpenComplete, EVideoApi);
     TRACE_ENTRY("state %d error %d", state(), aError);
 
-    __ASSERT_ALWAYS(LoadingState == state(), Utils::panic(InvalidStatePanic));
+    __ASSERT_ALWAYS(LoadingState == state() ||
+                    progressiveDownloadStalled() && BufferingState == state(),
+                    Utils::panic(InvalidStatePanic));
 
     if (KErrNone == aError)
         m_player->Prepare();
@@ -255,7 +271,9 @@ void MMF::AbstractVideoPlayer::MvpuoPrepareComplete(TInt aError)
     TRACE_CONTEXT(AbstractVideoPlayer::MvpuoPrepareComplete, EVideoApi);
     TRACE_ENTRY("state %d error %d", state(), aError);
 
-    __ASSERT_ALWAYS(LoadingState == state(), Utils::panic(InvalidStatePanic));
+    __ASSERT_ALWAYS(LoadingState == state() ||
+                    progressiveDownloadStalled() && BufferingState == state(),
+                    Utils::panic(InvalidStatePanic));
 
     TRAPD(err, getVideoClipParametersL(aError));
 
@@ -464,7 +482,7 @@ void MMF::AbstractVideoPlayer::updateScaleFactors(const QSize &windowSize, bool 
 
 void MMF::AbstractVideoPlayer::parametersChanged(VideoParameters parameters)
 {
-    if (state() == LoadingState)
+    if (state() == LoadingState || progressiveDownloadStalled() && BufferingState == state())
         m_pendingChanges |= parameters;
     else
         handleParametersChanged(parameters);

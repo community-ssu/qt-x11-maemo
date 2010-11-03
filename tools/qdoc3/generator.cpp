@@ -981,23 +981,26 @@ void Generator::generateThreadSafeness(const Node *node, CodeMarker *marker)
             NodeList nonreentrant;
             NodeList::ConstIterator c = innerNode->childNodes().begin();
             while (c != innerNode->childNodes().end()) {
-                switch ((*c)->threadSafeness()) {
-                case Node::Reentrant:
-                    reentrant.append(*c);
-                    if (threadSafeness == Node::ThreadSafe)
+                
+                if ((*c)->status() != Node::Obsolete){
+                    switch ((*c)->threadSafeness()) {
+                    case Node::Reentrant:
+                        reentrant.append(*c);
+                        if (threadSafeness == Node::ThreadSafe)
+                            exceptions = true;
+                        break;
+                    case Node::ThreadSafe:
+                        threadsafe.append(*c);
+                        if (threadSafeness == Node::Reentrant)
+                            exceptions = true;
+                        break;
+                    case Node::NonReentrant:
+                        nonreentrant.append(*c);
                         exceptions = true;
-                    break;
-                case Node::ThreadSafe:
-                    threadsafe.append(*c);
-                    if (threadSafeness == Node::Reentrant)
-                        exceptions = true;
-                    break;
-                case Node::NonReentrant:
-                    nonreentrant.append(*c);
-                    exceptions = true;
-                    break;
-                default:
-                    break;
+                        break;
+                    default:
+                        break;
+                    }
                 }
                 ++c;
             }
@@ -1068,8 +1071,11 @@ void Generator::generateSince(const Node *node, CodeMarker *marker)
         Text text;
         text << Atom::ParaLeft
              << "This "
-             << typeString(node)
-             << " was introduced in ";
+             << typeString(node);
+        if (node->type() == Node::Enum)
+            text << " was introduced or modified in ";
+        else
+            text << " was introduced in ";
         if (project.isEmpty())
              text << "version";
         else

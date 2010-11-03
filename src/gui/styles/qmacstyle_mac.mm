@@ -1059,6 +1059,16 @@ void QMacStylePrivate::initHIThemePushButton(const QStyleOptionButton *btn,
     }
 }
 
+bool qt_mac_buttonIsRenderedFlat(const QPushButton *pushButton, const QStyleOptionButton *option)
+{
+    QMacStyle *macStyle = qobject_cast<QMacStyle *>(pushButton->style());
+    if (!macStyle)
+        return false;
+    HIThemeButtonDrawInfo bdi;
+    macStyle->d->initHIThemePushButton(option, pushButton, kThemeStateActive, &bdi);
+    return bdi.kind == kThemeBevelButton;
+}
+
 /**
     Creates a HIThemeButtonDrawInfo structure that specifies the correct button
     kind and other details to use for drawing the given combobox. Which button
@@ -1430,6 +1440,9 @@ QMacStylePrivate::QMacStylePrivate(QMacStyle *style)
 
 bool QMacStylePrivate::animatable(QMacStylePrivate::Animates as, const QWidget *w) const
 {
+    if (!w)
+        return false;
+
     if (as == AquaPushButton) {
         QPushButton *pb = const_cast<QPushButton *>(static_cast<const QPushButton *>(w));
         if (w->window()->isActiveWindow() && pb && !mouseDown) {
@@ -3323,6 +3336,8 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                     if (needText) {
                         QPalette pal = tb->palette;
                         QPalette::ColorRole role = QPalette::NoRole;
+                        if (!proxy()->styleHint(SH_UnderlineShortcut, tb, w))
+                            alignment |= Qt::TextHideMnemonic;
                         if (down)
                             cr.translate(shiftX, shiftY);
                         if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_5
@@ -3340,13 +3355,13 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                                 role = QPalette::HighlightedText;
                             }
                         }
-                        drawItemText(p, cr, alignment, pal,
-                                     tb->state & State_Enabled, tb->text, role);
+                        proxy()->drawItemText(p, cr, alignment, pal,
+                                              tb->state & State_Enabled, tb->text, role);
                         if (QSysInfo::MacintoshVersion < QSysInfo::MV_10_5 &&
                             (tb->state & State_Sunken)) {
                             // Draw a "drop shadow" in earlier versions.
-                            drawItemText(p, cr.adjusted(0, 1, 0, 1), alignment,
-                                         tb->palette, tb->state & State_Enabled, tb->text);
+                            proxy()->drawItemText(p, cr.adjusted(0, 1, 0, 1), alignment,
+                                                  tb->palette, tb->state & State_Enabled, tb->text);
                         }
                     }
                 } else {

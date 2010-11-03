@@ -43,7 +43,7 @@
 
 #include "qcoreapplication.h"
 #include "qhash.h"
-#include "qlibrary.h"
+#include <private/qsystemlibrary_p.h>
 #include "qpair.h"
 #include "qset.h"
 #include "qsocketnotifier.h"
@@ -65,7 +65,11 @@ extern uint qGlobalPostedEventsCount();
 #endif
 
 #ifndef QS_RAWINPUT
+# ifdef Q_OS_WINCE
+#  define QS_RAWINPUT 0x0000
+# else
 #  define QS_RAWINPUT 0x0400
+# endif
 #endif
 
 #ifndef WM_TOUCH
@@ -80,8 +84,7 @@ extern uint qGlobalPostedEventsCount();
 
 enum {
     WM_QT_SOCKETNOTIFIER = WM_USER,
-    WM_QT_SENDPOSTEDEVENTS = WM_USER + 1,
-    SendPostedEventsTimerId = ~1u
+    WM_QT_SENDPOSTEDEVENTS = WM_USER + 1
 };
 
 #if defined(Q_OS_WINCE)
@@ -323,11 +326,11 @@ static void resolveTimerAPI()
 #endif
         triedResolve = true;
 #if !defined(Q_OS_WINCE)
-        qtimeSetEvent = (ptimeSetEvent)QLibrary::resolve(QLatin1String("winmm"), "timeSetEvent");
-        qtimeKillEvent = (ptimeKillEvent)QLibrary::resolve(QLatin1String("winmm"), "timeKillEvent");
+        qtimeSetEvent = (ptimeSetEvent)QSystemLibrary::resolve(QLatin1String("winmm"), "timeSetEvent");
+        qtimeKillEvent = (ptimeKillEvent)QSystemLibrary::resolve(QLatin1String("winmm"), "timeKillEvent");
 #else
-        qtimeSetEvent = (ptimeSetEvent)QLibrary::resolve(QLatin1String("Mmtimer"), "timeSetEvent");
-        qtimeKillEvent = (ptimeKillEvent)QLibrary::resolve(QLatin1String("Mmtimer"), "timeKillEvent");
+        qtimeSetEvent = (ptimeSetEvent)QSystemLibrary::resolve(QLatin1String("Mmtimer"), "timeSetEvent");
+        qtimeKillEvent = (ptimeKillEvent)QSystemLibrary::resolve(QLatin1String("Mmtimer"), "timeKillEvent");
 #endif
     }
 }
@@ -351,9 +354,6 @@ public:
     // for controlling when to send posted events
     QAtomicInt serialNumber;
     int lastSerialNumber;
-#ifndef Q_OS_WINCE
-    int lastMessageTime;
-#endif
     QAtomicInt wakeUps;
 
     // timers
@@ -378,11 +378,7 @@ public:
 
 QEventDispatcherWin32Private::QEventDispatcherWin32Private()
     : threadId(GetCurrentThreadId()), interrupt(false), internalHwnd(0), getMessageHook(0),
-      serialNumber(0), lastSerialNumber(0),
-#ifndef Q_OS_WINCE
-      lastMessageTime(0),
-#endif
-      wakeUps(0)
+      serialNumber(0), lastSerialNumber(0), wakeUps(0)
 {
     resolveTimerAPI();
 }
@@ -497,9 +493,6 @@ LRESULT QT_WIN_CALLBACK qt_internal_proc(HWND hwnd, UINT message, WPARAM wp, LPA
         int localSerialNumber = d->serialNumber;
         if (localSerialNumber != d->lastSerialNumber) {
             d->lastSerialNumber = localSerialNumber;
-#ifndef Q_OS_WINCE
-            d->lastMessageTime = GetMessageTime();
-#endif
             QCoreApplicationPrivate::sendPostedEvents(0, 0, d->threadData);
         }
         return 0;
@@ -516,15 +509,9 @@ LRESULT QT_WIN_CALLBACK qt_GetMessageHook(int code, WPARAM wp, LPARAM lp)
         if (q) {
             QEventDispatcherWin32Private *d = q->d_func();
             int localSerialNumber = d->serialNumber;
-#ifdef Q_OS_WINCE
-            MSG dummyMsg;
-            if (HIWORD(GetQueueStatus(QS_INPUT)) == 0
-                && PeekMessage(&dummyMsg, 0, WM_TIMER, WM_TIMER, PM_NOREMOVE) == 0
-#else
-            if (HIWORD(GetQueueStatus(QS_INPUT | QS_RAWINPUT | QS_TIMER)) == 0
-                || GetMessageTime() - d->lastMessageTime >= 10
-#endif
-                ) {
+            MSG unused;
+            if ((HIWORD(GetQueueStatus(QS_INPUT | QS_RAWINPUT)) == 0
+                 && PeekMessage(&unused, 0, WM_TIMER, WM_TIMER, PM_NOREMOVE) == 0)) {
                 // no more input or timer events in the message queue or more than 10ms has elapsed since
                 // we send posted events, we can allow posted events to be sent now
                 (void) d->wakeUps.fetchAndStoreRelease(0);
@@ -824,7 +811,7 @@ bool QEventDispatcherWin32::processEvents(QEventLoop::ProcessEventsFlags flags)
                 pHandles[i] = d->winEventNotifierList.at(i)->handle();
 
             emit aboutToBlock();
-            waitRet = MsgWaitForMultipleObjectsEx(nCount, pHandles, INFINITE, QS_ALLINPUT, MWMO_ALERTABLE);
+            waitRet = MsgWaitForMultipleObjectsEx(nCount, pHandles, INFINITE, QS_ALLINPUT, MWMO_ALERTABLE | MWMO_INPUTAVAILABLE);
             emit awake();
             if (waitRet >= WAIT_OBJECT_0 && waitRet < WAIT_OBJECT_0 + nCount) {
                 d->activateEventNotifier(d->winEventNotifierList.at(waitRet - WAIT_OBJECT_0));

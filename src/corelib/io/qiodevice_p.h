@@ -68,7 +68,7 @@ QT_BEGIN_NAMESPACE
 #define QIODEVICE_BUFFERSIZE Q_INT64_C(16384)
 #endif
 
-// This is QIODevice's read buffer, optimised for read(), isEmpty() and getChar()
+// This is QIODevice's read buffer, optimized for read(), isEmpty() and getChar()
 class QIODevicePrivateLinearBuffer
 {
 public:
@@ -155,10 +155,10 @@ public:
         if ((first - buf) < size) {
             // underflow, the existing valid data needs to move to the end of the (potentially bigger) buffer
             makeSpace(len + size, freeSpaceAtStart);
-            memcpy(first - size, block, size);
         }
         first -= size;
         len += size;
+        memcpy(first, block, size);
     }
 
 private:

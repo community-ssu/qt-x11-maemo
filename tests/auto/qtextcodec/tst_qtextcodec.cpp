@@ -1946,6 +1946,8 @@ void tst_QTextCodec::toLocal8Bit()
 {
 #ifdef QT_NO_PROCESS
     QSKIP("This test requires QProcess", SkipAll);
+#elif defined(Q_OS_SYMBIAN)
+    QSKIP("This test requires streams support in QProcess", SkipAll);
 #else
     QProcess process;
     process.start("echo/echo");
@@ -2233,6 +2235,15 @@ void tst_QTextCodec::moreToFromUnicode()
     QByteArray cStr = c->fromUnicode(uStr);
     QCOMPARE(testData, cStr);
 }
+
+struct DontCrashAtExit {
+    ~DontCrashAtExit() {
+        QTextCodec *c = QTextCodec::codecForName("utf8");
+        if (c)
+            c->toUnicode("azerty");
+
+    }
+} dontCrashAtExit;
 
 
 QTEST_MAIN(tst_QTextCodec)

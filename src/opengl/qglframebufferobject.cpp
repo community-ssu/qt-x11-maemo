@@ -445,11 +445,11 @@ void QGLFramebufferObjectPrivate::init(QGLFramebufferObject *q, const QSize &sz,
         GLint maxSamples;
         glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSamples);
 
-        samples = qBound(1, int(samples), int(maxSamples));
+        samples = qBound(0, int(samples), int(maxSamples));
 
         glGenRenderbuffers(1, &color_buffer);
         glBindRenderbuffer(GL_RENDERBUFFER_EXT, color_buffer);
-        if (glRenderbufferStorageMultisampleEXT) {
+        if (glRenderbufferStorageMultisampleEXT && samples > 0) {
             glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
                 internal_format, size.width(), size.height());
         } else {
@@ -468,13 +468,17 @@ void QGLFramebufferObjectPrivate::init(QGLFramebufferObject *q, const QSize &sz,
             glGetRenderbufferParameteriv(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &samples);
     }
 
+    // In practice, a combined depth-stencil buffer is supported by all desktop platforms, while a
+    // separate stencil buffer is not. On embedded devices however, a combined depth-stencil buffer
+    // might not be supported while separate buffers are, according to QTBUG-12861.
+
     if (attachment == QGLFramebufferObject::CombinedDepthStencil
         && (QGLExtensions::glExtensions() & QGLExtensions::PackedDepthStencil)) {
         // depth and stencil buffer needs another extension
-        glGenRenderbuffers(1, &depth_stencil_buffer);
-        Q_ASSERT(!glIsRenderbuffer(depth_stencil_buffer));
-        glBindRenderbuffer(GL_RENDERBUFFER_EXT, depth_stencil_buffer);
-        Q_ASSERT(glIsRenderbuffer(depth_stencil_buffer));
+        glGenRenderbuffers(1, &depth_buffer);
+        Q_ASSERT(!glIsRenderbuffer(depth_buffer));
+        glBindRenderbuffer(GL_RENDERBUFFER_EXT, depth_buffer);
+        Q_ASSERT(glIsRenderbuffer(depth_buffer));
         if (samples != 0 && glRenderbufferStorageMultisampleEXT)
             glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
                 GL_DEPTH24_STENCIL8_EXT, size.width(), size.height());
@@ -482,49 +486,99 @@ void QGLFramebufferObjectPrivate::init(QGLFramebufferObject *q, const QSize &sz,
             glRenderbufferStorage(GL_RENDERBUFFER_EXT,
                 GL_DEPTH24_STENCIL8_EXT, size.width(), size.height());
 
-        GLint i = 0;
-        glGetRenderbufferParameteriv(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_DEPTH_SIZE_EXT, &i);
+        stencil_buffer = depth_buffer;
         glFramebufferRenderbuffer(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,
-                                     GL_RENDERBUFFER_EXT, depth_stencil_buffer);
+                                     GL_RENDERBUFFER_EXT, depth_buffer);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT,
-                                     GL_RENDERBUFFER_EXT, depth_stencil_buffer);
-        fbo_attachment = QGLFramebufferObject::CombinedDepthStencil;
+                                     GL_RENDERBUFFER_EXT, stencil_buffer);
 
         valid = checkFramebufferStatus();
-        if (!valid)
-            glDeleteRenderbuffers(1, &depth_stencil_buffer);
-    } else if (attachment == QGLFramebufferObject::Depth
-               || attachment == QGLFramebufferObject::CombinedDepthStencil)
+        if (!valid) {
+            glDeleteRenderbuffers(1, &depth_buffer);
+            stencil_buffer = depth_buffer = 0;
+        }
+    }
+
+    if (depth_buffer == 0 && (attachment == QGLFramebufferObject::CombinedDepthStencil
+        || (attachment == QGLFramebufferObject::Depth)))
     {
-        glGenRenderbuffers(1, &depth_stencil_buffer);
-        Q_ASSERT(!glIsRenderbuffer(depth_stencil_buffer));
-        glBindRenderbuffer(GL_RENDERBUFFER_EXT, depth_stencil_buffer);
-        Q_ASSERT(glIsRenderbuffer(depth_stencil_buffer));
+        glGenRenderbuffers(1, &depth_buffer);
+        Q_ASSERT(!glIsRenderbuffer(depth_buffer));
+        glBindRenderbuffer(GL_RENDERBUFFER_EXT, depth_buffer);
+        Q_ASSERT(glIsRenderbuffer(depth_buffer));
         if (samples != 0 && glRenderbufferStorageMultisampleEXT) {
 #ifdef QT_OPENGL_ES
-#define GL_DEPTH_COMPONENT16 0x81A5
-            glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
-                GL_DEPTH_COMPONENT16, size.width(), size.height());
+            if (QGLExtensions::glExtensions() & QGLExtensions::Depth24) {
+                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
+                    GL_DEPTH_COMPONENT24_OES, size.width(), size.height());
+            } else {
+                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
+                    GL_DEPTH_COMPONENT16, size.width(), size.height());
+            }
 #else
             glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
                 GL_DEPTH_COMPONENT, size.width(), size.height());
 #endif
         } else {
 #ifdef QT_OPENGL_ES
-#define GL_DEPTH_COMPONENT16 0x81A5
-            glRenderbufferStorage(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT16, size.width(), size.height());
+            if (QGLExtensions::glExtensions() & QGLExtensions::Depth24) {
+                glRenderbufferStorage(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24_OES, 
+                                        size.width(), size.height());
+            } else {
+                glRenderbufferStorage(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT16, 
+                                        size.width(), size.height());
+            }
 #else
             glRenderbufferStorage(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, size.width(), size.height());
 #endif
         }
-        GLint i = 0;
-        glGetRenderbufferParameteriv(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_DEPTH_SIZE_EXT, &i);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,
-                                     GL_RENDERBUFFER_EXT, depth_stencil_buffer);
-        fbo_attachment = QGLFramebufferObject::Depth;
+                                     GL_RENDERBUFFER_EXT, depth_buffer);
         valid = checkFramebufferStatus();
-        if (!valid)
-            glDeleteRenderbuffers(1, &depth_stencil_buffer);
+        if (!valid) {
+            glDeleteRenderbuffers(1, &depth_buffer);
+            depth_buffer = 0;
+        }
+    }
+
+    if (stencil_buffer == 0 && (attachment == QGLFramebufferObject::CombinedDepthStencil)) {
+        glGenRenderbuffers(1, &stencil_buffer);
+        Q_ASSERT(!glIsRenderbuffer(stencil_buffer));
+        glBindRenderbuffer(GL_RENDERBUFFER_EXT, stencil_buffer);
+        Q_ASSERT(glIsRenderbuffer(stencil_buffer));
+        if (samples != 0 && glRenderbufferStorageMultisampleEXT) {
+#ifdef QT_OPENGL_ES
+            glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
+                GL_STENCIL_INDEX8_EXT, size.width(), size.height());
+#else
+            glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
+                GL_STENCIL_INDEX, size.width(), size.height());
+#endif
+        } else {
+#ifdef QT_OPENGL_ES
+            glRenderbufferStorage(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT,
+                                  size.width(), size.height());
+#else
+            glRenderbufferStorage(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX,
+                                  size.width(), size.height());
+#endif
+        }
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT,
+                                  GL_RENDERBUFFER_EXT, stencil_buffer);
+        valid = checkFramebufferStatus();
+        if (!valid) {
+            glDeleteRenderbuffers(1, &stencil_buffer);
+            stencil_buffer = 0;
+        }
+    }
+
+    // The FBO might have become valid after removing the depth or stencil buffer.
+    valid = checkFramebufferStatus();
+
+    if (depth_buffer && stencil_buffer) {
+        fbo_attachment = QGLFramebufferObject::CombinedDepthStencil;
+    } else if (depth_buffer) {
+        fbo_attachment = QGLFramebufferObject::Depth;
     } else {
         fbo_attachment = QGLFramebufferObject::NoAttachment;
     }
@@ -535,6 +589,10 @@ void QGLFramebufferObjectPrivate::init(QGLFramebufferObject *q, const QSize &sz,
             glDeleteRenderbuffers(1, &color_buffer);
         else
             glDeleteTextures(1, &texture);
+        if (depth_buffer)
+            glDeleteRenderbuffers(1, &depth_buffer);
+        if (stencil_buffer && depth_buffer != stencil_buffer)
+            glDeleteRenderbuffers(1, &stencil_buffer);
         glDeleteFramebuffers(1, &fbo);
         fbo_guard.setId(0);
     }
@@ -817,8 +875,10 @@ QGLFramebufferObject::~QGLFramebufferObject()
             glDeleteTextures(1, &d->texture);
         if (d->color_buffer)
             glDeleteRenderbuffers(1, &d->color_buffer);
-        if (d->depth_stencil_buffer)
-            glDeleteRenderbuffers(1, &d->depth_stencil_buffer);
+        if (d->depth_buffer)
+            glDeleteRenderbuffers(1, &d->depth_buffer);
+        if (d->stencil_buffer && d->stencil_buffer != d->depth_buffer)
+            glDeleteRenderbuffers(1, &d->stencil_buffer);
         GLuint fbo = d->fbo();
         glDeleteFramebuffers(1, &fbo);
     }
@@ -1111,8 +1171,8 @@ void QGLFramebufferObject::drawTexture(const QPointF &point, QMacCompatGLuint te
 }
 #endif
 
-extern int qt_defaultDpiX();
-extern int qt_defaultDpiY();
+Q_DECL_IMPORT extern int qt_defaultDpiX();
+Q_DECL_IMPORT extern int qt_defaultDpiY();
 
 /*! \reimp */
 int QGLFramebufferObject::metric(PaintDeviceMetric metric) const

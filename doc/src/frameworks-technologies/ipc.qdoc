@@ -7,11 +7,11 @@
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** Commercial Usage
-** Licensees holding valid Qt Commercial licenses may use this file in
-** accordance with the Qt Commercial License Agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in a
-** written agreement between you and Nokia.
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
 **
 ** GNU Free Documentation License
 ** Alternatively, this file may be used under the terms of the GNU Free
@@ -31,6 +31,7 @@
     \brief Inter-Process communication in Qt applications.
 
     \ingroup technology-apis
+    \ingroup qt-basic-concepts
     \ingroup qt-network
 
     Qt provides several ways to implement Inter-Process Communication
@@ -56,13 +57,12 @@
 
     \section1 D-Bus
 
-    The \l{QtDBus} module is a Unix-only library
-    you can use to implement IPC using the D-Bus protocol. It extends
-    Qt's \l{signalsandslots.html} {Signals and Slots} mechanism to the
-    IPC level, allowing a signal emitted by one process to be
-    connected to a slot in another process. This \l {Introduction to
-    D-Bus} page has detailed information on how to use the \l{QtDBus}
-    module.
+    The \l{QtDBus} module is a Unix-only library you can use to
+    implement IPC using the D-Bus protocol. It extends Qt's
+    \l{signalsandslots.html} {Signals and Slots} mechanism to the IPC
+    level, allowing a signal emitted by one process to be connected to
+    a slot in another process. This \l {D-Bus} page has detailed
+    information on how to use the \l{QtDBus} module.
 
     \section1 Qt COmmunications Protocol (QCOP)
 

@@ -45,6 +45,8 @@ QT_BEGIN_NAMESPACE
 /*!
     \qmlclass KeyEvent QDeclarativeKeyEvent
     \since 4.7
+    \ingroup qml-event-elements
+    
     \brief The KeyEvent object provides information about a key event.
 
     For example, the following changes the Item's state property when the Enter
@@ -55,11 +57,6 @@ Item {
     Keys.onPressed: { if (event.key == Qt.Key_Enter) state = 'ShowDetails'; }
 }
     \endqml
-*/
-
-/*!
-    \internal
-    \class QDeclarativeKeyEvent
 */
 
 /*!
@@ -115,10 +112,14 @@ Item {
 /*!
     \qmlclass MouseEvent QDeclarativeMouseEvent
     \since 4.7
+    \ingroup qml-event-elements
+
     \brief The MouseEvent object provides information about a mouse event.
 
-    The position of the mouse can be found via the x and y properties.
-    The button that caused the event is available via the button property.
+    The position of the mouse can be found via the \l x and \l y properties.
+    The button that caused the event is available via the \l button property.
+
+    \sa MouseArea
 */
 
 /*!
@@ -130,7 +131,7 @@ Item {
     \qmlproperty int MouseEvent::x
     \qmlproperty int MouseEvent::y
 
-    These properties hold the position of the mouse event.
+    These properties hold the coordinates of the position supplied by the mouse event.
 */
 
 
@@ -187,7 +188,7 @@ Item {
     It contains a bitwise combination of:
     \list
     \o Qt.NoModifier - No modifier key is pressed.
-    \o Qt.ShiftModifier	- A Shift key on the keyboard is pressed.
+    \o Qt.ShiftModifier - A Shift key on the keyboard is pressed.
     \o Qt.ControlModifier - A Ctrl key on the keyboard is pressed.
     \o Qt.AltModifier - An Alt key on the keyboard is pressed.
     \o Qt.MetaModifier - A Meta key on the keyboard is pressed.
@@ -196,9 +197,12 @@ Item {
 
     For example, to react to a Shift key + Left mouse button click:
     \qml
-MouseArea {
-    onClicked: { if (mouse.button == Qt.LeftButton && mouse.modifiers & Qt.ShiftModifier) doSomething(); }
-}
+    MouseArea {
+        onClicked: {
+            if (mouse.button == Qt.LeftButton && mouse.modifiers & Qt.ShiftModifier)
+                doSomething();
+        }
+    }
     \endqml
 */
 

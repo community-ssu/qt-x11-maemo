@@ -32,11 +32,14 @@ function startNewGame()
     if (state == "starting")
         return;
 
-    if (heartbeat.running) {
+    if (activeGame) {
         endGame();
         startNewGameTimer.running = true;
+        state = "";
         return;
     }
+
+    state = "starting";
 
     numRows = numRowsAvailable;
     numColumns = numColumnsAvailable;
@@ -80,12 +83,11 @@ function startNewGame()
     waitForCookie = 5;
     score = 0;
     startHeartbeatTimer.running = true;
-    heartbeat.running = true;
 }
 
 function endGame()
 {
-    heartbeat.running = false;
+    activeGame = false;
     for(var i in snake)
         snake[i].dying = true;
     if (cookie) {
@@ -94,6 +96,7 @@ function endGame()
     }
     lastScore = score;
     highScores.saveScore(lastScore);
+    state = "";
 }
 
 function move() {

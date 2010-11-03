@@ -201,12 +201,8 @@ void tst_MediaObject::stateChanged(Phonon::State newstate, Phonon::State oldstat
 
 void tst_MediaObject::testPlayFromResource()
 {
-#ifdef Q_OS_SYMBIAN
-    QSKIP("Not implemented yet.", SkipAll);
-#else
-    QFile file(MEDIA_FILEPATH);
     MediaObject media;
-    media.setCurrentSource(&file);
+    media.setCurrentSource(QString(MEDIA_FILEPATH));
     QVERIFY(media.state() != Phonon::ErrorState);
     if (media.state() != Phonon::StoppedState)
         QTest::waitForSignal(&media, SIGNAL(stateChanged(Phonon::State, Phonon::State)), 10000);
@@ -215,7 +211,6 @@ void tst_MediaObject::testPlayFromResource()
     if (media.state() != Phonon::PlayingState)
         QTest::waitForSignal(&media, SIGNAL(stateChanged(Phonon::State, Phonon::State)), 10000);
     QCOMPARE(media.state(), Phonon::PlayingState);
-#endif
 }
 
 void tst_MediaObject::testPlayIllegalFile()
@@ -687,7 +682,7 @@ void tst_MediaObject::testPauseOnFinish()
 }
 
 void tst_MediaObject::testReconnectBetweenTwoMediaObjects(){
-    // Purpose: Test that phonon can handle swithing the same sink
+    // Purpose: Test that phonon can handle switching the same sink
     // between different media objects.
 
     Phonon::MediaObject obj1;

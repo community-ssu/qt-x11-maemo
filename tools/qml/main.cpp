@@ -89,6 +89,9 @@ QString warnings;
 void showWarnings()
 {
     if (!warnings.isEmpty()) {
+        int argc = 0; char **argv = 0;
+        QApplication application(argc, argv); // QApplication() in main has been destroyed already.
+        Q_UNUSED(application)
         QMessageBox::warning(0, QApplication::tr("Qt QML Viewer"), warnings);
     }
 }
@@ -169,6 +172,7 @@ void scriptOptsUsage()
     qWarning("  play ..................................... playback an existing script");
     qWarning("  testimages ............................... record images or compare images on playback");
     qWarning("  testerror ................................ test 'error' property of root item on playback");
+    qWarning("  testskip  ................................ test 'skip' property of root item on playback");
     qWarning("  snapshot ................................. file being recorded is static,");
     qWarning("                                             only one frame will be recorded or tested");
     qWarning("  exitoncomplete ........................... cleanly exit the viewer on script completion");
@@ -302,6 +306,8 @@ static void parseScriptOptions()
             scriptOptions |= QDeclarativeViewer::TestImages;
         } else if (option == QLatin1String("testerror")) {
             scriptOptions |= QDeclarativeViewer::TestErrorProperty;
+        } else if (option == QLatin1String("testskip")) {
+            scriptOptions |= QDeclarativeViewer::TestSkipProperty;
         } else if (option == QLatin1String("exitoncomplete")) {
             scriptOptions |= QDeclarativeViewer::ExitOnComplete;
         } else if (option == QLatin1String("exitonfailure")) {
@@ -445,6 +451,7 @@ static QDeclarativeViewer *createViewer()
 
     QDeclarativeViewer *viewer = QDeclarativeViewer::instance(0, wflags);
     viewer->setAttribute(Qt::WA_DeleteOnClose, true);
+    viewer->setUseGL(opts.useGL);
 
     if (!opts.scriptopts.isEmpty()) {
         viewer->setScriptOptions(opts.scriptOptions);
@@ -496,8 +503,6 @@ void showViewer(QDeclarativeViewer *viewer)
         viewer->showMaximized();
     else
         viewer->show();
-
-    viewer->setUseGL(opts.useGL);
     viewer->raise();
 }
 
@@ -521,7 +526,7 @@ int main(int argc, char ** argv)
 
 #if defined (Q_OS_WIN)
     // Debugging output is not visible by default on Windows -
-    // therefore show modal dialog with errors instad.
+    // therefore show modal dialog with errors instead.
     atexit(showWarnings);
 #endif
 

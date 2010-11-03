@@ -1,4 +1,4 @@
-import Qt 4.7
+import QtQuick 1.0
 
 Rectangle {
     color: "lightSteelBlue"
@@ -85,6 +85,6 @@ Rectangle {
         height: 50
         x: 200
         y: parent.height - 50
-        color: blue
+        color: "blue"
     }
 }

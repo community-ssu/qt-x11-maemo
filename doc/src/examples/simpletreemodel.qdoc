@@ -7,11 +7,11 @@
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** Commercial Usage
-** Licensees holding valid Qt Commercial licenses may use this file in
-** accordance with the Qt Commercial License Agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in a
-** written agreement between you and Nokia.
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
 **
 ** GNU Free Documentation License
 ** Alternatively, this file may be used under the terms of the GNU Free
@@ -36,13 +36,14 @@
 
     \image simpletreemodel-example.png
 
-    Qt's model/view architecture provides a standard way for views to manipulate
-    information in a data source, using an abstract model of the data to
-    simplify and standardize the way it is accessed. Simple models represent
-    data as a table of items, and allow views to access this data via an
-    \l{Model/View Programming#Models}{index-based} system. More generally, models can
-    be used to represent data in the form of a tree structure by allowing each
-    item to act as a parent to a table of child items.
+    Qt's model/view architecture provides a standard way for views to
+    manipulate information in a data source, using an abstract model
+    of the data to simplify and standardize the way it is accessed.
+    Simple models represent data as a table of items, and allow views
+    to access this data via an
+    \l{Model/View Programming#Models}{index-based} system. More generally,
+    models can be used to represent data in the form of a tree structure
+    by allowing each item to act as a parent to a table of child items.
 
     Before attempting to implement a tree model, it is worth considering whether
     the data is supplied by an external source, or whether it is going to be

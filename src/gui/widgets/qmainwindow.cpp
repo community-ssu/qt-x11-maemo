@@ -39,6 +39,8 @@
 **
 ****************************************************************************/
 
+//#define QT_EXPERIMENTAL_CLIENT_DECORATIONS
+
 #include "qmainwindow.h"
 #include "qmainwindowlayout_p.h"
 
@@ -76,6 +78,7 @@ public:
         : layout(0), explicitIconSize(false), toolButtonStyle(Qt::ToolButtonIconOnly)
 #ifdef Q_WS_MAC
             , useHIToolBar(false)
+            , activateUnifiedToolbarAfterFullScreen(false)
 #endif
 #if !defined(QT_NO_DOCKWIDGET) && !defined(QT_NO_CURSOR)
             , hasOldCursor(false) , cursorAdjusted(false)
@@ -87,6 +90,7 @@ public:
     Qt::ToolButtonStyle toolButtonStyle;
 #ifdef Q_WS_MAC
     bool useHIToolBar;
+    bool activateUnifiedToolbarAfterFullScreen;
 #endif
     void init();
     QList<int> hoverSeparator;
@@ -99,12 +103,70 @@ public:
     uint hasOldCursor : 1;
     uint cursorAdjusted : 1;
 #endif
+
+    static inline QMainWindowLayout *mainWindowLayout(const QMainWindow *mainWindow)
+    {
+        return mainWindow ? mainWindow->d_func()->layout : static_cast<QMainWindowLayout *>(0);
+    }
 };
+
+QMainWindowLayout *qt_mainwindow_layout(const QMainWindow *mainWindow)
+{
+    return QMainWindowPrivate::mainWindowLayout(mainWindow);
+}
+
+#ifdef QT_EXPERIMENTAL_CLIENT_DECORATIONS
+Q_GUI_EXPORT void qt_setMainWindowTitleWidget(QMainWindow *mainWindow, Qt::DockWidgetArea area, QWidget *widget)
+{
+    QGridLayout *topLayout = qobject_cast<QGridLayout *>(mainWindow->layout());
+    Q_ASSERT(topLayout);
+
+    int row = 0;
+    int column = 0;
+
+    switch (area) {
+    case Qt::LeftDockWidgetArea:
+        row = 1;
+        column = 0;
+        break;
+    case Qt::TopDockWidgetArea:
+        row = 0;
+        column = 1;
+        break;
+    case Qt::BottomDockWidgetArea:
+        row = 2;
+        column = 1;
+        break;
+    case Qt::RightDockWidgetArea:
+        row = 1;
+        column = 2;
+        break;
+    default:
+        Q_ASSERT_X(false, "qt_setMainWindowTitleWidget", "Unknown area");
+        return;
+    }
+
+    if (QLayoutItem *oldItem = topLayout->itemAtPosition(row, column))
+        delete oldItem->widget();
+    topLayout->addWidget(widget, row, column);
+}
+#endif
 
 void QMainWindowPrivate::init()
 {
     Q_Q(QMainWindow);
-    layout = new QMainWindowLayout(q);
+
+#ifdef QT_EXPERIMENTAL_CLIENT_DECORATIONS
+    QGridLayout *topLayout = new QGridLayout(q);
+    topLayout->setContentsMargins(0, 0, 0, 0);
+
+    layout = new QMainWindowLayout(q, topLayout);
+
+    topLayout->addItem(layout, 1, 1);
+#else
+    layout = new QMainWindowLayout(q, 0);
+#endif
+
     const int metric = q->style()->pixelMetric(QStyle::PM_ToolBarIconSize, 0, q);
     iconSize = QSize(metric, metric);
     q->setAttribute(Qt::WA_Hover);
@@ -442,7 +504,7 @@ void QMainWindow::setToolButtonStyle(Qt::ToolButtonStyle toolButtonStyle)
 */
 QMenuBar *QMainWindow::menuBar() const
 {
-    QMenuBar *menuBar = qobject_cast<QMenuBar *>(d_func()->layout->menuBar());
+    QMenuBar *menuBar = qobject_cast<QMenuBar *>(layout()->menuBar());
     if (!menuBar) {
         QMainWindow *self = const_cast<QMainWindow *>(this);
         menuBar = new QMenuBar(self);
@@ -461,10 +523,11 @@ QMenuBar *QMainWindow::menuBar() const
 */
 void QMainWindow::setMenuBar(QMenuBar *menuBar)
 {
-    Q_D(QMainWindow);
-    if (d->layout->menuBar() && d->layout->menuBar() != menuBar) {
+    QLayout *topLayout = layout();
+
+    if (topLayout->menuBar() && topLayout->menuBar() != menuBar) {
         // Reparent corner widgets before we delete the old menu bar.
-        QMenuBar *oldMenuBar = qobject_cast<QMenuBar *>(d->layout->menuBar());
+        QMenuBar *oldMenuBar = qobject_cast<QMenuBar *>(topLayout->menuBar());
         if (menuBar) {
             // TopLeftCorner widget.
             QWidget *cornerWidget = oldMenuBar->cornerWidget(Qt::TopLeftCorner);
@@ -478,7 +541,7 @@ void QMainWindow::setMenuBar(QMenuBar *menuBar)
         oldMenuBar->hide();
         oldMenuBar->deleteLater();
     }
-    d->layout->setMenuBar(menuBar);
+    topLayout->setMenuBar(menuBar);
 }
 
 /*!
@@ -1452,8 +1515,6 @@ bool QMainWindow::event(QEvent *event)
     \i Before Qt 4.5, if you called showFullScreen() on the main window, the QToolbar would
         disappear since it is considered to be part of the title bar. Qt 4.5 and up will now work around this by pulling
         the toolbars out and back into the regular toolbar and vice versa when you swap out.
-        However, a good practice would be that turning off the unified toolbar before you call
-        showFullScreen() and restoring it after you call showNormal().
     \endlist
 
     Setting this back to false will remove these restrictions.

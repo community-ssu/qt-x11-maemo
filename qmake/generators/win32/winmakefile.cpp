@@ -472,10 +472,13 @@ void Win32MakefileGenerator::processRcFileVar()
         resFile.replace(".rc", Option::res_ext);
         project->values("RES_FILE").prepend(fileInfo(resFile).fileName());
         if (!project->values("OBJECTS_DIR").isEmpty()) {
-            if(project->isActiveConfig("staticlib"))
-                project->values("RES_FILE").first().prepend(fileInfo(project->values("DESTDIR").first()).absoluteFilePath() + Option::dir_sep);
+            QString resDestDir;
+            if (project->isActiveConfig("staticlib"))
+                resDestDir = fileInfo(project->first("DESTDIR")).absoluteFilePath();
             else
-              project->values("RES_FILE").first().prepend(project->values("OBJECTS_DIR").first() + Option::dir_sep);
+                resDestDir = project->first("OBJECTS_DIR");
+            resDestDir.append(Option::dir_sep);
+            project->values("RES_FILE").first().prepend(resDestDir);
         }
         project->values("RES_FILE").first() = Option::fixPathToTargetOS(project->values("RES_FILE").first(), false, false);
 	project->values("POST_TARGETDEPS") += project->values("RES_FILE");
@@ -643,7 +646,7 @@ void Win32MakefileGenerator::writeStandardParts(QTextStream &t)
 
     t << "DIST          = " << varList("DISTFILES") << endl;
     t << "QMAKE_TARGET  = " << var("QMAKE_ORIG_TARGET") << endl;
-    // The comment is important to maintain variable compatability with Unix
+    // The comment is important to maintain variable compatibility with Unix
     // Makefiles, while not interpreting a trailing-slash as a linebreak
     t << "DESTDIR        = " << escapeFilePath(destDir) << " #avoid trailing-slash linebreak" << endl;
     t << "TARGET         = " << escapeFilePath(target) << endl;

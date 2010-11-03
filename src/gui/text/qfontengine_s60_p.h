@@ -54,7 +54,7 @@
 //
 
 #include "qconfig.h"
-#include "qfontengine_p.h"
+#include <private/qfontengine_p.h>
 #include "qsize.h"
 #include <openfont.h>
 
@@ -81,11 +81,14 @@ public:
     bool getSfntTableData(uint tag, uchar *buffer, uint *length) const;
     const uchar *cmap() const;
     CFont *fontOwner() const;
+    bool isSymbolCMap() const;
+    QFixed unitsPerEm() const;
 
 private:
     CFont* m_cFont;
     mutable bool m_symbolCMap;
     mutable QByteArray m_cmapTable;
+    mutable QFixed m_unitsPerEm;
 #ifndef Q_SYMBIAN_HAS_FONTTABLE_API
     COpenFont *m_openFont;
     mutable MOpenFontTrueTypeExtension *m_trueTypeExtension;
@@ -98,6 +101,7 @@ public:
     QFontEngineS60(const QFontDef &fontDef, const QSymbianTypeFaceExtras *extras);
     ~QFontEngineS60();
 
+    QFixed emSquareSize() const;
     bool stringToCMap(const QChar *str, int len, QGlyphLayout *glyphs, int *nglyphs, QTextEngine::ShaperFlags flags) const;
     void recalcAdvances(QGlyphLayout *glyphs, QTextEngine::ShaperFlags flags) const;
 
@@ -134,6 +138,7 @@ public:
 
 private:
     friend class QFontPrivate;
+    friend class QSymbianVGFontGlyphCache;
 
     QFixed glyphAdvance(HB_Glyph glyph) const;
     CFont *fontWithSize(qreal size) const;

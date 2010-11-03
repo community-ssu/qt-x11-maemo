@@ -69,7 +69,7 @@
 
 #ifdef Q_OS_WIN // for homedirpath reading from registry
 #include "qt_windows.h"
-#include "qlibrary.h"
+#include <private/qsystemlibrary_p.h>
 
 #endif // Q_OS_WIN
 #endif // QT_NO_QOBJECT
@@ -1052,9 +1052,9 @@ static QString windowsConfigPath(int type)
     // We can't use QLibrary if there is QT_NO_QOBJECT is defined
     // This only happens when bootstrapping qmake.
 #ifndef Q_OS_WINCE
-    QLibrary library(QLatin1String("shell32"));
+    QSystemLibrary library(QLatin1String("shell32"));
 #else
-    QLibrary library(QLatin1String("coredll"));
+    QSystemLibrary library(QLatin1String("coredll"));
 #endif // Q_OS_WINCE
     typedef BOOL (WINAPI*GetSpecialFolderPath)(HWND, LPWSTR, int, BOOL);
     GetSpecialFolderPath SHGetSpecialFolderPath = (GetSpecialFolderPath)library.resolve("SHGetSpecialFolderPathW");
@@ -1237,16 +1237,21 @@ QConfFileSettingsPrivate::~QConfFileSettingsPrivate()
         if (confFiles[i] && !confFiles[i]->ref.deref()) {
             if (confFiles[i]->size == 0) {
                 delete confFiles[i].take();
-            } else if (unusedCache) {
+            } else {
                 if (usedHash)
                     usedHash->remove(confFiles[i]->name);
-                QT_TRY {
-                    // compute a better size?
-                    unusedCache->insert(confFiles[i]->name, confFiles[i].data(),
-                                    10 + (confFiles[i]->originalKeys.size() / 4));
-                    confFiles[i].take();
-                } QT_CATCH(...) {
-                    // out of memory. Do not cache the file.
+                if (unusedCache) {
+                    QT_TRY {
+                        // compute a better size?
+                        unusedCache->insert(confFiles[i]->name, confFiles[i].data(),
+                                        10 + (confFiles[i]->originalKeys.size() / 4));
+                        confFiles[i].take();
+                    } QT_CATCH(...) {
+                        // out of memory. Do not cache the file.
+                        delete confFiles[i].take();
+                    }
+                } else {
+                    // unusedCache is gone - delete the entry to prevent a memory leak
                     delete confFiles[i].take();
                 }
             }
@@ -3512,7 +3517,7 @@ void QSettings::setPath(Format format, Scope scope, const QString &path)
     \threadsafe
 
     Registers a custom storage format. On success, returns a special
-    Format value that can then be passed to the QSettings constuctor.
+    Format value that can then be passed to the QSettings constructor.
     On failure, returns InvalidFormat.
 
     The \a extension is the file

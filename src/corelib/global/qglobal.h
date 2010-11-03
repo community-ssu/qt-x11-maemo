@@ -44,11 +44,11 @@
 
 #include <stddef.h>
 
-#define QT_VERSION_STR   "4.7.0"
+#define QT_VERSION_STR   "4.7.1"
 /*
    QT_VERSION is (major << 16) + (minor << 8) + patch.
 */
-#define QT_VERSION 0x040700
+#define QT_VERSION 0x040701
 /*
    can be used like #if (QT_VERSION >= QT_VERSION_CHECK(4, 4, 0))
 */
@@ -981,9 +981,11 @@ redefine to built-in booleans to make autotests work properly */
 #  undef QT_DEPRECATED_VARIABLE
 #  undef QT_DEPRECATED_CONSTRUCTOR
 #elif defined(QT_DEPRECATED_WARNINGS)
+#  ifdef QT3_SUPPORT
 /* enable Qt3 support warnings as well */
-#  undef QT3_SUPPORT_WARNINGS
-#  define QT3_SUPPORT_WARNINGS
+#    undef QT3_SUPPORT_WARNINGS
+#    define QT3_SUPPORT_WARNINGS
+#  endif
 #  undef QT_DEPRECATED
 #  define QT_DEPRECATED Q_DECL_DEPRECATED
 #  undef QT_DEPRECATED_VARIABLE
@@ -1048,7 +1050,7 @@ redefine to built-in booleans to make autotests work properly */
 
 #if defined(__i386__) || defined(_WIN32) || defined(_WIN32_WCE)
 #  if defined(Q_CC_GNU)
-#if !defined(Q_CC_INTEL) && ((100*(__GNUC__ - 0) + 10*(__GNUC_MINOR__ - 0) + __GNUC_PATCHLEVEL__) >= 332)
+#if ((100*(__GNUC__ - 0) + 10*(__GNUC_MINOR__ - 0) + __GNUC_PATCHLEVEL__) >= 332)
 #    define QT_FASTCALL __attribute__((regparm(3)))
 #else
 #    define QT_FASTCALL
@@ -1282,6 +1284,11 @@ class QDataStream;
 #    else
 #      define Q_MAEMO5_EXPORT Q_DECL_IMPORT
 #    endif
+#    if defined(QT_BUILD_DBUS_LIB)
+#      define Q_DBUS_EXPORT Q_DECL_EXPORT
+#    else
+#      define Q_DBUS_EXPORT Q_DECL_IMPORT
+#    endif
 #    define Q_TEMPLATEDLL
 #  elif defined(QT_DLL) /* use a Qt DLL library */
 #    define Q_CORE_EXPORT Q_DECL_IMPORT
@@ -1300,6 +1307,7 @@ class QDataStream;
 #    define Q_SCRIPTTOOLS_EXPORT Q_DECL_IMPORT
 #    define Q_COMPAT_EXPORT Q_DECL_IMPORT
 #    define Q_MAEMO5_EXPORT Q_DECL_IMPORT
+#    define Q_DBUS_EXPORT Q_DECL_IMPORT
 #    define Q_TEMPLATEDLL
 #  endif
 #  define Q_NO_DECLARED_NOT_DEFINED
@@ -1329,6 +1337,7 @@ class QDataStream;
 #    define Q_SCRIPTTOOLS_EXPORT Q_DECL_EXPORT
 #    define Q_MAEMO5_EXPORT Q_DECL_EXPORT
 #    define Q_COMPAT_EXPORT Q_DECL_EXPORT
+#    define Q_DBUS_EXPORT Q_DECL_EXPORT
 #  else
 #    define Q_CORE_EXPORT
 #    define Q_GUI_EXPORT
@@ -1344,6 +1353,7 @@ class QDataStream;
 #    define Q_SCRIPTTOOLS_EXPORT
 #    define Q_MAEMO5_EXPORT
 #    define Q_COMPAT_EXPORT
+#    define Q_DBUS_EXPORT
 #  endif
 #endif
 
@@ -1513,7 +1523,7 @@ public:
 #endif
 #ifdef Q_OS_SYMBIAN
     enum SymbianVersion {
-        SV_Unknown = 0x0000,
+        SV_Unknown = 1000000, // Assume unknown is something newer than what is supported
         //These are the Symbian Ltd versions 9.2-9.4
         SV_9_2 = 10,
         SV_9_3 = 20,
@@ -1527,7 +1537,7 @@ public:
     static SymbianVersion symbianVersion();
     enum S60Version {
         SV_S60_None = 0,
-        SV_S60_Unknown = 1,
+        SV_S60_Unknown = SV_Unknown,
         SV_S60_3_1 = SV_9_2,
         SV_S60_3_2 = SV_9_3,
         SV_S60_5_0 = SV_9_4,
@@ -2448,7 +2458,6 @@ QT3_SUPPORT Q_CORE_EXPORT const char *qInstallPathSysconf();
 #  define Q_SYMBIAN_SEMITRANSPARENT_BG_SURFACE
 #endif
 #endif
-
 
 //Symbian does not support data imports from a DLL
 #define Q_NO_DATA_RELOCATION

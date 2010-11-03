@@ -238,6 +238,7 @@ public:
         pendingPolish(0),
         mayHaveChildWithGraphicsEffect(0),
         isDeclarativeItem(0),
+        sendParentChangeNotification(0),
         globalStackingOrder(-1),
         q_ptr(0)
     {
@@ -300,10 +301,10 @@ public:
     QDeclarativeListProperty<QGraphicsObject> childrenList();
     void setParentItemHelper(QGraphicsItem *parent, const QVariant *newParentVariant,
                              const QVariant *thisPointerVariant);
-    void childrenBoundingRectHelper(QTransform *x, QRectF *rect);
+    void childrenBoundingRectHelper(QTransform *x, QRectF *rect, QGraphicsItem *topMostEffectItem);
     void initStyleOption(QStyleOptionGraphicsItem *option, const QTransform &worldTransform,
                          const QRegion &exposedRegion, bool allItems = false) const;
-    QRectF effectiveBoundingRect() const;
+    QRectF effectiveBoundingRect(QGraphicsItem *topMostEffectItem = 0) const;
     QRectF sceneEffectiveBoundingRect() const;
 
     QRectF effectiveBoundingRect(const QRectF &rect) const;
@@ -476,7 +477,7 @@ public:
 
     inline void markParentDirty(bool updateBoundingRect = false);
 
-    void setFocusHelper(Qt::FocusReason focusReason, bool climb, bool focusFromShow);
+    void setFocusHelper(Qt::FocusReason focusReason, bool climb, bool focusFromHide);
     void clearFocusHelper(bool giveFocusToParent);
     void setSubFocus(QGraphicsItem *rootItem = 0);
     void clearSubFocus(QGraphicsItem *rootItem = 0);
@@ -487,6 +488,7 @@ public:
     static void children_append(QDeclarativeListProperty<QGraphicsObject> *list, QGraphicsObject *item);
     static int children_count(QDeclarativeListProperty<QGraphicsObject> *list);
     static QGraphicsObject *children_at(QDeclarativeListProperty<QGraphicsObject> *list, int);
+    static void children_clear(QDeclarativeListProperty<QGraphicsObject> *list);
 
     inline QTransform transformToParent() const;
     inline void ensureSortedChildren();
@@ -583,7 +585,8 @@ public:
     quint32 pendingPolish : 1;
     quint32 mayHaveChildWithGraphicsEffect : 1;
     quint32 isDeclarativeItem : 1;
-    quint32 padding : 23;
+    quint32 sendParentChangeNotification : 1;
+    quint32 padding : 22;
 
     // Optional stacking order
     int globalStackingOrder;
@@ -719,7 +722,7 @@ public:
 
 /*!
     Returns true if \a item1 is on top of \a item2.
-    The items dont need to be siblings.
+    The items don't need to be siblings.
 
     \internal
 */
@@ -773,7 +776,7 @@ inline bool qt_closestItemFirst(const QGraphicsItem *item1, const QGraphicsItem 
 
 /*!
     Returns true if \a item2 is on top of \a item1.
-    The items dont need to be siblings.
+    The items don't need to be siblings.
 
     \internal
 */
@@ -868,9 +871,9 @@ inline void QGraphicsItemPrivate::markParentDirty(bool updateBoundingRect)
 #ifndef QT_NO_GRAPHICSEFFECT
         if (parentp->graphicsEffect) {
             if (updateBoundingRect) {
-                parentp->notifyInvalidated = 1;
                 static_cast<QGraphicsItemEffectSourcePrivate *>(parentp->graphicsEffect->d_func()
                                                                 ->source->d_func())->invalidateCache();
+                parentp->notifyInvalidated = 1;
             }
             if (parentp->scene && parentp->graphicsEffect->isEnabled()) {
                 parentp->dirty = 1;

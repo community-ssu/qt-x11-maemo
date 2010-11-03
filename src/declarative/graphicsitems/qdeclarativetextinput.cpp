@@ -51,10 +51,13 @@
 #include <QFontMetrics>
 #include <QPainter>
 
+#ifndef QT_NO_LINEEDIT
+
 QT_BEGIN_NAMESPACE
 
 /*!
     \qmlclass TextInput QDeclarativeTextInput
+    \ingroup qml-basic-visual-elements
     \since 4.7
     \brief The TextInput item displays an editable line of text.
     \inherits Item
@@ -274,8 +277,10 @@ void QDeclarativeTextInput::setSelectionColor(const QColor &color)
     QPalette p = d->control->palette();
     p.setColor(QPalette::Highlight, d->selectionColor);
     d->control->setPalette(p);
-    clearCache();
-    update();
+    if (d->control->hasSelectedText()) {
+        clearCache();
+        update();
+    }
     emit selectionColorChanged(color);
 }
 
@@ -300,8 +305,10 @@ void QDeclarativeTextInput::setSelectedTextColor(const QColor &color)
     QPalette p = d->control->palette();
     p.setColor(QPalette::HighlightedText, d->selectedTextColor);
     d->control->setPalette(p);
-    clearCache();
-    update();
+    if (d->control->hasSelectedText()) {
+        clearCache();
+        update();
+    }
     emit selectedTextColorChanged(color);
 }
 
@@ -410,7 +417,11 @@ void QDeclarativeTextInput::setCursorVisible(bool on)
         return;
     d->cursorVisible = on;
     d->control->setCursorBlinkPeriod(on?QApplication::cursorFlashTime():0);
-    //d->control should emit the cursor update regions
+    QRect r = d->control->cursorRect();
+    if (d->control->inputMask().isEmpty())
+        updateRect(r);
+    else
+        updateRect();
     emit cursorVisibleChanged(d->cursorVisible);
 }
 
@@ -430,8 +441,6 @@ void QDeclarativeTextInput::setCursorPosition(int cp)
 }
 
 /*!
-  \internal
-
   Returns a Rect which encompasses the cursor, but which may be larger than is
   required. Ignores custom cursor delegates.
 */
@@ -559,6 +568,7 @@ void QDeclarativeTextInput::setAutoScroll(bool b)
 
 /*!
     \qmlclass IntValidator QIntValidator
+    \ingroup qml-basic-visual-elements
 
     This element provides a validator for integer values.
 */
@@ -577,6 +587,7 @@ void QDeclarativeTextInput::setAutoScroll(bool b)
 
 /*!
     \qmlclass DoubleValidator QDoubleValidator
+    \ingroup qml-basic-visual-elements
 
     This element provides a validator for non-integer numbers.
 */
@@ -615,6 +626,7 @@ void QDeclarativeTextInput::setAutoScroll(bool b)
 
 /*!
     \qmlclass RegExpValidator QRegExpValidator
+    \ingroup qml-basic-visual-elements
 
     This element provides a validator, which counts as valid any string which
     matches a specified regular expression.
@@ -643,7 +655,7 @@ void QDeclarativeTextInput::setAutoScroll(bool b)
     input of integers between 11 and 31 into the text input:
 
     \code
-    import Qt 4.7
+    import QtQuick 1.0
     TextInput{
         validator: IntValidator{bottom: 11; top: 31;}
         focus: true
@@ -780,7 +792,7 @@ void QDeclarativeTextInput::setCursorDelegate(QDeclarativeComponent* c)
     d->cursorComponent = c;
     if(!c){
         //note that the components are owned by something else
-        disconnect(d->control, SIGNAL(cursorPositionChanged(int, int)),
+        disconnect(d->control, SIGNAL(cursorPositionChanged(int,int)),
                 this, SLOT(moveCursor()));
         delete d->cursorItem;
     }else{
@@ -793,7 +805,7 @@ void QDeclarativeTextInput::setCursorDelegate(QDeclarativeComponent* c)
 void QDeclarativeTextInputPrivate::startCreatingCursor()
 {
     Q_Q(QDeclarativeTextInput);
-    q->connect(control, SIGNAL(cursorPositionChanged(int, int)),
+    q->connect(control, SIGNAL(cursorPositionChanged(int,int)),
             q, SLOT(moveCursor()));
     if(cursorComponent->isReady()){
         q->createCursor();
@@ -1227,8 +1239,12 @@ void QDeclarativeTextInput::setPasswordCharacter(const QString &str)
     Q_D(QDeclarativeTextInput);
     if(str.length() < 1)
         return;
-    emit passwordCharacterChanged();
     d->control->setPasswordCharacter(str.constData()[0]);
+    EchoMode echoMode_ = echoMode();
+    if (echoMode_ == Password || echoMode_ == PasswordEchoOnEdit) {
+        updateSize();
+    }
+    emit passwordCharacterChanged();
 }
 
 /*!
@@ -1322,7 +1338,7 @@ void QDeclarativeTextInput::moveCursorSelection(int position)
     Only relevant on platforms, which provide virtual keyboards.
 
     \qml
-        import Qt 4.7
+        import QtQuick 1.0
         TextInput {
             id: textInput
             text: "Hello world!"
@@ -1373,7 +1389,7 @@ void QDeclarativeTextInput::openSoftwareInputPanel()
     Only relevant on platforms, which provide virtual keyboards.
 
     \qml
-        import Qt 4.7
+        import QtQuick 1.0
         TextInput {
             id: textInput
             text: "Hello world!"
@@ -1430,7 +1446,7 @@ void QDeclarativeTextInputPrivate::init()
                q, SLOT(cursorPosChanged()));
     q->connect(control, SIGNAL(selectionChanged()),
                q, SLOT(selectionChanged()));
-    q->connect(control, SIGNAL(textChanged(const QString &)),
+    q->connect(control, SIGNAL(textChanged(QString)),
                q, SLOT(q_textChanged()));
     q->connect(control, SIGNAL(accepted()),
                q, SIGNAL(accepted()));
@@ -1448,6 +1464,7 @@ void QDeclarativeTextInputPrivate::init()
 void QDeclarativeTextInput::cursorPosChanged()
 {
     Q_D(QDeclarativeTextInput);
+    d->updateHorizontalScroll();
     updateRect();//TODO: Only update rect between pos's
     updateMicroFocus();
     emit cursorPositionChanged();
@@ -1536,4 +1553,6 @@ void QDeclarativeTextInput::updateSize(bool needsRedraw)
 }
 
 QT_END_NAMESPACE
+
+#endif // QT_NO_LINEEDIT
 

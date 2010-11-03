@@ -34,6 +34,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #include "mediaobject.h"
 
 #include <QDir>
+#include <QResource>
 #include <QUrl>
 
 QT_BEGIN_NAMESPACE
@@ -52,11 +53,16 @@ using namespace Phonon::MMF;
 MMF::MediaObject::MediaObject(QObject *parent) : MMF::MediaNode::MediaNode(parent)
                                                , m_recognizerOpened(false)
                                                , m_nextSourceSet(false)
+                                               , m_file(0)
+                                               , m_resource(0)
 {
     m_player.reset(new DummyPlayer());
 
     TRACE_CONTEXT(MediaObject::MediaObject, EAudioApi);
     TRACE_ENTRY_0();
+
+    const int err = m_fileServer.Connect();
+    QT_TRAP_THROWING(User::LeaveIfError(err));
 
     Q_UNUSED(parent);
 
@@ -68,7 +74,12 @@ MMF::MediaObject::~MediaObject()
     TRACE_CONTEXT(MediaObject::~MediaObject, EAudioApi);
     TRACE_ENTRY_0();
 
-    m_file.Close();
+    delete m_resource;
+
+    if (m_file)
+        m_file->Close();
+    delete m_file;
+
     m_fileServer.Close();
     m_recognizer.Close();
 
@@ -88,12 +99,6 @@ bool MMF::MediaObject::openRecognizer()
         TInt err = m_recognizer.Connect();
         if (KErrNone != err) {
             TRACE("RApaLsSession::Connect error %d", err);
-            return false;
-        }
-
-        err = m_fileServer.Connect();
-        if (KErrNone != err) {
-            TRACE("RFs::Connect error %d", err);
             return false;
         }
 
@@ -119,29 +124,56 @@ MMF::MediaType MMF::MediaObject::fileMediaType
     MediaType result = MediaTypeUnknown;
 
     if (openRecognizer()) {
-
-        const QHBufC fileNameSymbian(QDir::toNativeSeparators(fileName));
-
-        m_file.Close();
-        TInt err = m_file.Open(m_fileServer, *fileNameSymbian, EFileRead | EFileShareReadersOnly);
-
+        TInt err = openFileHandle(fileName);
+        const QHBufC nativeFileName(QDir::toNativeSeparators(fileName));
         if (KErrNone == err) {
             TDataRecognitionResult recognizerResult;
-            err = m_recognizer.RecognizeData(m_file, recognizerResult);
+            err = m_recognizer.RecognizeData(*m_file, recognizerResult);
             if (KErrNone == err) {
                 const TPtrC mimeType = recognizerResult.iDataType.Des();
                 result = Utils::mimeTypeToMediaType(mimeType);
             } else {
-                TRACE("RApaLsSession::RecognizeData filename %S error %d", fileNameSymbian.data(), err);
+                TRACE("RApaLsSession::RecognizeData filename %S error %d", nativeFileName.data(), err);
             }
         } else {
-            TRACE("RFile::Open filename %S error %d", fileNameSymbian.data(), err);
+            TRACE("RFile::Open filename %S error %d", nativeFileName.data(), err);
         }
     }
 
     return result;
 }
 
+int MMF::MediaObject::openFileHandle(const QString &fileName)
+{
+    TRACE_CONTEXT(MediaObject::openFileHandle, EAudioInternal);
+    const QHBufC nativeFileName(QDir::toNativeSeparators(fileName));
+    TRACE_ENTRY("filename %S", nativeFileName.data());
+    if (m_file)
+        m_file->Close();
+    delete m_file;
+    m_file = 0;
+    m_file = new RFile;
+    TInt err = m_file->Open(m_fileServer, *nativeFileName, EFileRead | EFileShareReadersOrWriters);
+    return err;
+}
+
+MMF::MediaType MMF::MediaObject::bufferMediaType(const uchar *data, qint64 size)
+{
+    TRACE_CONTEXT(MediaObject::bufferMediaType, EAudioInternal);
+    MediaType result = MediaTypeUnknown;
+    if (openRecognizer()) {
+        TDataRecognitionResult recognizerResult;
+        const TPtrC8 des(data, size);
+        const TInt err = m_recognizer.RecognizeData(KNullDesC, des, recognizerResult);
+        if (KErrNone == err) {
+            const TPtrC mimeType = recognizerResult.iDataType.Des();
+            result = Utils::mimeTypeToMediaType(mimeType);
+        } else {
+            TRACE("RApaLsSession::RecognizeData error %d", err);
+        }
+    }
+    return result;
+}
 
 //-----------------------------------------------------------------------------
 // MediaObjectInterface
@@ -228,9 +260,17 @@ void MMF::MediaObject::setSource(const MediaSource &source)
 
 void MMF::MediaObject::switchToSource(const MediaSource &source)
 {
+    if (m_file)
+        m_file->Close();
+    delete m_file;
+    m_file = 0;
+
+    delete m_resource;
+    m_resource = 0;
+
     createPlayer(source);
     m_source = source;
-    m_player->open(m_source, m_file);
+    m_player->open();
     emit currentSourceChanged(m_source);
 }
 
@@ -272,8 +312,27 @@ void MMF::MediaObject::createPlayer(const MediaSource &source)
 
     case MediaSource::Invalid:
     case MediaSource::Disc:
-    case MediaSource::Stream:
         errorMessage = tr("Error opening source: type not supported");
+        break;
+
+    case MediaSource::Stream:
+        {
+            const QString fileName = source.url().toLocalFile();
+            if (fileName.startsWith(QLatin1String(":/")) || fileName.startsWith(QLatin1String("qrc://"))) {
+                Q_ASSERT(!m_resource);
+                m_resource = new QResource(fileName);
+                if (m_resource->isValid()) {
+                    if (m_resource->isCompressed())
+                        errorMessage = tr("Error opening source: resource is compressed");
+                    else
+		        mediaType = bufferMediaType(m_resource->data(), m_resource->size());
+		} else {
+                    errorMessage = tr("Error opening source: resource not valid");
+                }
+            } else {
+                errorMessage = tr("Error opening source: type not supported");
+            }
+        }
         break;
 
     case MediaSource::Empty:
@@ -372,6 +431,16 @@ void MMF::MediaObject::setTransitionTime(qint32 time)
 void MMF::MediaObject::volumeChanged(qreal volume)
 {
     m_player->volumeChanged(volume);
+}
+
+RFile* MMF::MediaObject::file() const
+{
+    return m_file;
+}
+
+QResource* MMF::MediaObject::resource() const
+{
+    return m_resource;
 }
 
 //-----------------------------------------------------------------------------

@@ -207,6 +207,7 @@ static inline void qt_socket_setPortAndAddress(SOCKET socketDescriptor, sockaddr
     if (address.protocol() == QAbstractSocket::IPv6Protocol) {
         memset(sockAddrIPv6, 0, sizeof(qt_sockaddr_in6));
         sockAddrIPv6->sin6_family = AF_INET6;
+        sockAddrIPv6->sin6_scope_id = address.scopeId().toInt();
         WSAHtons(socketDescriptor, port, &(sockAddrIPv6->sin6_port));
         Q_IPV6ADDR tmp = address.toIPv6Address();
         memcpy(&(sockAddrIPv6->sin6_addr.qt_s6_addr), &tmp, sizeof(tmp));
@@ -732,7 +733,7 @@ int QNativeSocketEnginePrivate::nativeAccept()
 {
     int acceptedDescriptor = WSAAccept(socketDescriptor, 0,0,0,0);
 	if (acceptedDescriptor != -1 && QAbstractEventDispatcher::instance()) {
-		// Becuase of WSAAsyncSelect() WSAAccept returns a non blocking socket
+		// Because of WSAAsyncSelect() WSAAccept returns a non blocking socket
 		// with the same attributes as the listening socket including the current
 		// WSAAsyncSelect(). To be able to change the socket to blocking mode the
 		// WSAAsyncSelect() call must be cancled.

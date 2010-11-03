@@ -1,5 +1,7 @@
 include(../spectrum.pri)
 
+static: error(This application cannot be statically linked to the fftreal library)
+
 TEMPLATE = app
 
 TARGET = spectrum
@@ -63,7 +65,7 @@ symbian {
             LIBS += -F$${fftreal_dir}
             LIBS += -framework fftreal
         } else {
-            LIBS += -L..
+            LIBS += -L..$${spectrum_build_dir}
             LIBS += -lfftreal
         }
     }
@@ -89,10 +91,8 @@ symbian {
         DEPLOYMENT += fftreal
     }
 } else {
+	DESTDIR = ..$${spectrum_build_dir}
     macx {
-        # Specify directory in which to create spectrum.app bundle
-        DESTDIR = ..
-
         !contains(DEFINES, DISABLE_FFT) {
             # Relocate fftreal.framework into spectrum.app bundle
             framework_dir = ../spectrum.app/Contents/Frameworks
@@ -108,10 +108,7 @@ symbian {
                                   ../spectrum.app/Contents/MacOS/spectrum
         }
     } else {
-        # Specify directory in which to create spectrum application
-        DESTDIR = ..
-
-        unix: {
+        linux-g++*: {
             # Provide relative path from application to fftreal library
             QMAKE_LFLAGS += -Wl,--rpath=\\\$\$ORIGIN
         }

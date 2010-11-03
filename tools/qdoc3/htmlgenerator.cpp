@@ -376,6 +376,7 @@ void HtmlGenerator::generateTree(const Tree *tree, CodeMarker *marker)
     funcIndex.clear();
     legaleseTexts.clear();
     serviceClasses.clear();
+    qmlClasses.clear();
     findAllClasses(tree->root());
     findAllFunctions(tree->root());
     findAllLegaleseTexts(tree->root());
@@ -450,7 +451,7 @@ int HtmlGenerator::generateAtom(const Atom *atom,
 {
     int skipAhead = 0;
     static bool in_para = false;
-	
+
     switch (atom->type()) {
     case Atom::AbstractLeft:
         break;
@@ -526,18 +527,18 @@ int HtmlGenerator::generateAtom(const Atom *atom,
         out() << formattingRightMap()[ATOM_FORMATTING_TELETYPE];
         break;
     case Atom::Code:
-	out() << "<pre class=\"highlightedCode brush: cpp\">"
+        out() << "<pre class=\"highlightedCode brush: cpp\">"
               << trimmedTrailing(highlightedCode(indent(codeIndent,atom->string()),
                                                  marker,relative))
               << "</pre>\n";
-	break;
+        break;
 #ifdef QDOC_QML
     case Atom::Qml:
-	out() << "<pre class=\"highlightedCode brush: cpp\">"
+        out() << "<pre class=\"highlightedCode brush: cpp\">"
               << trimmedTrailing(highlightedCode(indent(codeIndent,atom->string()),
                                                  marker,relative))
               << "</pre>\n";
-	break;
+        break;
 #endif
     case Atom::CodeNew:
         out() << "<p>you can rewrite it as</p>\n"
@@ -553,7 +554,7 @@ int HtmlGenerator::generateAtom(const Atom *atom,
         out() << "<pre class=\"highlightedCode brush: cpp\">"
               << trimmedTrailing(protectEnc(plainCode(indent(codeIndent,atom->string()))))
               << "</pre>\n";
-	break;
+        break;
     case Atom::FootnoteLeft:
         // ### For now
         if (in_para) {
@@ -610,6 +611,9 @@ int HtmlGenerator::generateAtom(const Atom *atom,
         }
         else if (atom->string() == "classes") {
             generateCompactList(relative, marker, nonCompatClasses, true);
+        }
+        else if (atom->string() == "qmlclasses") {
+            generateCompactList(relative, marker, qmlClasses, true);
         }
         else if (atom->string().contains("classesbymodule")) {
             QString arg = atom->string().trimmed();
@@ -923,13 +927,12 @@ int HtmlGenerator::generateAtom(const Atom *atom,
             threeColumnEnumValueTable = isThreeColumnEnumValueTable(atom);
             if (threeColumnEnumValueTable) {
                 out() << "<table class=\"valuelist\">";
-                    //  << "<tr>"
-				if (++numTableRows % 2 == 1)
-					out() << "<tr class=\"odd\">";
-				else
-					out() << "<tr class=\"even\">";
+                if (++numTableRows % 2 == 1)
+                        out() << "<tr class=\"odd\">";
+                else
+                        out() << "<tr class=\"even\">";
 
-					out() << "<tr><th class=\"tblConst\">Constant</th>"
+                out() << "<th class=\"tblConst\">Constant</th>"
                       << "<th class=\"tblval\">Value</th>"
                       << "<th class=\"tbldscr\">Description</th></tr>\n";
             }
@@ -939,10 +942,10 @@ int HtmlGenerator::generateAtom(const Atom *atom,
             }
         }
         else {
-            out() << "<ol type=";
+            out() << "<ol class=";
             if (atom->string() == ATOM_LIST_UPPERALPHA) {
                 out() << "\"A\"";
-            } /* why type? */
+            } /* why type? changed to */
             else if (atom->string() == ATOM_LIST_LOWERALPHA) {
                 out() << "\"a\"";
             }
@@ -1765,8 +1768,6 @@ void HtmlGenerator::generateBreadCrumbs(const QString& title,
             else {
                 QString name = protectEnc("examples-" + sl.at(0) + ".html"); // this generates an empty link
                 QString t = CodeParser::titleFromName(name);
-                out() << "              <li><a href=\"" << name << "\">"
-                      << t << "</a></li>";
             }
             out() << "              <li>" << protectEnc(title) << "</li>";
         }
@@ -1809,44 +1810,44 @@ void HtmlGenerator::generateHeader(const QString& title,
     out() << "  <script src=\"scripts/jquery.js\" type=\"text/javascript\"></script>\n";
     out() << "  <script src=\"scripts/functions.js\" type=\"text/javascript\"></script>\n";
 
-	
-    // Adding syntax highlighter 	// future release
-	
+
+    // Adding syntax highlighter         // future release
+
     // Setting some additional style sheet related details depending on configuration (e.g. Online/Creator)
 
     switch (application) {
     case Online:
     // Adding style and js for small windows
-    out() << "  <script src=\"./scripts/superfish.js\" type=\"text/javascript\"></script>\n";
-    out() << "  <link rel=\"stylesheet\" type=\"text/css\" href=\"style/superfish.css\" />";
-    out() << "  <script src=\"./scripts/narrow.js\" type=\"text/javascript\"></script>\n";
-    out() << "  <link rel=\"stylesheet\" type=\"text/css\" href=\"style/narrow.css\" />\n";	
+        out() << "  <script src=\"./scripts/superfish.js\" type=\"text/javascript\"></script>\n";
+        out() << "  <link rel=\"stylesheet\" type=\"text/css\" href=\"style/superfish.css\" />";
+        out() << "  <script src=\"./scripts/narrow.js\" type=\"text/javascript\"></script>\n";
+        out() << "  <link rel=\"stylesheet\" type=\"text/css\" href=\"style/narrow.css\" />\n";
         // Browser spec styles
-	out() << "  <!--[if IE]>\n";
-	out() << "<meta name=\"MSSmartTagsPreventParsing\" content=\"true\">\n";
-	out() << "<meta http-equiv=\"imagetoolbar\" content=\"no\">\n";
-	out() << "<![endif]-->\n";
-	out() << "<!--[if lt IE 7]>\n";
-	out() << "<link rel=\"stylesheet\" type=\"text/css\" href=\"style/style_ie6.css\">\n";
-	out() << "<![endif]-->\n";
-	out() << "<!--[if IE 7]>\n";
-	out() << "<link rel=\"stylesheet\" type=\"text/css\" href=\"style/style_ie7.css\">\n";
-	out() << "<![endif]-->\n";
-	out() << "<!--[if IE 8]>\n";
-	out() << "<link rel=\"stylesheet\" type=\"text/css\" href=\"style/style_ie8.css\">\n";
-	out() << "<![endif]-->\n";
-		
-	out() << "</head>\n";
-	// CheckEmptyAndLoadList activating search
-	out() << "<body class=\"\" onload=\"CheckEmptyAndLoadList();\">\n";
+        out() << "  <!--[if IE]>\n";
+        out() << "<meta name=\"MSSmartTagsPreventParsing\" content=\"true\">\n";
+        out() << "<meta http-equiv=\"imagetoolbar\" content=\"no\">\n";
+        out() << "<![endif]-->\n";
+        out() << "<!--[if lt IE 7]>\n";
+        out() << "<link rel=\"stylesheet\" type=\"text/css\" href=\"style/style_ie6.css\">\n";
+        out() << "<![endif]-->\n";
+        out() << "<!--[if IE 7]>\n";
+        out() << "<link rel=\"stylesheet\" type=\"text/css\" href=\"style/style_ie7.css\">\n";
+        out() << "<![endif]-->\n";
+        out() << "<!--[if IE 8]>\n";
+        out() << "<link rel=\"stylesheet\" type=\"text/css\" href=\"style/style_ie8.css\">\n";
+        out() << "<![endif]-->\n";
+
+        out() << "</head>\n";
+        // CheckEmptyAndLoadList activating search
+        out() << "<body class=\"\" onload=\"CheckEmptyAndLoadList();\">\n";
         break;
     case Creator:
-	out() << "</head>\n";
-	out() << "<body class=\"offline narrow creator\">\n"; // offline narrow
+        out() << "</head>\n";
+        out() << "<body class=\"offline narrow creator\">\n"; // offline narrow
         break;
     default:
-	out() << "</head>\n";
-	out() << "<body>\n";
+        out() << "</head>\n";
+        out() << "<body>\n";
         break;
     }
 
@@ -1864,68 +1865,13 @@ void HtmlGenerator::generateHeader(const QString& title,
     case Creator:
         out() << QString(creatorPostHeader).replace("\\" + COMMAND_VERSION, myTree->version());
         generateBreadCrumbs(title,node,marker);
-        out() << QString(creatorPostPostHeader).replace("\\" + COMMAND_VERSION, myTree->version());	
+        out() << QString(creatorPostPostHeader).replace("\\" + COMMAND_VERSION, myTree->version());
         break;
     default: // default -- not used except if one forgets to set any of the above settings to true
         out() << QString(creatorPostHeader).replace("\\" + COMMAND_VERSION, myTree->version());
         generateBreadCrumbs(title,node,marker);
         out() << QString(creatorPostPostHeader).replace("\\" + COMMAND_VERSION, myTree->version());
         break;
-    }
-
-        navigationLinks.clear();
-
-    if (node && !node->links().empty()) {
-        QPair<QString,QString> linkPair;
-        QPair<QString,QString> anchorPair;
-        const Node *linkNode;
-
-        if (node->links().contains(Node::PreviousLink)) {
-            linkPair = node->links()[Node::PreviousLink];
-            linkNode = findNodeForTarget(linkPair.first, node, marker);
-            if (!linkNode || linkNode == node)
-                anchorPair = linkPair;
-            else
-                anchorPair = anchorForNode(linkNode);
-
-            out() << "  <link rel=\"prev\" href=\""
-                  << anchorPair.first << "\" />\n";
-
-            navigationLinks += "[Previous: <a href=\"" + anchorPair.first + "\">";
-            if (linkPair.first == linkPair.second && !anchorPair.second.isEmpty())
-                navigationLinks += protect(anchorPair.second);
-            else
-                navigationLinks += protect(linkPair.second);
-            navigationLinks += "</a>]\n";
-        }
-        if (node->links().contains(Node::NextLink)) {
-            linkPair = node->links()[Node::NextLink];
-            linkNode = findNodeForTarget(linkPair.first, node, marker);
-            if (!linkNode || linkNode == node)
-                anchorPair = linkPair;
-            else
-                anchorPair = anchorForNode(linkNode);
-
-            out() << "  <link rel=\"next\" href=\""
-                  << anchorPair.first << "\" />\n";
-
-            navigationLinks += "[Next: <a href=\"" + anchorPair.first + "\">";
-            if (linkPair.first == linkPair.second && !anchorPair.second.isEmpty())
-                navigationLinks += protect(anchorPair.second);
-            else
-                navigationLinks += protect(linkPair.second);
-            navigationLinks += "</a>]\n";
-        }
-        if (node->links().contains(Node::StartLink)) {
-            linkPair = node->links()[Node::StartLink];
-            linkNode = findNodeForTarget(linkPair.first, node, marker);
-            if (!linkNode || linkNode == node)
-                anchorPair = linkPair;
-            else
-                anchorPair = anchorForNode(linkNode);
-            out() << "  <link rel=\"start\" href=\""
-                  << anchorPair.first << "\" />\n";
-        }
     }
 
         navigationLinks.clear();
@@ -1998,8 +1944,8 @@ void HtmlGenerator::generateTitle(const QString& title,
     if (!title.isEmpty())
         out() << "<h1 class=\"title\">" << protectEnc(title) << "</h1>\n";
     if (!subTitle.isEmpty()) {
- 			out() << "<span";
-       if (subTitleSize == SmallSubTitle)
+        out() << "<span";
+        if (subTitleSize == SmallSubTitle)
             out() << " class=\"small-subtitle\">";
         else
             out() << " class=\"subtitle\">";
@@ -2019,7 +1965,7 @@ void HtmlGenerator::generateFooter(const Node *node)
     switch (application) {
     case Online:
         out() << "  <script src=\"scripts/functions.js\" type=\"text/javascript\"></script>\n";
-        out() << "  <!-- <script type=\"text/javascript\">\n";
+        out() << "  <script type=\"text/javascript\">\n";
         out() << "  var _gaq = _gaq || [];\n";
         out() << "  _gaq.push(['_setAccount', 'UA-4457116-5']);\n";
         out() << "  _gaq.push(['_trackPageview']);\n";
@@ -2030,12 +1976,12 @@ void HtmlGenerator::generateFooter(const Node *node)
         out() << "'.google-analytics.com/ga.js';\n";
         out() << "  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);\n";
         out() << "  })();\n";
-        out() << "  </script> -->\n";
+        out() << "  </script>\n";
         out() << "</body>\n";
-	break;
+        break;
     case Creator:
         out() << "</body>\n";
-	break;
+        break;
     default:
         out() << "</body>\n";
     }
@@ -2291,20 +2237,19 @@ void HtmlGenerator::generateNavigationBar(const NavigationBar& bar,
             out() << "</a>]\n";
 #endif
         }
-		if (fake->name() != QString("index.html"))
-			{
-        if (bar.current.begin() != 0) {
-            out() << "[<a href=\"" << "home"
-                  << ".html\">Home</a>]\n";
+        if (fake->name() != QString("index.html")) {
+            if (bar.current.begin() != 0) {
+                out() << "[<a href=\"" << "home"
+                      << ".html\">Home</a>]\n";
+            }
+            if (bar.next.begin() != 0) {
+                out() << "[<a href=\"" << fileBase(node, bar.next)
+                      << ".html\">Next: ";
+                generateText(Text::sectionHeading(bar.next.begin()), node, marker);
+                out() << "</a>]\n";
+            }
+            out() << "</p>\n";
         }
-        if (bar.next.begin() != 0) {
-            out() << "[<a href=\"" << fileBase(node, bar.next)
-                  << ".html\">Next: ";
-            generateText(Text::sectionHeading(bar.next.begin()), node, marker);
-            out() << "</a>]\n";
-        }
-        out() << "</p>\n";
-		}
     }
 }
 #endif
@@ -3336,7 +3281,7 @@ void HtmlGenerator::generateLink(const Atom* atom,
         inLink = false;
         out() << protectEnc(atom->string().mid(k));
     } else if (marker->recognizeLanguage("Java")) {
-	// hack for Java: remove () and use <tt> when appropriate
+        // hack for Java: remove () and use <tt> when appropriate
         bool func = atom->string().endsWith("()");
         bool tt = (func || atom->string().contains(camelCase));
         if (tt)
@@ -3772,6 +3717,12 @@ void HtmlGenerator::findAllClasses(const InnerNode *node)
                 if (!serviceName.isEmpty())
                     serviceClasses.insert(serviceName, *c);
             }
+            else if ((*c)->type() == Node::Fake &&
+                     (*c)->subType() == Node::QmlClass &&
+                     !(*c)->doc().isEmpty()) {
+                QString qmlClassName = (*c)->name();
+                qmlClasses.insert(qmlClassName,*c);
+            }
             else if ((*c)->isInnerNode()) {
                 findAllClasses(static_cast<InnerNode *>(*c));
             }
@@ -4112,7 +4063,7 @@ void HtmlGenerator::generateStatus(const Node *node, CodeMarker *marker)
     switch (node->status()) {
     case Node::Obsolete:
         if (node->isInnerNode())
-	    Generator::generateStatus(node, marker);
+            Generator::generateStatus(node, marker);
         break;
     case Node::Compat:
         if (node->isInnerNode()) {
@@ -4232,36 +4183,16 @@ void HtmlGenerator::generateQmlSummary(const Section& section,
                                        CodeMarker *marker)
 {
     if (!section.members.isEmpty()) {
-        NodeList::ConstIterator m;
-        int count = section.members.size();
-        bool twoColumn = false;
-        if (section.members.first()->type() == Node::QmlProperty) {
-            twoColumn = (count >= 5);
-            twoColumn = false;
-        }
-        if (twoColumn)
-            out() << "<table class=\"qmlsummary\">\n";
-			        if (++numTableRows % 2 == 1)
-				out() << "<tr class=\"odd topAlign\">";
-				else
-				out() << "<tr class=\"even topAlign\">";
-            //      << "<tr><td class=\"topAlign\">";
         out() << "<ul>\n";
-
-        int row = 0;
+        NodeList::ConstIterator m;
         m = section.members.begin();
         while (m != section.members.end()) {
-            if (twoColumn && row == (int) (count + 1) / 2)
-                out() << "</ul></td><td class=\"topAlign\"><ul>\n";
             out() << "<li class=\"fn\">";
             generateQmlItem(*m,relative,marker,true);
             out() << "</li>\n";
-            row++;
             ++m;
         }
         out() << "</ul>\n";
-        if (twoColumn)
-            out() << "</td></tr>\n</table>\n";
     }
 }
 
@@ -4292,7 +4223,7 @@ void HtmlGenerator::generateDetailedQmlMember(const Node *node,
                     out() << "<tr class=\"odd\">";
                 else
                     out() << "<tr class=\"even\">";
-				
+
                 out() << "<td class=\"tblQmlPropNode\"><p>";
 
                 out() << "<a name=\"" + refForNode(qpn) + "\"></a>";
@@ -4303,7 +4234,7 @@ void HtmlGenerator::generateDetailedQmlMember(const Node *node,
                 if (qpgn->isDefault())
                     out() << "<span class=\"qmldefault\">default</span>";
                 generateQmlItem(qpn, relative, marker, false);
-                out() << "</td></tr>";
+                out() << "</p></td></tr>";
             }
             ++p;
         }
@@ -4332,10 +4263,10 @@ void HtmlGenerator::generateDetailedQmlMember(const Node *node,
         out() << "<div class=\"qmlproto\">";
         out() << "<table class=\"qmlname\">";
         //out() << "<tr>";
-		if (++numTableRows % 2 == 1)
-			out() << "<tr class=\"odd\">";
-		else
-			out() << "<tr class=\"even\">";
+        if (++numTableRows % 2 == 1)
+            out() << "<tr class=\"odd\">";
+        else
+            out() << "<tr class=\"even\">";
         out() << "<td class=\"tblQmlFuncNode\"><p>";
         out() << "<a name=\"" + refForNode(qmn) + "\"></a>";
         generateSynopsis(qmn,relative,marker,CodeMarker::Detailed,false);
@@ -4477,57 +4408,103 @@ bool HtmlGenerator::generatePageElement(QXmlStreamWriter& writer,
         return true;
     if (node->access() == Node::Private)
         return false;
-    if (!node->isInnerNode())
-        return false;
 
+    QString guid = QUuid::createUuid().toString();
+    QString url = PageGenerator::fileName(node);
     QString title;
     QString rawTitle;
     QString fullTitle;
-    const InnerNode* inner = static_cast<const InnerNode*>(node);
-        
-    writer.writeStartElement("page");
+    QStringList pageWords;
     QXmlStreamAttributes attributes;
-    QString t;
-    t.setNum(id++);
-    switch (node->type()) {
-    case Node::Fake:
-        {
-            const FakeNode* fake = static_cast<const FakeNode*>(node);
-            title = fake->fullTitle();
+
+    writer.writeStartElement("page");
+
+    if (node->isInnerNode()) {
+        const InnerNode* inner = static_cast<const InnerNode*>(node);
+        if (!inner->pageKeywords().isEmpty())
+            pageWords << inner->pageKeywords();
+
+        switch (node->type()) {
+        case Node::Fake:
+            {
+                const FakeNode* fake = static_cast<const FakeNode*>(node);
+                title = fake->fullTitle();
+                pageWords << title;
+                break;
+            }
+        case Node::Class:
+            {
+                title = node->name() + " Class Reference";
+                pageWords << node->name() << "class" << "reference";
+                break;
+            }
+        case Node::Namespace:
+            {
+                rawTitle = marker->plainName(inner);
+                fullTitle = marker->plainFullName(inner);
+                title = rawTitle + " Namespace Reference";
+                pageWords << rawTitle << "namespace" << "reference";
+                break;
+            }
+        default:
+            title = node->name();
+            pageWords << title;
             break;
         }
-    case Node::Class:
-        {
-            title = node->name() + " Class Reference";
-            break;
-        }
-    case Node::Namespace:
-        {
-            rawTitle = marker->plainName(inner);
-            fullTitle = marker->plainFullName(inner);
-            title = rawTitle + " Namespace Reference";
-            break;
-        }
-    default:
-        title = node->name();
-        break;
     }
-    writer.writeAttribute("id",t);
+    else {
+        switch (node->type()) {
+        case Node::Enum:
+            {
+                title = node->name() + " Enum Reference";
+                pageWords << node->name() << "enum" << "type";
+                url += "#" + node->name() + "-enum";
+                break;
+            }
+        case Node::Function:
+            {
+                title = node->name() + " Function Reference";
+                pageWords << node->name() << "function";
+                url += "#" + node->name();
+                break;
+            }
+        case Node::Property:
+            {
+                title = node->name() + " Property Reference";
+                pageWords << node->name() << "property";
+                url += "#" + node->name() + "-prop";
+                break;
+            }
+        case Node::Typedef:
+            {
+                title = node->name() + " Type Reference";
+                pageWords << node->name() << "typedef" << "type";
+                url += "#" + node->name();
+                break;
+            }
+        default:
+            title = node->name();
+            pageWords << title;
+            break;
+        }
+
+        Node* parent = node->parent();
+        if (parent && ((parent->type() == Node::Class) ||
+                       (parent->type() == Node::Namespace))) {
+            pageWords << parent->name();
+        }
+    }
+
+    writer.writeAttribute("id",guid);
     writer.writeStartElement("pageWords");
-    writer.writeCharacters(title);
-    if (!inner->pageKeywords().isEmpty()) {
-        const QStringList& w = inner->pageKeywords();
-        for (int i = 0; i < w.size(); ++i) {
-            writer.writeCharacters(" ");
-            writer.writeCharacters(w.at(i).toLocal8Bit().constData());
-        }
-    }
+    writer.writeCharacters(pageWords.join(" "));
+
     writer.writeEndElement();
     writer.writeStartElement("pageTitle");
     writer.writeCharacters(title);
     writer.writeEndElement();
     writer.writeStartElement("pageUrl");
-    writer.writeCharacters(PageGenerator::fileName(node));
+    writer.writeCharacters(url);
     writer.writeEndElement();
     writer.writeStartElement("pageType");
     switch (node->pageType()) {
@@ -4545,6 +4522,35 @@ bool HtmlGenerator::generatePageElement(QXmlStreamWriter& writer,
     }
     writer.writeEndElement();
     writer.writeEndElement();
+
+    if (node->type() == Node::Fake && node->doc().hasTableOfContents()) {
+        QList<Atom*> toc = node->doc().tableOfContents();
+        if (!toc.isEmpty()) {
+            for (int i = 0; i < toc.size(); ++i) {
+                Text headingText = Text::sectionHeading(toc.at(i));
+                QString s = headingText.toString();
+                writer.writeStartElement("page");
+                guid = QUuid::createUuid().toString();
+                QString internalUrl = url + "#" + Doc::canonicalTitle(s);
+                writer.writeAttribute("id",guid);
+                writer.writeStartElement("pageWords");
+                writer.writeCharacters(pageWords.join(" "));
+                writer.writeCharacters(" ");
+                writer.writeCharacters(s);
+                writer.writeEndElement();
+                writer.writeStartElement("pageTitle");
+                writer.writeCharacters(s);
+                writer.writeEndElement();
+                writer.writeStartElement("pageUrl");
+                writer.writeCharacters(internalUrl);
+                writer.writeEndElement();
+                writer.writeStartElement("pageType");
+                writer.writeCharacters("Article");
+                writer.writeEndElement();
+                writer.writeEndElement();
+            }
+        }
+    }
     return true;
 }
 

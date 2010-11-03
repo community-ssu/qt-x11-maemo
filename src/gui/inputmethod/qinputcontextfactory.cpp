@@ -73,7 +73,7 @@
 #endif
 #ifdef Q_WS_S60
 #include "qcoefepinputcontext_p.h"
-#include "akninputlanguageinfo.h"
+#include "AknInputLanguageInfo.h"
 #endif
 #ifdef Q_WS_MAEMO_5
 #include "qhildoninputcontext_p.h"
@@ -218,7 +218,7 @@ QStringList QInputContextFactory::keys()
 
     This function contains pure Symbian exception handling code for
     getting S60 language list.
-    Returned object ownership is transfered to caller.
+    Returned object ownership is transferred to caller.
 */
 static CAknInputLanguageList* s60LangListL()
 {
@@ -237,7 +237,7 @@ static CAknInputLanguageList* s60LangListL()
     \internal
 
     This function utility function return S60 language list.
-    Returned object ownership is transfered to caller.
+    Returned object ownership is transferred to caller.
 */
 static CAknInputLanguageList* s60LangList()
 {

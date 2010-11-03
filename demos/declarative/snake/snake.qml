@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-import Qt 4.7
+import QtQuick 1.0
 import "content" as Content
 import "content/snake.js" as Logic
 
@@ -47,6 +47,7 @@ Rectangle {
     id: screen;
     SystemPalette { id: activePalette }
     color: activePalette.window
+    property bool activeGame: false
 
     property int gridSize : 34
     property int margin: 4
@@ -75,6 +76,7 @@ Rectangle {
     Timer {
         id: heartbeat;
         interval: heartbeatInterval;
+        running: activeGame && runtime.isActiveWindow
         repeat: true
         onTriggered: { Logic.move() }
     }
@@ -94,8 +96,17 @@ Rectangle {
     Timer {
         id: startHeartbeatTimer;
         interval: 1000 ;
+        onTriggered: { state = "running"; activeGame = true; }
     }
 
+    Image{
+        id: pauseDialog
+        z: 1
+        source: "content/pics/pause.png"
+        anchors.centerIn: parent;
+        //opacity is deliberately not animated
+        opacity: activeGame && !runtime.isActiveWindow
+    }
 
     Image {
         Image {
@@ -105,7 +116,6 @@ Rectangle {
             anchors.fill: parent
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            Behavior on opacity { NumberAnimation { duration: 500 } }
 
             Text {
                 color: "white"
@@ -217,14 +227,12 @@ Rectangle {
     states: [
         State {
             name: "starting"
-            when: startHeartbeatTimer.running
             PropertyChanges {target: progressIndicator; width: 200}
             PropertyChanges {target: title; opacity: 0}
             PropertyChanges {target: progressBar; opacity: 1}
         },
         State {
             name: "running"
-            when: (heartbeat.running && !startHeartbeatTimer.running)
             PropertyChanges {target: progressIndicator; width: 200}
             PropertyChanges {target: title; opacity: 0}
             PropertyChanges {target: skull; row: 0; column: 0; }
@@ -237,7 +245,10 @@ Rectangle {
             from: "*"
             to: "starting"
             NumberAnimation { target: progressIndicator; property: "width"; duration: 1000 }
-
+            NumberAnimation { target: title; property: "opacity"; duration: 500 }
+        },
+        Transition {
+            NumberAnimation { target: title; property: "opacity"; duration: 500 }
         }
     ]
 

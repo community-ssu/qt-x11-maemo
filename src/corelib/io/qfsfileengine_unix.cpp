@@ -695,7 +695,7 @@ bool QFSFileEnginePrivate::doStat() const
         } else if (fd == -1) {
             // ### actually covers two cases: d->fh and when the file is not open
 #if defined(Q_OS_SYMBIAN)
-            // Optimisation for Symbian where fileFlags() calls both doStat() and isSymlink(), but rarely on real links.
+            // Optimization for Symbian where fileFlags() calls both doStat() and isSymlink(), but rarely on real links.
             // When the filename is not a link, lstat will return the same info as stat, but this also removes
             // any need for a further call to lstat to check if the file is a link.
             need_lstat = false;
@@ -1023,7 +1023,7 @@ QString QFSFileEngine::fileName(FileName file) const
 #if !defined(QWS) && defined(Q_OS_MAC)
         QCFType<CFURLRef> url = CFURLCreateWithFileSystemPath(0, QCFString(d->filePath),
                                                               kCFURLPOSIXPathStyle, true);
-        if (CFDictionaryRef dict = CFBundleCopyInfoDictionaryForURL(url)) {
+        if (QCFType<CFDictionaryRef> dict = CFBundleCopyInfoDictionaryForURL(url)) {
             if (CFTypeRef name = (CFTypeRef)CFDictionaryGetValue(dict, kCFBundleNameKey)) {
                 if (CFGetTypeID(name) == CFStringGetTypeID())
                     return QCFString::toQString((CFStringRef)name);
@@ -1141,7 +1141,7 @@ QString QFSFileEngine::fileName(FileName file) const
                 if (FSResolveAliasFile(&fref, true, &isFolder, &isAlias) == noErr && isAlias) {
                     AliasHandle alias;
                     if (FSNewAlias(0, &fref, &alias) == noErr && alias) {
-                        CFStringRef cfstr;
+                        QCFString cfstr;
                         if (FSCopyAliasInfo(alias, 0, 0, &cfstr, 0, 0) == noErr)
                             return QCFString::toQString(cfstr);
                     }

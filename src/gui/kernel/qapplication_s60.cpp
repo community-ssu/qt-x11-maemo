@@ -152,18 +152,12 @@ void QS60Data::controlVisibilityChanged(CCoeControl *control, bool visible)
                 if (backingStore.data()) {
                     backingStore.registerWidget(widget);
                 } else {
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
-                    S60->wsSession().SendEffectCommand(ETfxCmdRestoreLayer);
-#endif
                     backingStore.create(window);
                     backingStore.registerWidget(widget);
                     qt_widget_private(widget)->invalidateBuffer(widget->rect());
                     widget->repaint();
                 }
             } else {
-#ifdef  SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
-                S60->wsSession().SendEffectCommand(ETfxCmdDeallocateLayer);
-#endif
                 backingStore.unregisterWidget(widget);
                 // In order to ensure that any resources used by the window surface
                 // are immediately freed, we flush the WSERV command buffer.
@@ -673,6 +667,9 @@ void QSymbianControl::HandleStatusPaneSizeChange()
 {
     QS60MainAppUi *s60AppUi = static_cast<QS60MainAppUi *>(S60->appUi());
     s60AppUi->HandleStatusPaneSizeChange();
+    // Send resize event to trigger desktopwidget workAreaResized signal
+    QResizeEvent e(qt_desktopWidget->size(), qt_desktopWidget->size());
+    QApplication::sendEvent(qt_desktopWidget, &e);
 }
 #endif
 
@@ -1113,17 +1110,19 @@ void QSymbianControl::Draw(const TRect& controlRect) const
         CFbsBitmap *bitmap = s60Surface->symbianBitmap();
         CWindowGc &gc = SystemGc();
 
-        switch(qwidget->d_func()->extraData()->nativePaintMode) {
+        QWExtra::NativePaintMode nativePaintMode = qwidget->d_func()->extraData()->nativePaintMode;
+        if(qwidget->d_func()->paintOnScreen())
+            nativePaintMode = QWExtra::Disable;
+
+        switch(nativePaintMode) {
         case QWExtra::Disable:
             // Do nothing
             break;
-
         case QWExtra::Blit:
             if (qwidget->d_func()->isOpaque)
                 gc.SetDrawMode(CGraphicsContext::EDrawModeWriteAlpha);
             gc.BitBlt(controlRect.iTl, bitmap, backingStoreRect);
             break;
-
         case QWExtra::ZeroFill:
             if (Window().DisplayMode() == EColor16MA
                 || Window().DisplayMode() == Q_SYMBIAN_ECOLOR16MAP) {
@@ -1136,7 +1135,6 @@ void QSymbianControl::Draw(const TRect& controlRect) const
                 gc.Clear(controlRect);
             };
             break;
-
         default:
             Q_ASSERT(false);
         }
@@ -1239,25 +1237,37 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
         qwidget->d_func()->setWindowTitle_sys(qwidget->windowTitle());
 #ifdef Q_WS_S60
         // If widget is fullscreen/minimized, hide status pane and button container otherwise show them.
-        const bool visible = !(qwidget->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
+        QWidget *const window = qwidget->window();
+        const bool visible = !(window->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
         const bool statusPaneVisibility = visible;
-        const bool isFullscreen = qwidget->windowState() & Qt::WindowFullScreen;
-        const bool cbaVisibilityHint = qwidget->windowFlags() & Qt::WindowSoftkeysVisibleHint;
+        const bool isFullscreen = window->windowState() & Qt::WindowFullScreen;
+        const bool cbaVisibilityHint = window->windowFlags() & Qt::WindowSoftkeysVisibleHint;
         const bool buttonGroupVisibility = (visible || (isFullscreen && cbaVisibilityHint));
         S60->setStatusPaneAndButtonGroupVisibility(statusPaneVisibility, buttonGroupVisibility);
 #endif
     } else if (QApplication::activeWindow() == qwidget->window()) {
-        if (CCoeEnv::Static()->AppUi()->IsDisplayingMenuOrDialog() || S60->menuBeingConstructed) {
-            QWidget *fw = QApplication::focusWidget();
-            if (fw) {
-                QFocusEvent event(QEvent::FocusOut, Qt::PopupFocusReason);
-                QCoreApplication::sendEvent(fw, &event);
-            }
-            m_symbianPopupIsOpen = true;
-            return;
+        bool focusedControlFound = false;
+        WId winId = 0;
+        for (QWidget *w = qwidget->parentWidget(); w && (winId = w->internalWinId()); w = w->parentWidget()) {
+            if (winId->IsFocused() && winId->IsVisible()) {
+                focusedControlFound = true;
+                break;
+            } else if (w->isWindow())
+                break;
         }
+        if (!focusedControlFound) {
+            if (CCoeEnv::Static()->AppUi()->IsDisplayingMenuOrDialog() || S60->menuBeingConstructed) {
+                QWidget *fw = QApplication::focusWidget();
+                if (fw) {
+                    QFocusEvent event(QEvent::FocusOut, Qt::PopupFocusReason);
+                    QCoreApplication::sendEvent(fw, &event);
+                }
+                m_symbianPopupIsOpen = true;
+                return;
+            }
 
-        QApplication::setActiveWindow(0);
+            QApplication::setActiveWindow(0);
+        }
     }
     // else { We don't touch the active window unless we were explicitly activated or deactivated }
 }
@@ -1329,6 +1339,10 @@ void QSymbianControl::setFocusSafely(bool focus)
     // focus in Symbian. If this is not executed, the control which happens to be on
     // the top of the stack may randomly be assigned focus by Symbian, for example
     // when creating new windows (specifically in CCoeAppUi::HandleStackChanged()).
+
+    // Close any popups.
+    CEikonEnv::Static()->EikAppUi()->StopDisplayingMenuBar();
+
     if (focus) {
         S60->appUi()->RemoveFromStack(this);
         // Symbian doesn't automatically remove focus from the last focused control, so we need to
@@ -1347,6 +1361,11 @@ void QSymbianControl::setFocusSafely(bool focus)
             lastFocusedControl = 0;
         this->SetFocus(false);
     }
+}
+
+bool QSymbianControl::isControlActive()
+{
+    return IsActivated() ? true : false;
 }
 
 /*!
@@ -2036,6 +2055,17 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
         }
 #endif
         break;
+#ifdef Q_SYMBIAN_SUPPORTS_SURFACES
+    case EEventUser:
+        {
+            // GOOM is looking for candidates to kill so indicate that we are
+            // capable of cleaning up by handling this event
+            TInt32 *data = reinterpret_cast<TInt32 *>(event->EventData());
+            if (data[0] == EApaSystemEventShutdown && data[1] == KGoomMemoryLowEvent)
+                return 1;
+        }
+        break;
+#endif
     default:
         break;
     }

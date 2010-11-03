@@ -120,7 +120,7 @@ int QAudioInputPrivate::xrun_recovery(int err)
         if(err < 0)
             reset = true;
         else {
-            bytesAvailable = bytesReady();
+            bytesAvailable = checkBytesReady();
             if (bytesAvailable <= 0)
                 reset = true;
         }
@@ -152,7 +152,7 @@ int QAudioInputPrivate::xrun_recovery(int err)
 
 int QAudioInputPrivate::setFormat()
 {
-    snd_pcm_format_t format = SND_PCM_FORMAT_S16;
+    snd_pcm_format_t format = SND_PCM_FORMAT_UNKNOWN;
 
     if(settings.sampleSize() == 8) {
         format = SND_PCM_FORMAT_U8;
@@ -204,7 +204,9 @@ int QAudioInputPrivate::setFormat()
             format = SND_PCM_FORMAT_FLOAT64_BE;
     }
 
-    return snd_pcm_hw_params_set_format( handle, hwparams, format);
+    return format != SND_PCM_FORMAT_UNKNOWN
+            ? snd_pcm_hw_params_set_format( handle, hwparams, format)
+            : -1;
 }
 
 QIODevice* QAudioInputPrivate::start(QIODevice* device)
@@ -259,9 +261,25 @@ bool QAudioInputPrivate::open()
     elapsedTimeOffset = 0;
 
     int dir;
-    int err=-1;
+    int err = 0;
     int count=0;
     unsigned int freakuency=settings.frequency();
+
+    if (!settings.isValid()) {
+        qWarning("QAudioOutput: open error, invalid format.");
+    } else if (settings.frequency() <= 0) {
+        qWarning("QAudioOutput: open error, invalid sample rate (%d).",
+                 settings.frequency());
+    } else {
+        err = -1;
+    }
+
+    if (err == 0) {
+        errorState = QAudio::OpenError;
+        deviceState = QAudio::StoppedState;
+        return false;
+    }
+
 
     QString dev = QString(QLatin1String(m_device.constData()));
     QList<QByteArray> devices = QAudioDeviceInfoInternal::availableDevices(QAudio::AudioInput);
@@ -408,7 +426,7 @@ bool QAudioInputPrivate::open()
     snd_pcm_start(handle);
 
     // Step 5: Setup timer
-    bytesAvailable = bytesReady();
+    bytesAvailable = checkBytesReady();
 
     if(pullMode)
         connect(audioSource,SIGNAL(readyRead()),this,SLOT(userFeed()));
@@ -437,19 +455,29 @@ void QAudioInputPrivate::close()
     }
 }
 
-int QAudioInputPrivate::bytesReady() const
+int QAudioInputPrivate::checkBytesReady()
 {
     if(resuming)
-        return period_size;
+        bytesAvailable = period_size;
+    else if(deviceState != QAudio::ActiveState
+            && deviceState != QAudio::IdleState)
+        bytesAvailable = 0;
+    else {
+        int frames = snd_pcm_avail_update(handle);
+        if (frames < 0) {
+            bytesAvailable = frames;
+        } else {
+            if((int)frames > (int)buffer_frames)
+                frames = buffer_frames;
+            bytesAvailable = snd_pcm_frames_to_bytes(handle, frames);
+        }
+    }
+    return bytesAvailable;
+}
 
-    if(deviceState != QAudio::ActiveState && deviceState != QAudio::IdleState)
-        return 0;
-    int frames = snd_pcm_avail_update(handle);
-    if (frames < 0) return frames;
-    if((int)frames > (int)buffer_frames)
-        frames = buffer_frames;
-
-    return snd_pcm_frames_to_bytes(handle, frames);
+int QAudioInputPrivate::bytesReady() const
+{
+    return qMax(bytesAvailable, 0);
 }
 
 qint64 QAudioInputPrivate::read(char* data, qint64 len)
@@ -460,12 +488,12 @@ qint64 QAudioInputPrivate::read(char* data, qint64 len)
     if ( !handle )
         return 0;
 
-    bytesAvailable = bytesReady();
+    bytesAvailable = checkBytesReady();
 
     if (bytesAvailable < 0) {
         // bytesAvailable as negative is error code, try to recover from it.
         xrun_recovery(bytesAvailable);
-        bytesAvailable = bytesReady();
+        bytesAvailable = checkBytesReady();
         if (bytesAvailable < 0) {
             // recovery failed must stop and set error.
             close();
@@ -639,10 +667,24 @@ bool QAudioInputPrivate::deviceReady()
         InputPrivate* a = qobject_cast<InputPrivate*>(audioSource);
         a->trigger();
     }
-    bytesAvailable = bytesReady();
+    bytesAvailable = checkBytesReady();
 
     if(deviceState != QAudio::ActiveState)
         return true;
+
+    if (bytesAvailable < 0) {
+        // bytesAvailable as negative is error code, try to recover from it.
+        xrun_recovery(bytesAvailable);
+        bytesAvailable = checkBytesReady();
+        if (bytesAvailable < 0) {
+            // recovery failed must stop and set error.
+            close();
+            errorState = QAudio::IOError;
+            deviceState = QAudio::StoppedState;
+            emit stateChanged(deviceState);
+            return 0;
+        }
+    }
 
     if(intervalTime && (timeStamp.elapsed() + elapsedTimeOffset) > intervalTime) {
         emit notify();

@@ -76,6 +76,7 @@ private slots:
     void check_QTextStream();
     void check_QDataStream();
     void fromRawData();
+    void setRawData();
     void endsWith();
     void startsWith();
     void setNum();
@@ -208,6 +209,7 @@ private slots:
     void repeated_data() const;
     void task262677remove();
     void QTBUG10404_compareRef();
+    void QTBUG9281_arg_locale();
 };
 
 typedef QList<int> IntList;
@@ -2998,7 +3000,9 @@ void tst_QString::fromRawData()
 {
     const QChar ptr[] = { 0x1234, 0x0000 };
     QString cstr = QString::fromRawData(ptr, 1);
+    QVERIFY(cstr.isDetached());
     QVERIFY(cstr.constData() == ptr);
+    QVERIFY(cstr == QString(ptr, 1));
     cstr.squeeze();
     QVERIFY(cstr.constData() == ptr);
     cstr.detach();
@@ -3007,6 +3011,41 @@ void tst_QString::fromRawData()
     QVERIFY(cstr.constData() != ptr);
     QVERIFY(cstr.constData()[0] == QChar(0x1234));
     QVERIFY(cstr.constData()[1] == QChar(0x0000));
+}
+
+void tst_QString::setRawData()
+{
+    const QChar ptr[] = { 0x1234, 0x0000 };
+    const QChar ptr2[] = { 0x4321, 0x0000 };
+    QString cstr;
+
+    // This just tests the fromRawData() fallback
+    QVERIFY(!cstr.isDetached());
+    cstr.setRawData(ptr, 1);
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() == ptr);
+    QVERIFY(cstr == QString(ptr, 1));
+
+    // This actually tests the recycling of the shared data object
+    QString::DataPtr csd = cstr.data_ptr();
+    cstr.setRawData(ptr2, 1);
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() == ptr2);
+    QVERIFY(cstr == QString(ptr2, 1));
+    QVERIFY(cstr.data_ptr() == csd);
+
+    // This tests the discarding of the shared data object
+    cstr = "foo";
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() != ptr2);
+
+    // Another test of the fallback
+    csd = cstr.data_ptr();
+    cstr.setRawData(ptr2, 1);
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() == ptr2);
+    QVERIFY(cstr == QString(ptr2, 1));
+    QVERIFY(cstr.data_ptr() != csd);
 }
 
 void tst_QString::fromStdString()
@@ -4862,6 +4901,17 @@ void tst_QString::QTBUG10404_compareRef()
     QVERIFY(QStringRef(&a2, 1, 2).compare(QStringRef(&a, 1, 3)) < 0);
     QCOMPARE(QStringRef(&a2, 1, 2).compare(QStringRef(&a, 1, 2), Qt::CaseInsensitive), 0);
     QVERIFY(QStringRef(&a2, 1, 2).compare(QStringRef(&a, 1, 3), Qt::CaseInsensitive) < 0);
+}
+
+void tst_QString::QTBUG9281_arg_locale()
+{
+    QLocale l(QLocale::English, QLocale::UnitedKingdom);
+    l.setNumberOptions(QLocale::OmitGroupSeparator);
+    QLocale::setDefault(l);
+    QString str("*%L1*%L2*");
+    str = str.arg(123456).arg(1234.56);
+    QCOMPARE(str, QString::fromLatin1("*123456*1234.56*"));
+    QLocale::setDefault(QLocale::C);
 }
 
 

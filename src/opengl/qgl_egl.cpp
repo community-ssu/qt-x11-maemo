@@ -143,6 +143,7 @@ void qt_glformat_from_eglconfig(QGLFormat& format, const EGLConfig config)
     format.setRgba(true);            // EGL doesn't support colour index rendering
     format.setStereo(false);         // EGL doesn't support stereo buffers
     format.setAccumBufferSize(0);    // EGL doesn't support accululation buffers
+    format.setDoubleBuffer(true);    // We don't support single buffered EGL contexts
 
     // Clear the EGL error state because some of the above may
     // have errored out because the attribute is not applicable
@@ -230,7 +231,7 @@ void QGLContext::swapBuffers() const
 void QGLContextPrivate::destroyEglSurfaceForDevice()
 {
     if (eglSurface != EGL_NO_SURFACE) {
-#ifdef Q_WS_X11
+#if defined(Q_WS_X11) || defined(Q_OS_SYMBIAN)
         // Make sure we don't call eglDestroySurface on a surface which
         // was created for a different winId. This applies only to QGLWidget
         // paint device, so make sure this is the one we're operating on
@@ -240,6 +241,7 @@ void QGLContextPrivate::destroyEglSurfaceForDevice()
             if (QGLWidget *wgl = qobject_cast<QGLWidget *>(w)) {
                 if (wgl->d_func()->eglSurfaceWindowId != wgl->winId()) {
                     qWarning("WARNING: Potential EGL surface leak! Not destroying surface.");
+                    eglSurface = EGL_NO_SURFACE;
                     return;
                 }
             }
@@ -274,12 +276,12 @@ EGLSurface QGLContextPrivate::eglSurfaceForDevice() const
     return eglSurface;
 }
 
-void QGLContextPrivate::swapRegion(const QRegion *region)
+void QGLContextPrivate::swapRegion(const QRegion &region)
 {
     if (!valid || !eglContext)
         return;
 
-    eglContext->swapBuffersRegion2NOK(eglSurfaceForDevice(), region);
+    eglContext->swapBuffersRegion2NOK(eglSurfaceForDevice(), &region);
 }
 
 void QGLWidget::setMouseTracking(bool enable)
