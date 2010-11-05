@@ -295,6 +295,8 @@ private Q_SLOTS:
 
     void getFromUnreachableIp();
 
+    void qtbug4121unknownAuthentication();
+
     // NOTE: This test must be last!
     void parentingRepliesToTheApp();
 };
@@ -3455,11 +3457,11 @@ void tst_QNetworkReply::ioGetFromBuiltinHttp_data()
 {
     QTest::addColumn<bool>("https");
     QTest::addColumn<int>("bufferSize");
-    QTest::newRow("http, no limit") << false << 0;
-    QTest::newRow("http, limited") << false << 4096;
+    QTest::newRow("http+unlimited") << false << 0;
+    QTest::newRow("http+limited") << false << 4096;
 #ifndef QT_NO_OPENSSL
-    QTest::newRow("https, no limit") << true << 0;
-    QTest::newRow("https, limited") << true << 4096;
+    QTest::newRow("https+unlimited") << true << 0;
+    QTest::newRow("https+limited") << true << 4096;
 #endif
 }
 
@@ -3532,6 +3534,7 @@ void tst_QNetworkReply::ioGetFromBuiltinHttp()
         const int allowedDeviation = 16; // TODO find out why the send rate is 13% faster currently
         const int minRate = rate * 1024 * (100-allowedDeviation) / 100;
         const int maxRate = rate * 1024 * (100+allowedDeviation) / 100;
+        qDebug() << minRate << "<="<< server.transferRate << "<=" << maxRate << "?";
         QVERIFY(server.transferRate >= minRate);
         QVERIFY(server.transferRate <= maxRate);
     }
@@ -4598,6 +4601,7 @@ void tst_QNetworkReply::qtbug12908compressedHttpReply()
     QCOMPARE(reply->error(), QNetworkReply::NoError);
 }
 
+// TODO add similar test for FTP
 void tst_QNetworkReply::getFromUnreachableIp()
 {
     QNetworkAccessManager manager;
@@ -4611,6 +4615,35 @@ void tst_QNetworkReply::getFromUnreachableIp()
 
     QVERIFY(reply->error() != QNetworkReply::NoError);
 }
+
+void tst_QNetworkReply::qtbug4121unknownAuthentication()
+{
+    MiniHttpServer server(QByteArray("HTTP/1.1 401 bla\r\nWWW-Authenticate: crap\r\nContent-Length: 0\r\n\r\n"));
+    server.doClose = false;
+
+    QNetworkRequest request(QUrl("http://localhost:" + QString::number(server.serverPort())));
+    QNetworkAccessManager manager;
+    QNetworkReplyPtr reply = manager.get(request);
+
+    qRegisterMetaType<QNetworkReply*>("QNetworkReply*");
+    qRegisterMetaType<QAuthenticator*>("QAuthenticator*");
+    QSignalSpy authSpy(&manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)));
+    QSignalSpy finishedSpy(&manager, SIGNAL(finished(QNetworkReply*)));
+    qRegisterMetaType<QNetworkReply::NetworkError>("QNetworkReply::NetworkError");
+    QSignalSpy errorSpy(reply, SIGNAL(error(QNetworkReply::NetworkError)));
+
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+
+    QCOMPARE(authSpy.count(), 0);
+    QCOMPARE(finishedSpy.count(), 1);
+    QCOMPARE(errorSpy.count(), 1);
+
+    QCOMPARE(reply->error(), QNetworkReply::AuthenticationRequiredError);
+}
+
+
 
 // NOTE: This test must be last testcase in tst_qnetworkreply!
 void tst_QNetworkReply::parentingRepliesToTheApp()

@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the examples of the Qt Toolkit.
+** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:BSD$
 ** You may use this file under the terms of the BSD license as follows:
@@ -38,22 +38,18 @@
 **
 ****************************************************************************/
 
-#include <QtGui/QApplication>
-#include <QtGui/QMainWindow>
+import QtQuick 1.0
 
-#include "bearermonitor.h"
+Rectangle {
+    id: page
+    color: "white"
+    width: 180; height: 180
 
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-
-    QMainWindow mainWindow;
-
-    BearerMonitor monitor;
-
-    mainWindow.setCentralWidget(&monitor);
-    mainWindow.show();
-
-    return app.exec();
+//! [tiled border image]
+BorderImage {
+    width: 180; height: 180
+    border { left: 30; top: 30; right: 30; bottom: 30 }
+    source: "pics/borderframe.png"
 }
-
+//! [tiled border image]
+}

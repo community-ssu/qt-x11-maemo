@@ -232,7 +232,10 @@ void QInputDialogPrivate::ensureLayout()
     QObject::connect(buttonBox, SIGNAL(rejected()), q, SLOT(reject()));
 
     mainLayout = new QVBoxLayout();
+    //we want to let the input dialog grow to available size on Symbian.
+#ifndef Q_OS_SYMBIAN
     mainLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+#endif
     mainLayout->addWidget(label);
     mainLayout->addWidget(inputWidget);
 #ifdef Q_WS_MAEMO_5
@@ -576,6 +579,9 @@ void QInputDialog::setLabelText(const QString &text)
     } else {
         d->label->setText(text);
     }
+#ifdef Q_OS_SYMBIAN
+    d->label->setWordWrap(true);
+#endif
 }
 
 QString QInputDialog::labelText() const
