@@ -3285,9 +3285,10 @@ void tst_QTreeView::task220298_selectColumns()
 void tst_QTreeView::task224091_appendColumns()
 {
     QStandardItemModel *model = new QStandardItemModel();
-    QTreeView *treeView = new QTreeView();
+    QWidget* topLevel= new QWidget;
+    QTreeView *treeView = new QTreeView(topLevel);
     treeView->setModel(model);
-    treeView->show();
+    topLevel->show();
     treeView->resize(50,50);
 
     QTest::qWaitForWindowShown(treeView);
@@ -3304,7 +3305,7 @@ void tst_QTreeView::task224091_appendColumns()
 
     QTRY_VERIFY(treeView->verticalScrollBar()->isVisible());
 
-    delete treeView;
+    delete topLevel;
     delete model;
 }
 

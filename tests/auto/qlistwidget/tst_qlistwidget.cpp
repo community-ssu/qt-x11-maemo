@@ -1499,6 +1499,11 @@ void tst_QListWidget::itemWidget()
 class MyListWidget : public QListWidget
 {
 public:
+    MyListWidget(QWidget *parent=0)
+        : QListWidget(parent)
+        {
+        }
+
     void paintEvent(QPaintEvent *e) {
         painted += e->region();
         QListWidget::paintEvent(e);
@@ -1513,14 +1518,16 @@ void tst_QListWidget::fastScroll()
         QSKIP("S60 style doesn't support fast scrolling", SkipAll);
     }
 
-    MyListWidget widget;
+    QWidget topLevel;
+    MyListWidget widget(&topLevel);
 #ifdef Q_WS_MAEMO_5
     widget.setWindowFlags(widget.windowFlags() | Qt::X11BypassWindowManagerHint);
 #endif
     for (int i = 0; i < 50; ++i)
         widget.addItem(QString("Item %1").arg(i));
 
-    widget.show();
+    topLevel.resize(300, 300); // toplevel needs to be wide enough for the item
+    topLevel.show();
     // Make sure the widget gets the first full repaint. On
     // some WMs, we'll get two (first inactive exposure, then
     // active exposure.
@@ -1537,8 +1544,8 @@ void tst_QListWidget::fastScroll()
     QScrollBar *sbar = widget.verticalScrollBar();
 #ifdef Q_WS_MAEMO_5
     widget.ensurePolished();
-    widget.setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
 #endif
+    widget.setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
     widget.painted = QRegion();
     sbar->setValue(sbar->value() + sbar->singleStep());
     QApplication::processEvents();

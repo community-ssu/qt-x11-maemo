@@ -1234,7 +1234,8 @@ void tst_QSplitter::testShowHide()
 
     QSplitter *split = new QSplitter(Qt::Horizontal);
 
-    QWidget widget;
+    QWidget topLevel;
+    QWidget widget(&topLevel);
     widget.resize(400 + split->handleWidth(), 200);
     QVBoxLayout *lay=new QVBoxLayout(&widget);
     lay->setMargin(0);
@@ -1244,7 +1245,7 @@ void tst_QSplitter::testShowHide()
     split->setSizes(QList<int>() << 200 << 200);
     lay->addWidget(split);
     widget.setLayout(lay);
-    widget.show();
+    topLevel.show();
 
     QTest::qWait(100);
 
@@ -1406,7 +1407,7 @@ void tst_QSplitter::task169702_sizes()
     QTest::qWait(100);
     testW->m_iFactor++;
     testW->updateGeometry();
-    QTest::qWait(500);//100 is too fast for Maemo 5
+    QTest::qWait(500);//100 is too fast for Maemo
 
     //Make sure the minimimSizeHint is respected
     QCOMPARE(testW->size().height(), testW->minimumSizeHint().height());

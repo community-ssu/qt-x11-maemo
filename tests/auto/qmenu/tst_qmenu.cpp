@@ -472,9 +472,9 @@ void tst_QMenu::overrideMenuAction()
 	m->addAction(aQuit);
 
 	w.show();
+    QTest::qWaitForWindowShown(&w);
     QApplication::setActiveWindow(&w);
     w.setFocus();
-    QTest::qWaitForWindowShown(&w);
     QTRY_VERIFY(w.hasFocus());
 
 	//test of the action inside the menu
@@ -510,6 +510,7 @@ void tst_QMenu::statusTip()
 
     w.addToolBar(&tb);
     w.show();
+    QTest::qWaitForWindowShown(&w);
 
     QRect rect1 = tb.actionGeometry(&a);
     QToolButton *btn = qobject_cast<QToolButton*>(tb.childAt(rect1.center()));
@@ -598,6 +599,8 @@ void tst_QMenu::tearOff()
     QVERIFY(menu->isTearOffEnabled());
 
     widget.show();
+    QTest::qWaitForWindowShown(&widget);
+    widget.activateWindow();
     menu->popup(QPoint(0,0));
     QTest::qWait(50);
     QVERIFY(!menu->isTearOffMenuVisible());

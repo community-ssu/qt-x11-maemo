@@ -2822,6 +2822,8 @@ void tst_QGraphicsScene::contextMenuEvent()
 
     QGraphicsView view(&scene);
     view.show();
+    QTest::qWaitForWindowShown(&view);
+    view.activateWindow();
 #ifdef Q_WS_X11
         qt_x11_wait_for_window_manager(&view);
 #endif

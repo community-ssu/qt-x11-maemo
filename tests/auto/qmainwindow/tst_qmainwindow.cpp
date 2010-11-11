@@ -55,6 +55,7 @@
 #include <qtextedit.h>
 #include <private/qmainwindowlayout_p.h>
 #include <private/qdockarealayout_p.h>
+#include "../platformquirks.h"
 
 //TESTED_FILES=
 
@@ -1683,9 +1684,8 @@ void tst_QMainWindow::addToolbarAfterShow()
 
 void tst_QMainWindow::centralWidgetSize()
 {
-#ifdef Q_WS_MAEMO_5
-	QSKIP("All Windows are FullScreen on Maemo5, so the SizeHint will be ignored", SkipAll);;
-#endif
+    if(PlatformQuirks::isAutoMaximizing())
+        QSKIP("The platform is auto maximizing, so the test makes no sense", SkipAll);;
 
     QMainWindow mainWindow;
     mainWindow.menuBar()->addMenu("menu");

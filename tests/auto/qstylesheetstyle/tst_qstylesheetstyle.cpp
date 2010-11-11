@@ -48,6 +48,7 @@
 #endif
 
 #include <private/qstylesheetstyle_p.h>
+#include "../platformquirks.h"
 
 //TESTED_CLASS=
 //TESTED_FILES=
@@ -822,9 +823,8 @@ void tst_QStyleSheetStyle::focusColors()
 
 void tst_QStyleSheetStyle::hoverColors()
 {
-#ifdef Q_WS_MAEMO_5
-    QSKIP("No mouse Cursor on Maemo 5",SkipAll);
-#endif
+    if (!PlatformQuirks::haveMouseCursor())
+        QSKIP("No mouse Cursor on this platform",SkipAll);
     QList<QWidget *> widgets;
     widgets << new QPushButton("TESTING");
     widgets << new QLineEdit("TESTING");

@@ -94,6 +94,8 @@ Q_DECLARE_METATYPE(QRectF)
 #define COMPARE_REGIONS QTRY_COMPARE
 #endif
 
+#include "../platformquirks.h"
+
 static QGraphicsRectItem staticItem; //QTBUG-7629, we should not crash at exit.
 
 static void sendMousePress(QGraphicsScene *scene, const QPointF &point, Qt::MouseButton button = Qt::LeftButton)
@@ -4095,7 +4097,9 @@ void tst_QGraphicsItem::cursor()
         QApplication::sendEvent(view.viewport(), &event);
     }
 
-#if !defined(Q_OS_WINCE) && !defined(Q_WS_MAEMO_5)
+    if (!PlatformQuirks::haveMouseCursor())
+        return;
+#if !defined(Q_OS_WINCE)
     QTest::qWait(250);
 #else
     // Test environment does not have any cursor, therefore no shape
@@ -4960,7 +4964,10 @@ void tst_QGraphicsItem::paint()
 
     QGraphicsView view(&scene);
 
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QApplication::processEvents();
 #ifdef Q_OS_WIN32
@@ -6618,7 +6625,10 @@ void tst_QGraphicsItem::opacity2()
     scene.addItem(parent);
 
     MyGraphicsView view(&scene);
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QTRY_VERIFY(view.repaints >= 1);
 
@@ -7052,6 +7062,7 @@ void tst_QGraphicsItem::tabChangesFocus()
     widget.setLayout(layout);
     widget.show();
     QTest::qWaitForWindowShown(&widget);
+    QTest::qWait(2000);
 
     QTRY_VERIFY(scene.isActive());
 
@@ -7500,6 +7511,7 @@ void tst_QGraphicsItem::update()
     QWidget topLevel;
     MyGraphicsView view(&scene,&topLevel);
 
+    topLevel.resize(300, 300);
     topLevel.show();
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&view);
@@ -7984,9 +7996,9 @@ void tst_QGraphicsItem::sorting_data()
 
 void tst_QGraphicsItem::sorting()
 {
-#ifdef Q_WS_MAEMO_5
-    QSKIP("Test does not work with Maemo window manager", SkipAll);
-#endif
+    if (PlatformQuirks::isAutoMaximizing())
+        QSKIP("Skipped because Platform is auto maximizing", SkipAll);
+
 
     _paintedItems.clear();
 
@@ -8125,6 +8137,7 @@ void tst_QGraphicsItem::hitTestGraphicsEffectItem()
     QWidget toplevel;
 
     QGraphicsView view(&scene, &toplevel);
+    toplevel.resize(300, 300);
     toplevel.show();
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&toplevel);
@@ -10731,7 +10744,10 @@ void tst_QGraphicsItem::QTBUG_6738_missingUpdateWithSetParent()
     scene.addItem(parent);
 
     MyGraphicsView view(&scene);
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QTRY_VERIFY(view.repaints > 0);
 
@@ -10779,7 +10795,10 @@ void tst_QGraphicsItem::QT_2653_fullUpdateDiscardingOpacityUpdate()
     // ItemIgnoresTransformations, ItemClipsChildrenToShape, ItemIsSelectable
     parentGreen->setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
-    view.show();
+    if (PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     view.reset();
 
@@ -10964,7 +10983,10 @@ void tst_QGraphicsItem::doNotMarkFullUpdateIfNotInScene()
     item3->setParentItem(item2);
     item2->setParentItem(item);
     scene.addItem(item);
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QTRY_COMPARE(view.repaints, 1);
     QTRY_COMPARE(item->painted, 1);

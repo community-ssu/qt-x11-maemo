@@ -778,7 +778,6 @@ void tst_QAbstractSlider::wheelEvent_data()
 #endif
                                         << QPoint(0,0);
 #endif
-
     QTest::newRow("Inverted controls")     << 50                            // initial position
                                         << 0                             // minimum
                                         << 100                           // maximum

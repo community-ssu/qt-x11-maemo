@@ -1148,7 +1148,7 @@ void tst_QListView::selection()
     v.resize(525,525);
 #endif
 
-    v.show();
+    topLevel.show();
     QTest::qWaitForWindowShown(&v);
     QApplication::processEvents();
 
@@ -1202,7 +1202,7 @@ void tst_QListView::scrollTo()
     lv.setModel(&model);
     lv.setFixedSize(100, 200);
     topLevel.show();
-    QTest::qWaitForWindowShown(&lv);
+    QTest::qWaitForWindowShown(&topLevel);
     lv.ensurePolished();
     lv.setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
 
@@ -1366,14 +1366,15 @@ void tst_QListView::scrollBarAsNeeded()
 
     const int rowCounts[3] = {0, 1, 20};
 
-    QListView lv;
+    QWidget topLevel;
+    QListView lv(&topLevel);
     lv.setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     lv.setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     lv.setFlow((QListView::Flow)flow);
     QStringListModel model(&lv);
     lv.setModel(&model);
     lv.resize(size);
-    lv.show();
+    topLevel.show();
 
     for (uint r = 0; r < sizeof(rowCounts)/sizeof(int); ++r) {
         QStringList list;
@@ -1643,6 +1644,7 @@ void tst_QListView::task254449_draggingItemToNegativeCoordinates()
     list.setViewMode(QListView::IconMode);
     list.show();
     QTest::qWaitForWindowShown(&list);
+    list.activateWindow();
 
     class MyItemDelegate : public QStyledItemDelegate
     {
@@ -1827,7 +1829,8 @@ void tst_QListView::taskQTBUG_2233_scrollHiddenItems()
     QFETCH(int, flow);
     const int rowCount = 200;
 
-    QListView view;
+    QWidget topLevel;
+    QListView view(&topLevel);
 #ifdef Q_WS_MAEMO_5
     view.setWindowFlags(view.windowFlags() | Qt::X11BypassWindowManagerHint);
 #endif
@@ -1854,8 +1857,8 @@ void tst_QListView::taskQTBUG_2233_scrollHiddenItems()
     }
 
     //QTBUG-7929  should not crash
-    view.show();
-    QTest::qWaitForWindowShown(&view);
+    topLevel.show();
+    QTest::qWaitForWindowShown(&topLevel);
 #ifdef Q_WS_MAEMO_5
     view.ensurePolished();
     view.setHorizontalScrollMode(QAbstractItemView::ScrollPerItem);

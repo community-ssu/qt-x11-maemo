@@ -69,8 +69,10 @@
 #include <QtGui/QStyle>
 #include <QtGui/QPushButton>
 #include <QtGui/QInputContext>
+#include <QtGui/QDesktopWidget>
 #include <private/qgraphicsview_p.h>
 #include "../../shared/util.h"
+#include "../platformquirks.h"
 
 //TESTED_CLASS=
 //TESTED_FILES=
@@ -400,10 +402,13 @@ void tst_QGraphicsView::interactive()
     scene.addItem(item);
 
     QGraphicsView view(&scene);
+    if (PlatformQuirks::isAutoMaximizing())
+        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
     view.setFixedSize(300, 300);
     QCOMPARE(item->events.size(), 0);
     view.show();
     QTest::qWaitForWindowShown(&view);
+    view.activateWindow();
 
     QApplication::processEvents();
     QTRY_COMPARE(item->events.size(), 1); // activate
@@ -1261,9 +1266,9 @@ void tst_QGraphicsView::fitInView()
     view.setFixedSize(400, 200);
 #endif
 
-#ifdef Q_WS_MAEMO_5
-    view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
-#endif
+    if (PlatformQuirks::isAutoMaximizing())
+        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
+
 
     view.show();
     view.fitInView(scene.itemsBoundingRect(), Qt::IgnoreAspectRatio);
@@ -1444,9 +1449,8 @@ void tst_QGraphicsView::itemsInRect_cosmeticAdjust()
     QGraphicsView view(&scene);
     view.setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, !adjustForAntialiasing);
     view.setRenderHint(QPainter::Antialiasing, adjustForAntialiasing);
-#ifdef Q_WS_MAEMO_5
-    view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
-#endif
+    if (PlatformQuirks::isAutoMaximizing())
+        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
     view.setFrameStyle(0);
     view.resize(300, 300);
     view.show();
@@ -2050,9 +2054,9 @@ void tst_QGraphicsView::cursor()
 #if defined(Q_OS_WINCE)
     QSKIP("Qt/CE does not have regular cursor support", SkipAll);
 #endif
-#if defined(Q_WS_MAEMO_5)
-    QSKIP("Maemo 5 does not have regular cursor support", SkipAll);
-#endif
+    if (PlatformQuirks::haveMouseCursor())
+        QSKIP("The Platform does not have regular cursor support", SkipAll);
+
     QGraphicsScene scene;
     QGraphicsItem *item = scene.addRect(QRectF(-10, -10, 20, 20));
     item->setCursor(Qt::IBeamCursor);
@@ -2080,9 +2084,9 @@ void tst_QGraphicsView::cursor2()
 #if defined(Q_OS_WINCE)
     QSKIP("Qt/CE does not have regular cursor support", SkipAll);
 #endif
-#if defined(Q_WS_MAEMO_5)
-    QSKIP("Maemo 5 does not have regular cursor support", SkipAll);
-#endif
+    if (PlatformQuirks::haveMouseCursor())
+        QSKIP("The Platform does not have regular cursor support", SkipAll);
+
     QGraphicsScene scene;
     QGraphicsItem *item = scene.addRect(QRectF(-10, -10, 20, 20));
     item->setCursor(Qt::IBeamCursor);
@@ -2255,8 +2259,11 @@ void tst_QGraphicsView::viewportUpdateMode()
     scene.setBackgroundBrush(Qt::red);
 
     CustomView view;
-    view.setFixedSize(500, 500);
+    QDesktopWidget desktop;
+    view.setFixedSize(QSize(500, 500).boundedTo(desktop.availableGeometry().size())); // 500 is too big for all common smartphones
     view.setScene(&scene);
+    if(PlatformQuirks::isAutoMaximizing())
+        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
     QCOMPARE(view.viewportUpdateMode(), QGraphicsView::MinimalViewportUpdate);
 
     // Show the view, and initialize our test.
@@ -3761,6 +3768,7 @@ void tst_QGraphicsView::update()
     const bool intersects = updateRect.intersects(viewportRect);
     QGraphicsViewPrivate *viewPrivate = static_cast<QGraphicsViewPrivate *>(qt_widget_private(&view));
     QTRY_COMPARE(viewPrivate->updateRect(updateRect), intersects);
+    QApplication::processEvents();
 
     view.lastUpdateRegions.clear();
     viewPrivate->processPendingUpdates();
@@ -3784,22 +3792,22 @@ void tst_QGraphicsView::update2_data()
     QTest::addColumn<bool>("changedConnected");
 
     // Anti-aliased.
-    QTest::newRow("pen width: 0.0, antialiasing: true") << (qreal)0.0 << true << false;
-    QTest::newRow("pen width: 1.5, antialiasing: true") << (qreal)1.5 << true << false;
-    QTest::newRow("pen width: 2.0, antialiasing: true") << (qreal)2.0 << true << false;
-    QTest::newRow("pen width: 3.0, antialiasing: true") << (qreal)3.0 << true << false;
+    QTest::newRow("pen width: 0.0, antialiasing: true") << qreal(0.0) << true << false;
+    QTest::newRow("pen width: 1.5, antialiasing: true") << qreal(1.5) << true << false;
+    QTest::newRow("pen width: 2.0, antialiasing: true") << qreal(2.0) << true << false;
+    QTest::newRow("pen width: 3.0, antialiasing: true") << qreal(3.0) << true << false;
 
     // Aliased.
-    QTest::newRow("pen width: 0.0, antialiasing: false") << (qreal)0.0 << false << false;
-    QTest::newRow("pen width: 1.5, antialiasing: false") << (qreal)1.5 << false << false;
-    QTest::newRow("pen width: 2.0, antialiasing: false") << (qreal)2.0 << false << false;
-    QTest::newRow("pen width: 3.0, antialiasing: false") << (qreal)3.0 << false << false;
+    QTest::newRow("pen width: 0.0, antialiasing: false") << qreal(0.0) << false << false;
+    QTest::newRow("pen width: 1.5, antialiasing: false") << qreal(1.5) << false << false;
+    QTest::newRow("pen width: 2.0, antialiasing: false") << qreal(2.0) << false << false;
+    QTest::newRow("pen width: 3.0, antialiasing: false") << qreal(3.0) << false << false;
 
     // changed() connected
-    QTest::newRow("pen width: 0.0, antialiasing: false, changed") << 0.0 << false << true;
-    QTest::newRow("pen width: 1.5, antialiasing: true, changed") << 1.5 << true << true;
-    QTest::newRow("pen width: 2.0, antialiasing: false, changed") << 2.0 << false << true;
-    QTest::newRow("pen width: 3.0, antialiasing: true, changed") << 3.0 << true << true;
+    QTest::newRow("pen width: 0.0, antialiasing: false, changed") << qreal(0.0) << false << true;
+    QTest::newRow("pen width: 1.5, antialiasing: true, changed") << qreal(1.5) << true << true;
+    QTest::newRow("pen width: 2.0, antialiasing: false, changed") << qreal(2.0) << false << true;
+    QTest::newRow("pen width: 3.0, antialiasing: true, changed") << qreal(3.0) << true << true;
 }
 
 void tst_QGraphicsView::update2()
@@ -4377,6 +4385,9 @@ void tst_QGraphicsView::QTBUG_4151_clipAndIgnore()
     view.setFrameStyle(0);
     view.resize(75, 75);
     view.show();
+    QTest::qWaitForWindowShown(&view);
+    view.activateWindow();
+
     QTRY_COMPARE(QApplication::activeWindow(), (QWidget *)&view);
 
     QCOMPARE(view.items(view.rect()).size(), numItems);
@@ -4410,9 +4421,9 @@ void tst_QGraphicsView::QTBUG_5859_exposedRect()
     scene.addItem(&item);
 
     QGraphicsView view(&scene);
-#ifdef Q_WS_MAEMO_5
-    view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
-#endif
+    if (PlatformQuirks::isAutoMaximizing())
+        view.setWindowFlags(view.windowFlags()|Qt::X11BypassWindowManagerHint);
+
     view.scale(4.15, 4.15);
     view.show();
     QTest::qWaitForWindowShown(&view);

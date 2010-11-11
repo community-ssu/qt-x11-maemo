@@ -52,6 +52,7 @@
 #include <QStyleFactory>
 
 #include "../../shared/util.h"
+#include "../platformquirks.h"
 
 //TESTED_CLASS=
 //TESTED_FILES=gui/kernel/qlayout.cpp gui/kernel/qlayout.h
@@ -678,6 +679,8 @@ void tst_QGridLayout::spacingsAndMargins()
 
     QApplication::setStyle(new Qt42Style);
     QWidget toplevel;
+    if(PlatformQuirks::isAutoMaximizing())
+        toplevel.setWindowFlags(Qt::X11BypassWindowManagerHint);
     QVBoxLayout vbox(&toplevel);
     QGridLayout grid1;
     vbox.addLayout(&grid1);
@@ -1482,7 +1485,7 @@ void tst_QGridLayout::layoutSpacingImplementation()
     widget->setParent(&toplevel);
     widget->resize(widget->sizeHint());
     toplevel.show();
-#if defined(Q_WS_X11)
+#ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&toplevel);     // wait for the show
 #endif
 
