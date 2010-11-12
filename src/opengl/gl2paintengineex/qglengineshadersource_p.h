@@ -340,8 +340,8 @@ static const char* const qglslImageSrcFragmentShader = "\n\
     uniform   lowp    sampler2D imageTexture; \n\
     lowp vec4 srcPixel() \n\
     { \n"
-#ifdef QT_OPENGL_ES_2
-        // work-around for driver bug
+#ifdef Q_WS_MAEMO_5
+        // work-around for driver bug on the N900
         "return 1.0 * texture2D(imageTexture, textureCoords); \n"
 #else
         "return texture2D(imageTexture, textureCoords); \n"
