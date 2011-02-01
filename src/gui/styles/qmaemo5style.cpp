@@ -259,8 +259,13 @@ void QMaemo5StylePrivate::applyCustomPaletteHash()
 
     qApp->setPalette(gtkWidgetPalette("HildonPannableArea.GtkTreeView"), "QScrollBar");
     qApp->setPalette(gtkWidgetPalette("HildonPannableArea.GtkTreeView"), "QAbstractScrollArea");
-    qApp->setPalette(gtkWidgetPalette("HildonNote-information-theme.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme"),
-        "QMaemo5InformationBox");
+    if(qApp->desktop()->screenGeometry().width() < qApp->desktop()->screenGeometry().height()) {
+        qApp->setPalette(gtkWidgetPalette("HildonNote-information-theme-portrait.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme"),
+            "QMaemo5InformationBox");
+    } else {
+        qApp->setPalette(gtkWidgetPalette("HildonNote-information-theme.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme"),
+            "QMaemo5InformationBox");
+    }
 }
 
 void QMaemo5StylePrivate::initGtkWidgets() const
