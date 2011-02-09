@@ -127,7 +127,7 @@ static bool openDocument(const QUrl &url)
     else if ((!X11 || (X11->desktopEnvironment == DE_KDE)) && launch(url, QLatin1String("kfmclient exec")))
         return true;
 #ifdef Q_WS_MAEMO_5
-    else if (X11->desktopEnvironment == DE_MAEMO5 && maemo5Launch(url))
+    else if ((!X11 || (X11->desktopEnvironment == DE_MAEMO5)) && maemo5Launch(url))
         return true;
 #endif
 
@@ -164,7 +164,7 @@ static bool launchWebBrowser(const QUrl &url)
     else if ((!X11 || (X11->desktopEnvironment == DE_KDE)) && launch(url, QLatin1String("kfmclient openURL")))
         return true;
 #ifdef Q_WS_MAEMO_5
-    else if (X11->desktopEnvironment == DE_MAEMO5 && maemo5Launch(url))
+    else if ((!X11 || (X11->desktopEnvironment == DE_MAEMO5)) && maemo5Launch(url))
         return true;
 #endif
 
