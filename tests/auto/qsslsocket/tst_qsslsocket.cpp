@@ -183,7 +183,6 @@ private slots:
     void ignoreSslErrorsListWithSlot();
     void readFromClosedSocket();
     void writeBigChunk();
-    void blacklist();
     void setEmptyDefaultConfiguration();
 
     static void exitLoop()
@@ -532,6 +531,8 @@ void tst_QSslSocket::sslErrors()
 
     QSslSocketPtr socket = newSocket();
     socket->connectToHostEncrypted(host, port);
+    if (!socket->waitForConnected())
+        QEXPECT_FAIL("imap.trolltech.com", "server not open to internet", Continue);
     socket->waitForEncrypted(5000);
 
     SslErrorList output;
@@ -649,7 +650,7 @@ void tst_QSslSocket::sessionCipher()
     connect(socket, SIGNAL(sslErrors(QList<QSslError>)), this, SLOT(ignoreErrorSlot()));
     QVERIFY(socket->sessionCipher().isNull());
     socket->connectToHost(QtNetworkSettings::serverName(), 443 /* https */);
-    QVERIFY(socket->waitForConnected(5000));
+    QVERIFY(socket->waitForConnected(10000));
     QVERIFY(socket->sessionCipher().isNull());
     socket->startClientEncryption();
     QVERIFY(socket->waitForEncrypted(5000));
@@ -683,7 +684,7 @@ void tst_QSslSocket::localCertificate()
     socket->setPrivateKey(QLatin1String(SRCDIR "certs/fluke.key"));
 
     socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
-    QVERIFY(socket->waitForEncrypted(5000));
+    QVERIFY(socket->waitForEncrypted(10000));
 }
 
 void tst_QSslSocket::mode()
@@ -867,13 +868,8 @@ class SslServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    SslServer(const QString &keyFile = SRCDIR "certs/fluke.key", const QString &certFile = SRCDIR "certs/fluke.cert")
-        : socket(0),
-          m_keyFile(keyFile),
-          m_certFile(certFile) { }
+    SslServer() : socket(0) { }
     QSslSocket *socket;
-    QString m_keyFile;
-    QString m_certFile;
 
 protected:
     void incomingConnection(int socketDescriptor)
@@ -881,13 +877,13 @@ protected:
         socket = new QSslSocket(this);
         connect(socket, SIGNAL(sslErrors(const QList<QSslError> &)), this, SLOT(ignoreErrorSlot()));
 
-        QFile file(m_keyFile);
+        QFile file(SRCDIR "certs/fluke.key");
         QVERIFY(file.open(QIODevice::ReadOnly));
         QSslKey key(file.readAll(), QSsl::Rsa, QSsl::Pem, QSsl::PrivateKey);
         QVERIFY(!key.isNull());
         socket->setPrivateKey(key);
 
-        QList<QSslCertificate> localCert = QSslCertificate::fromPath(m_certFile);
+        QList<QSslCertificate> localCert = QSslCertificate::fromPath(SRCDIR "certs/fluke.cert");
         QVERIFY(!localCert.isEmpty());
         QVERIFY(localCert.first().handle());
         socket->setLocalCertificate(localCert.first());
@@ -1612,7 +1608,7 @@ void tst_QSslSocket::disconnectFromHostWhenConnecting()
     QCOMPARE(state, socket->state());
     QVERIFY(socket->state() == QAbstractSocket::HostLookupState ||
             socket->state() == QAbstractSocket::ConnectingState);
-    QVERIFY(socket->waitForDisconnected(5000));
+    QVERIFY(socket->waitForDisconnected(10000));
     QCOMPARE(socket->state(), QAbstractSocket::UnconnectedState);
     // we did not call close, so the socket must be still open
     QVERIFY(socket->isOpen());
@@ -1839,37 +1835,6 @@ void tst_QSslSocket::writeBigChunk()
     QVERIFY(socket->bytesToWrite() == 0);
 
     socket->close();
-}
-
-void tst_QSslSocket::blacklist()
-{
-    QFETCH_GLOBAL(bool, setProxy);
-    if (setProxy)
-        return;
-
-    SslServer server(SRCDIR "certs/fake-login.live.com.key", SRCDIR "certs/fake-login.live.com.pem");
-    QSslSocket *receiver = new QSslSocket(this);
-    connect(receiver, SIGNAL(readyRead()), SLOT(exitLoop()));
-
-    // connect two sockets to each other:
-    QVERIFY(server.listen(QHostAddress::LocalHost));
-    receiver->connectToHost("127.0.0.1", server.serverPort());
-    QVERIFY(receiver->waitForConnected(5000));
-    QVERIFY(server.waitForNewConnection(0));
-
-    QSslSocket *sender = server.socket;
-    QVERIFY(sender);
-    QVERIFY(sender->state() == QAbstractSocket::ConnectedState);
-    receiver->setObjectName("receiver");
-    sender->setObjectName("sender");
-    receiver->ignoreSslErrors();
-    receiver->startClientEncryption();
-
-    connect(receiver, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(exitLoop()));
-    connect(receiver, SIGNAL(encrypted()), SLOT(exitLoop()));
-    enterLoop(1);
-    QCOMPARE(receiver->error(), QAbstractSocket::SslHandshakeFailedError);
-    QCOMPARE(receiver->errorString(), QString("The peer certificate is blacklisted"));
 }
 
 void tst_QSslSocket::setEmptyDefaultConfiguration()
