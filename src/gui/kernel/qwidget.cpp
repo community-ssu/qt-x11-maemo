@@ -10857,6 +10857,7 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
             d->registerTouchWindow();
 #endif
         break;
+#ifndef Q_WS_MAEMO_5
     case Qt::WA_LockPortraitOrientation:
     case Qt::WA_LockLandscapeOrientation:
     case Qt::WA_AutoOrientation: {
@@ -10893,6 +10894,7 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
 #endif
         break;
     }
+#endif
     default:
         break;
     }
