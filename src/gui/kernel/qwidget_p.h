@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -226,6 +226,7 @@ struct QTLWExtra {
 #endif
 #elif defined(Q_OS_SYMBIAN)
     uint inExpose : 1; // Prevents drawing recursion
+    uint nativeWindowTransparencyEnabled : 1; // Tracks native window transparency
 #endif
 };
 
@@ -558,6 +559,7 @@ public:
     // sub-classes that their internals are about to be released.
     virtual void aboutToDestroy() {}
 
+    QInputContext *assignedInputContext() const;
     QInputContext *inputContext() const;
     inline QWidget *effectiveFocusWidget() {
         QWidget *w = q_func();
@@ -769,6 +771,8 @@ public:
 #  if defined(Q_WS_MAEMO_5)
     void maemo5ShowProgressIndicator(bool on);
 #  endif
+    QPoint mapToGlobal(const QPoint &pos) const;
+    QPoint mapFromGlobal(const QPoint &pos) const;
 #elif defined(Q_WS_WIN) // <--------------------------------------------------------- WIN
     uint noPaintOnScreen : 1; // see qwidget_win.cpp ::paintEngine()
 #ifndef QT_NO_GESTURES

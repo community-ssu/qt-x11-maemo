@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -602,6 +602,15 @@ QAbstractItemView::QAbstractItemView(QAbstractItemViewPrivate &dd, QWidget *pare
 */
 QAbstractItemView::~QAbstractItemView()
 {
+    Q_D(QAbstractItemView);
+    // stop these timers here before ~QObject
+    d->delayedReset.stop();
+    d->updateTimer.stop();
+    d->delayedEditing.stop();
+    d->delayedAutoScroll.stop();
+    d->autoScrollTimer.stop();
+    d->delayedLayout.stop();
+    d->fetchMoreTimer.stop();
 }
 
 /*!
@@ -620,9 +629,9 @@ QAbstractItemView::~QAbstractItemView()
     deleteLater() functions to explicitly delete them.
 
     The view \e{does not} take ownership of the model unless it is the model's
-    parent object because the view may be shared between many different views.
+    parent object because the model may be shared between many different views.
 
-  \sa selectionModel(), setSelectionModel()
+    \sa selectionModel(), setSelectionModel()
 */
 void QAbstractItemView::setModel(QAbstractItemModel *model)
 {
@@ -834,7 +843,7 @@ QVariant QAbstractItemView::inputMethodQuery(Qt::InputMethodQuery query) const
     deleted. QAbstractItemView does not take ownership of \a delegate.
 
     \note If a delegate has been assigned to both a row and a column, the row
-    delegate (i.e., this delegate) will take presedence and manage the
+    delegate (i.e., this delegate) will take precedence and manage the
     intersecting cell index.
 
     \warning You should not share the same instance of a delegate between views.
@@ -892,7 +901,7 @@ QAbstractItemDelegate *QAbstractItemView::itemDelegateForRow(int row) const
     deleted. QAbstractItemView does not take ownership of \a delegate.
 
     \note If a delegate has been assigned to both a row and a column, the row
-    delegate will take presedence and manage the intersecting cell index.
+    delegate will take precedence and manage the intersecting cell index.
 
     \warning You should not share the same instance of a delegate between views.
     Doing so can cause incorrect or unintuitive editing behavior since each

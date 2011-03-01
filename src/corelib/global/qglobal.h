@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -44,11 +44,11 @@
 
 #include <stddef.h>
 
-#define QT_VERSION_STR   "4.7.1"
+#define QT_VERSION_STR   "4.7.2"
 /*
    QT_VERSION is (major << 16) + (minor << 8) + patch.
 */
-#define QT_VERSION 0x040701
+#define QT_VERSION 0x040702
 /*
    can be used like #if (QT_VERSION >= QT_VERSION_CHECK(4, 4, 0))
 */
@@ -2454,9 +2454,14 @@ QT3_SUPPORT Q_CORE_EXPORT const char *qInstallPathSysconf();
 #  define QT_SYMBIAN_SUPPORTS_SGIMAGE
 #endif
 
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#ifdef SYMBIAN_GRAPHICS_SET_SURFACE_TRANSPARENCY_AVAILABLE
 #  define Q_SYMBIAN_SEMITRANSPARENT_BG_SURFACE
 #endif
+
+#ifdef SYMBIAN_GRAPHICS_TRANSITION_EFFECTS_SIGNALING_AVAILABLE
+#  define Q_SYMBIAN_TRANSITION_EFFECTS
+#endif
+
 #endif
 
 //Symbian does not support data imports from a DLL

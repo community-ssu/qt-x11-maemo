@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -48,7 +48,8 @@
 QT_BEGIN_NAMESPACE
 
 QDeclarativeLoaderPrivate::QDeclarativeLoaderPrivate()
-    : item(0), component(0), ownComponent(false)
+    : item(0), component(0), ownComponent(false), updatingSize(false),
+      itemWidthValid(false), itemHeightValid(false)
 {
 }
 
@@ -58,8 +59,13 @@ QDeclarativeLoaderPrivate::~QDeclarativeLoaderPrivate()
 
 void QDeclarativeLoaderPrivate::itemGeometryChanged(QDeclarativeItem *resizeItem, const QRectF &newGeometry, const QRectF &oldGeometry)
 {
-    if (resizeItem == item)
+    if (resizeItem == item) {
+        if (!updatingSize && newGeometry.width() != oldGeometry.width())
+            itemWidthValid = true;
+        if (!updatingSize && newGeometry.height() != oldGeometry.height())
+            itemHeightValid = true;
         _q_updateSize(false);
+    }
     QDeclarativeItemChangeListener::itemGeometryChanged(resizeItem, newGeometry, oldGeometry);
 }
 
@@ -99,6 +105,10 @@ void QDeclarativeLoaderPrivate::initResize()
         QDeclarativeItemPrivate *p =
                 static_cast<QDeclarativeItemPrivate *>(QGraphicsItemPrivate::get(qmlItem));
         p->addItemChangeListener(this, QDeclarativeItemPrivate::Geometry);
+        // We may override the item's size, so we need to remember
+        // whether the item provided its own valid size.
+        itemWidthValid = p->widthValid;
+        itemHeightValid = p->heightValid;
     } else if (item && item->isWidget()) {
         QGraphicsWidget *widget = static_cast<QGraphicsWidget*>(item);
         widget->installEventFilter(q);
@@ -129,14 +139,40 @@ void QDeclarativeLoaderPrivate::initResize()
 
     The loaded item can be accessed using the \l item property.
 
-    Loader is like any other visual item and must be positioned and sized 
-    accordingly to become visible. Once the component is loaded, the Loader 
-    is automatically resized to the size of the component.
-
     If the \l source or \l sourceComponent changes, any previously instantiated
     items are destroyed. Setting \l source to an empty string or setting
     \l sourceComponent to \c undefined destroys the currently loaded item,
     freeing resources and leaving the Loader empty.
+
+    \section2 Loader sizing behavior
+
+    Loader is like any other visual item and must be positioned and sized
+    accordingly to become visible.
+
+    \list
+    \o If an explicit size is not specified for the Loader, the Loader
+    is automatically resized to the size of the loaded item once the
+    component is loaded.
+    \o If the size of the Loader is specified explicitly by setting
+    the width, height or by anchoring, the loaded item will be resized
+    to the size of the Loader.
+    \endlist
+
+    In both scenarios the size of the item and the Loader are identical.
+    This ensures that anchoring to the Loader is equivalent to anchoring
+    to the loaded item.
+
+    \table
+    \row
+    \o sizeloader.qml
+    \o sizeitem.qml
+    \row
+    \o \snippet doc/src/snippets/declarative/loader/sizeloader.qml 0
+    \o \snippet doc/src/snippets/declarative/loader/sizeitem.qml 0
+    \row
+    \o The red rectangle will be sized to the size of the root item.
+    \o The red rectangle will be 50x50, centered in the root item.
+    \endtable
 
 
     \section2 Receiving signals from loaded items
@@ -190,7 +226,7 @@ void QDeclarativeLoaderPrivate::initResize()
 */
 
 QDeclarativeLoader::QDeclarativeLoader(QDeclarativeItem *parent)
-  : QDeclarativeItem(*(new QDeclarativeLoaderPrivate), parent)
+  : QDeclarativeImplicitSizeItem(*(new QDeclarativeLoaderPrivate), parent)
 {
     Q_D(QDeclarativeLoader);
     d->flags |= QGraphicsItem::ItemIsFocusScope;
@@ -236,6 +272,7 @@ void QDeclarativeLoader::setSource(const QUrl &url)
     d->clear();
 
     d->source = url;
+
     if (d->source.isEmpty()) {
         emit sourceChanged();
         emit statusChanged();
@@ -246,18 +283,9 @@ void QDeclarativeLoader::setSource(const QUrl &url)
 
     d->component = new QDeclarativeComponent(qmlEngine(this), d->source, this);
     d->ownComponent = true;
-    if (!d->component->isLoading()) {
-        d->_q_sourceLoaded();
-    } else {
-        connect(d->component, SIGNAL(statusChanged(QDeclarativeComponent::Status)),
-                this, SLOT(_q_sourceLoaded()));
-        connect(d->component, SIGNAL(progressChanged(qreal)),
-                this, SIGNAL(progressChanged()));
-        emit statusChanged();
-        emit progressChanged();
-        emit sourceChanged();
-        emit itemChanged();
-    }
+
+    if (isComponentComplete())
+        d->load();
 }
 
 /*!
@@ -298,6 +326,7 @@ void QDeclarativeLoader::setSourceComponent(QDeclarativeComponent *comp)
 
     d->component = comp;
     d->ownComponent = false;
+
     if (!d->component) {
         emit sourceChanged();
         emit statusChanged();
@@ -306,23 +335,34 @@ void QDeclarativeLoader::setSourceComponent(QDeclarativeComponent *comp)
         return;
     }
 
-    if (!d->component->isLoading()) {
-        d->_q_sourceLoaded();
-    } else {
-        connect(d->component, SIGNAL(statusChanged(QDeclarativeComponent::Status)),
-                this, SLOT(_q_sourceLoaded()));
-        connect(d->component, SIGNAL(progressChanged(qreal)),
-                this, SIGNAL(progressChanged()));
-        emit progressChanged();
-        emit sourceChanged();
-        emit statusChanged();
-        emit itemChanged();
-    }
+    if (isComponentComplete())
+        d->load();
 }
 
 void QDeclarativeLoader::resetSourceComponent()
 {
     setSourceComponent(0);
+}
+
+void QDeclarativeLoaderPrivate::load()
+{
+    Q_Q(QDeclarativeLoader);
+
+    if (!q->isComponentComplete() || !component)
+        return;
+
+    if (!component->isLoading()) {
+        _q_sourceLoaded();
+    } else {
+        QObject::connect(component, SIGNAL(statusChanged(QDeclarativeComponent::Status)),
+                q, SLOT(_q_sourceLoaded()));
+        QObject::connect(component, SIGNAL(progressChanged(qreal)),
+                q, SIGNAL(progressChanged()));
+        emit q->statusChanged();
+        emit q->progressChanged();
+        emit q->sourceChanged();
+        emit q->itemChanged();
+    }
 }
 
 void QDeclarativeLoaderPrivate::_q_sourceLoaded()
@@ -343,12 +383,14 @@ void QDeclarativeLoaderPrivate::_q_sourceLoaded()
         QDeclarativeContext *ctxt = new QDeclarativeContext(creationContext);
         ctxt->setContextObject(q);
 
-        QDeclarativeComponent *c = component;
-        QObject *obj = component->create(ctxt);
+        QDeclarativeGuard<QDeclarativeComponent> c = component;
+        QObject *obj = component->beginCreate(ctxt);
         if (component != c) {
             // component->create could trigger a change in source that causes
             // component to be set to something else. In that case we just
             // need to cleanup.
+            if (c)
+                c->completeCreate();
             delete obj;
             delete ctxt;
             return;
@@ -373,6 +415,7 @@ void QDeclarativeLoaderPrivate::_q_sourceLoaded()
             delete ctxt;
             source = QUrl();
         }
+        component->completeCreate();
         emit q->sourceChanged();
         emit q->statusChanged();
         emit q->progressChanged();
@@ -436,9 +479,10 @@ QDeclarativeLoader::Status QDeclarativeLoader::status() const
 
 void QDeclarativeLoader::componentComplete()
 {
+    Q_D(QDeclarativeLoader);
+
     QDeclarativeItem::componentComplete();
-    if (status() == Ready)
-        emit loaded();
+    d->load();
 }
 
 
@@ -475,13 +519,21 @@ qreal QDeclarativeLoader::progress() const
 void QDeclarativeLoaderPrivate::_q_updateSize(bool loaderGeometryChanged)
 {
     Q_Q(QDeclarativeLoader);
-    if (!item)
+    if (!item || updatingSize)
         return;
+
+    updatingSize = true;
     if (QDeclarativeItem *qmlItem = qobject_cast<QDeclarativeItem*>(item)) {
-        q->setImplicitWidth(qmlItem->width());
+        if (!itemWidthValid)
+            q->setImplicitWidth(qmlItem->implicitWidth());
+        else
+            q->setImplicitWidth(qmlItem->width());
         if (loaderGeometryChanged && q->widthValid())
             qmlItem->setWidth(q->width());
-        q->setImplicitHeight(qmlItem->height());
+        if (!itemHeightValid)
+            q->setImplicitHeight(qmlItem->implicitHeight());
+        else
+            q->setImplicitHeight(qmlItem->height());
         if (loaderGeometryChanged && q->heightValid())
             qmlItem->setHeight(q->height());
     } else if (item && item->isWidget()) {
@@ -496,6 +548,7 @@ void QDeclarativeLoaderPrivate::_q_updateSize(bool loaderGeometryChanged)
         if (widget->size() != widgetSize)
             widget->resize(widgetSize);
     }
+    updatingSize = false;
 }
 
 /*!

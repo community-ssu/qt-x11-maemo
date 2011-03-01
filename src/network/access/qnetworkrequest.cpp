@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -529,8 +529,9 @@ QSslConfiguration QNetworkRequest::sslConfiguration() const
 /*!
     Sets this network request's SSL configuration to be \a config. The
     settings that apply are the private key, the local certificate,
-    the SSL protocol (SSLv2, SSLv3, TLSv1 where applicable) and the
-    ciphers that the SSL backend is allowed to use.
+    the SSL protocol (SSLv2, SSLv3, TLSv1 where applicable), the CA
+    certificates and the ciphers that the SSL backend is allowed to
+    use.
 
     By default, no SSL configuration is set, which allows the backends
     to choose freely what configuration is best for them.
@@ -899,10 +900,16 @@ void QNetworkHeadersPrivate::parseAndSetHeader(const QByteArray &key, const QByt
     // is it a known header?
     QNetworkRequest::KnownHeaders parsedKey = parseHeaderName(key);
     if (parsedKey != QNetworkRequest::KnownHeaders(-1)) {
-        if (value.isNull())
+        if (value.isNull()) {
             cookedHeaders.remove(parsedKey);
-        else
+        } else if (parsedKey == QNetworkRequest::ContentLengthHeader
+                 && cookedHeaders.contains(QNetworkRequest::ContentLengthHeader)) {
+            // Only set the cooked header "Content-Length" once.
+            // See bug QTBUG-15311
+        } else {
             cookedHeaders.insert(parsedKey, parseHeaderValue(parsedKey, value));
+        }
+
     }
 }
 

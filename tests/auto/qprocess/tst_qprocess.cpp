@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -249,6 +249,8 @@ void tst_QProcess::constructing()
     char c;
     QCOMPARE(process.read(&c, 1), qlonglong(-1));
     QCOMPARE(process.write(&c, 1), qlonglong(-1));
+
+    QProcess proc2;
 }
 
 void tst_QProcess::simpleStart()
@@ -265,7 +267,7 @@ void tst_QProcess::simpleStart()
     process->start("testProcessNormal/testProcessNormal");
     if (process->state() != QProcess::Starting)
         QCOMPARE(process->state(), QProcess::Running);
-    QVERIFY(process->waitForStarted(5000));
+    QVERIFY2(process->waitForStarted(5000), qPrintable(process->errorString()));
     QCOMPARE(process->state(), QProcess::Running);
 #if defined(Q_OS_WINCE)
     // Note: This actually seems incorrect, it will only exit the while loop when finishing fails
@@ -277,7 +279,7 @@ void tst_QProcess::simpleStart()
     while (process->waitForReadyRead(5000))
     { }
 #endif
-    QCOMPARE(process->state(), QProcess::NotRunning);
+    QCOMPARE(int(process->state()), int(QProcess::NotRunning));
 
     delete process;
     process = 0;
@@ -1999,11 +2001,15 @@ void tst_QProcess::spaceInName()
 void tst_QProcess::lockupsInStartDetached()
 {
 #if !defined(Q_OS_SYMBIAN)
-    // What exactly is this call supposed to achieve anyway?
+    // Check that QProcess doesn't cause a lock up at this program's
+    // exit if a thread was started and we tried to run a program that
+    // doesn't exist. Before Qt 4.2, this used to lock up on Unix due
+    // to calling ::exit instead of ::_exit if execve failed.
+
     QHostInfo::lookupHost(QString("something.invalid"), 0, 0);
-#endif
     QProcess::execute("yjhbrty");
     QProcess::startDetached("yjhbrty");
+#endif
 }
 
 //-----------------------------------------------------------------------------

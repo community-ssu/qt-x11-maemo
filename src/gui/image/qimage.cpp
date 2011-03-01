@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -513,12 +513,12 @@ bool QImageData::checkForAlphaPixels() const
     function. For example:
 
     \table
+    \header
+    \o {2,1}32-bit
     \row
     \o \inlineimage qimage-32bit_scaled.png
     \o
     \snippet doc/src/snippets/code/src_gui_image_qimage.cpp 0
-    \header
-    \o {2,1}32-bit
     \endtable
 
     In case of a 8-bit and monchrome images, the pixel value is only
@@ -534,12 +534,12 @@ bool QImageData::checkForAlphaPixels() const
     example:
 
     \table
+    \header
+    \o {2,1} 8-bit
     \row
     \o \inlineimage qimage-8bit_scaled.png
     \o
     \snippet doc/src/snippets/code/src_gui_image_qimage.cpp 1
-    \header
-    \o {2,1} 8-bit
     \endtable
 
     QImage also provide the scanLine() function which returns a
@@ -1121,9 +1121,14 @@ QImage::QImage(const char * const xpm[])
 QImage::QImage(const QImage &image)
     : QPaintDevice()
 {
-    d = image.d;
-    if (d)
-        d->ref.ref();
+    if (image.paintingActive()) {
+        d = 0;
+        operator=(image.copy());
+    } else {
+        d = image.d;
+        if (d)
+            d->ref.ref();
+    }
 }
 
 #ifdef QT3_SUPPORT
@@ -1320,11 +1325,15 @@ QImage::~QImage()
 
 QImage &QImage::operator=(const QImage &image)
 {
-    if (image.d)
-        image.d->ref.ref();
-    if (d && !d->ref.deref())
-        delete d;
-    d = image.d;
+    if (image.paintingActive()) {
+        operator=(image.copy());
+    } else {
+        if (image.d)
+            image.d->ref.ref();
+        if (d && !d->ref.deref())
+            delete d;
+        d = image.d;
+    }
     return *this;
 }
 

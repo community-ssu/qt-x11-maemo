@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -83,12 +83,17 @@ public:
 
     inline void setPaintEnginePrivate(QGL2PaintEngineExPrivate *p) { pex = p; }
 
+    inline int serialNumber() const { return m_serialNumber; }
+
     enum FilterMode {
         Nearest,
         Linear
     };
     FilterMode filterMode() const { return m_filterMode; }
     void setFilterMode(FilterMode m) { m_filterMode = m; }
+
+    void setContext(QGLContext *context);
+    QGLContext *context() const { return ctx; }
 
 public Q_SLOTS:
     void contextDestroyed(const QGLContext *context) {
@@ -98,10 +103,20 @@ public Q_SLOTS:
                 // the context may not be current, so we cannot directly
                 // destroy the fbo and texture here, but since the context
                 // is about to be destroyed, the GL server will do the
-                // clean up for us anyway
+                // clean up for us anyway. We reset everything, so that the
+                // glyph cache object can be reused later by setting a new
+                // context on it.
                 m_fbo = 0;
                 m_texture = 0;
                 ctx = 0;
+                m_width = 0;
+                m_height = 0;
+                m_w = 0;
+                m_h = 0;
+                m_cx = 0;
+                m_cy = 0;
+                m_currentRowHeight = 0;
+                coords.clear();
             } else {
                 // since the context holding the texture is shared, and
                 // about to be destroyed, we have to transfer ownership
@@ -110,6 +125,8 @@ public Q_SLOTS:
             }
         }
     }
+
+    void clear();
 
 private:
     QGLContext *ctx;
@@ -125,6 +142,7 @@ private:
     QGLShaderProgram *m_program;
 
     FilterMode m_filterMode;
+    int m_serialNumber;
 };
 
 QT_END_NAMESPACE

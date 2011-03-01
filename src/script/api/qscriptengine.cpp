@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -858,7 +858,8 @@ JSC::JSValue JSC_HOST_CALL functionQsTr(JSC::ExecState *exec, JSC::JSObject*, JS
     {
         JSC::ExecState *frame = exec->callerFrame()->removeHostCallFrameFlag();
         while (frame) {
-            if (frame->codeBlock() && frame->codeBlock()->source()
+            if (frame->codeBlock() && QScriptEnginePrivate::hasValidCodeBlockRegister(frame)
+                && frame->codeBlock()->source()
                 && !frame->codeBlock()->source()->url().isEmpty()) {
                 context = engine->translationContextFromUrl(frame->codeBlock()->source()->url());
                 break;
@@ -954,8 +955,11 @@ static QScriptValue __setupPackage__(QScriptContext *ctx, QScriptEngine *eng)
 } // namespace QScript
 
 QScriptEnginePrivate::QScriptEnginePrivate()
-    : registeredScriptValues(0), freeScriptValues(0), freeScriptValuesCount(0),
-      registeredScriptStrings(0), inEval(false)
+    : originalGlobalObjectProxy(0), currentFrame(0),
+      qobjectPrototype(0), qmetaobjectPrototype(0), variantPrototype(0),
+      activeAgent(0), agentLineNumber(-1),
+      registeredScriptValues(0), freeScriptValues(0), freeScriptValuesCount(0),
+      registeredScriptStrings(0), processEventsInterval(-1), inEval(false)
 {
     qMetaTypeId<QScriptValue>();
     qMetaTypeId<QList<int> >();
@@ -1001,10 +1005,6 @@ QScriptEnginePrivate::QScriptEnginePrivate()
 
     currentFrame = exec;
 
-    originalGlobalObjectProxy = 0;
-    activeAgent = 0;
-    agentLineNumber = -1;
-    processEventsInterval = -1;
     cachedTranslationUrl = JSC::UString();
     cachedTranslationContext = JSC::UString();
     JSC::setCurrentIdentifierTable(oldTable);
@@ -1022,6 +1022,7 @@ QScriptEnginePrivate::~QScriptEnginePrivate()
     while (!ownedAgents.isEmpty())
         delete ownedAgents.takeFirst();
 
+    detachAllRegisteredScriptPrograms();
     detachAllRegisteredScriptValues();
     detachAllRegisteredScriptStrings();
     qDeleteAll(m_qobjectData);
@@ -1251,10 +1252,12 @@ void QScriptEnginePrivate::mark(JSC::MarkStack& markStack)
 {
     Q_Q(QScriptEngine);
 
-    markStack.append(originalGlobalObject());
-    markStack.append(globalObject());
-    if (originalGlobalObjectProxy)
-        markStack.append(originalGlobalObjectProxy);
+    if (originalGlobalObject()) {
+        markStack.append(originalGlobalObject());
+        markStack.append(globalObject());
+        if (originalGlobalObjectProxy)
+            markStack.append(originalGlobalObjectProxy);
+    }
 
     if (qobjectPrototype)
         markStack.append(qobjectPrototype);
@@ -1279,7 +1282,7 @@ void QScriptEnginePrivate::mark(JSC::MarkStack& markStack)
         }
     }
 
-    {
+    if (q) {
         QScriptContext *context = q->currentContext();
 
         while (context) {
@@ -1575,6 +1578,14 @@ bool QScriptEnginePrivate::scriptDisconnect(JSC::JSValue signal, JSC::JSValue re
 }
 
 #endif
+
+void QScriptEnginePrivate::detachAllRegisteredScriptPrograms()
+{
+    QSet<QScriptProgramPrivate*>::const_iterator it;
+    for (it = registeredScriptPrograms.constBegin(); it != registeredScriptPrograms.constEnd(); ++it)
+        (*it)->detachFromEngine();
+    registeredScriptPrograms.clear();
+}
 
 void QScriptEnginePrivate::detachAllRegisteredScriptValues()
 {
@@ -2717,6 +2728,14 @@ JSC::CallFrame *QScriptEnginePrivate::pushContext(JSC::CallFrame *exec, JSC::JSV
                                                   bool clearScopeChain)
 {
     JSC::JSValue thisObject = _thisObject;
+    if (!callee) {
+        // callee can't be zero, as this can cause JSC to crash during GC
+        // marking phase if the context's Arguments object has been created.
+        // Fake it by using the global object. Note that this is also handled
+        // in QScriptContext::callee(), as that function should still return
+        // an invalid value.
+        callee = originalGlobalObject();
+    }
     if (calledAsConstructor) {
         //JSC doesn't create default created object for native functions. so we do it
         JSC::JSValue prototype = callee->get(exec, exec->propertyNames().prototype);
@@ -2752,9 +2771,7 @@ JSC::CallFrame *QScriptEnginePrivate::pushContext(JSC::CallFrame *exec, JSC::JSV
         if (!clearScopeChain) {
             newCallFrame->init(0, /*vPC=*/0, exec->scopeChain(), exec, flags | ShouldRestoreCallFrame, argc, callee);
         } else {
-            JSC::JSObject *jscObject = originalGlobalObject();
-            JSC::ScopeChainNode *scn = new JSC::ScopeChainNode(0, jscObject, &exec->globalData(), exec->lexicalGlobalObject(), jscObject);
-            newCallFrame->init(0, /*vPC=*/0, scn, exec, flags | ShouldRestoreCallFrame, argc, callee);
+            newCallFrame->init(0, /*vPC=*/0, globalExec()->scopeChain(), exec, flags | ShouldRestoreCallFrame, argc, callee);
         }
     } else {
         setContextFlags(newCallFrame, flags);

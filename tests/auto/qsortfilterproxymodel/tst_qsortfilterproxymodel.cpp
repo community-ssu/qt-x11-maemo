@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -42,6 +42,9 @@
 
 #include <QtTest/QtTest>
 #include "../../shared/util.h"
+
+#include "dynamictreemodel.h"
+#include "modeltest.h"
 
 #include <QtCore>
 #include <QtGui>
@@ -141,9 +144,12 @@ private slots:
     void taskQTBUG_7537_appearsAndSort();
     void taskQTBUG_7716_unnecessaryDynamicSorting();
     void taskQTBUG_10287_unnecessaryMapCreation();
+    void taskQTBUG_17812_resetInvalidate_data();
+    void taskQTBUG_17812_resetInvalidate();
 
     void testMultipleProxiesWithSelection();
     void mapSelectionFromSource();
+    void filteredColumns();
 
 protected:
     void buildHierarchy(const QStringList &data, QAbstractItemModel *model);
@@ -3172,6 +3178,96 @@ void tst_QSortFilterProxyModel::taskQTBUG_10287_unnecessaryMapCreation()
     Proxy10287 p(&m);
     m.removeChild();
     // No assert failure, it passes.
+}
+
+class FilteredColumnProxyModel : public QSortFilterProxyModel
+{
+  Q_OBJECT
+public:
+  FilteredColumnProxyModel(QObject *parent = 0)
+    : QSortFilterProxyModel(parent)
+  {
+
+  }
+
+protected:
+  bool filterAcceptsColumn(int column, const QModelIndex &source_parent) const
+  {
+    return column % 2 != 0;
+  }
+};
+
+void tst_QSortFilterProxyModel::filteredColumns()
+{
+    DynamicTreeModel *model = new DynamicTreeModel(this);
+
+    FilteredColumnProxyModel *proxy = new FilteredColumnProxyModel(this);
+    proxy->setSourceModel(model);
+
+    new ModelTest(proxy, this);
+
+    ModelInsertCommand *insertCommand = new ModelInsertCommand(model, this);
+    insertCommand->setNumCols(2);
+    insertCommand->setStartRow(0);
+    insertCommand->setEndRow(0);
+    // Parent is QModelIndex()
+    insertCommand->doCommand();
+
+}
+
+void tst_QSortFilterProxyModel::taskQTBUG_17812_resetInvalidate_data()
+{
+    QTest::addColumn<int>("test");
+    QTest::addColumn<bool>("works");
+
+    QTest::newRow("nothing") << 0 << false;
+    QTest::newRow("reset") << 1 << true;
+    QTest::newRow("invalidate") << 2 << true;
+    QTest::newRow("invalidate_filter") << 3 << true;
+}
+
+void tst_QSortFilterProxyModel::taskQTBUG_17812_resetInvalidate()
+{
+    QFETCH(int, test);
+    QFETCH(bool, works);
+
+    struct Proxy : QSortFilterProxyModel {
+        QString pattern;
+        virtual bool filterAcceptsRow(int source_row, const QModelIndex&) const {
+            return sourceModel()->data(sourceModel()->index(source_row, 0)).toString().contains(pattern);
+        }
+        void notifyChange(int test) {
+            switch (test) {
+            case 0: break;
+            case 1: reset(); break;
+            case 2: invalidate(); break;
+            case 3: invalidateFilter(); break;
+            }
+        }
+    };
+
+    QStringListModel sourceModel(QStringList() << "Poisson" << "Vache" << "Brebis"
+                                               << "Elephant" << "Cochon" << "Serpent"
+                                               << "Mouton" << "Ecureuil" << "Mouche");
+    Proxy proxy;
+    proxy.pattern = QString::fromLatin1("n");
+    proxy.setSourceModel(&sourceModel);
+
+    QCOMPARE(proxy.rowCount(), 5);
+    for (int i = 0; i < proxy.rowCount(); i++) {
+        QVERIFY(proxy.data(proxy.index(i,0)).toString().contains('n'));
+    }
+
+    proxy.pattern = QString::fromLatin1("o");
+    proxy.notifyChange(test);
+
+    QCOMPARE(proxy.rowCount(), works ? 4 : 5);
+    bool ok = true;
+    for (int i = 0; i < proxy.rowCount(); i++) {
+        if (!proxy.data(proxy.index(i,0)).toString().contains('o'))
+            ok = false;
+    }
+    QCOMPARE(ok, works);
 }
 
 QTEST_MAIN(tst_QSortFilterProxyModel)

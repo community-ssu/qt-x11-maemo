@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -4248,7 +4248,7 @@ void QStyleSheetStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *op
         return;
 
     case PE_Widget:
-        if (!rule.hasDrawable()) {
+        if (w && !rule.hasDrawable()) {
             QWidget *container = containerWidget(w);
             if (autoFillDisabledWidgets->contains(container)
                 && (container == w || !renderRule(container, opt).hasBackground())) {

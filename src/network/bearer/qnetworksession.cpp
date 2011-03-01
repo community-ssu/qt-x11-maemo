@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -250,6 +250,9 @@ QNetworkSession::QNetworkSession(const QNetworkConfiguration& connectionConfig, 
             break;
         }
     }
+
+    qRegisterMetaType<QNetworkSession::State>();
+    qRegisterMetaType<QNetworkSession::SessionError>();
 }
 
 /*!
@@ -310,8 +313,9 @@ bool QNetworkSession::waitForOpened(int msecs)
     if (d->isOpen)
         return true;
 
-    if (d->state != Connecting)
+    if (!(d->state == Connecting || d->state == Connected)) {
         return false;
+    }
 
     QEventLoop* loop = new QEventLoop(this);
     QObject::connect(d, SIGNAL(quitPendingWaitsForOpened()),

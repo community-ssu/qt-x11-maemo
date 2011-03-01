@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -1151,10 +1151,10 @@ void QNetworkSessionPrivateImpl::RunL()
             serviceConfig = QNetworkConfiguration();
             iError = QNetworkSession::InvalidConfigurationError;
             QT_TRYCATCH_LEAVING(emit QNetworkSessionPrivate::error(iError));
-            Cancel();
             if (ipConnectionNotifier) {
                 ipConnectionNotifier->StopNotifications();
             }
+            Cancel();
             QT_TRYCATCH_LEAVING(syncStateWithInterface());
             break;
         case KErrCancel: // Connection attempt cancelled
@@ -1173,10 +1173,10 @@ void QNetworkSessionPrivateImpl::RunL()
                 iError = QNetworkSession::UnknownSessionError;
             }
             QT_TRYCATCH_LEAVING(emit QNetworkSessionPrivate::error(iError));
-            Cancel();
             if (ipConnectionNotifier) {
                 ipConnectionNotifier->StopNotifications();
             }
+            Cancel();
             QT_TRYCATCH_LEAVING(syncStateWithInterface());
             break;
     }
@@ -1268,10 +1268,10 @@ bool QNetworkSessionPrivateImpl::newState(QNetworkSession::State newState, TUint
         serviceConfig = QNetworkConfiguration();
         iError = QNetworkSession::SessionAbortedError;
         emit QNetworkSessionPrivate::error(iError);
-        Cancel();
         if (ipConnectionNotifier) {
             ipConnectionNotifier->StopNotifications();
         }
+        Cancel();
         // Start handling IAP state change signals from QNetworkConfigurationManagerPrivate
         iHandleStateNotificationsFromManager = true;
         emitSessionClosed = true; // Emit SessionClosed after state change has been reported
@@ -1552,8 +1552,8 @@ void ConnectionProgressNotifier::StartNotifications()
 {
     if (!IsActive()) {
         SetActive();
+        iConnection.ProgressNotification(iProgress, iStatus);
     }
-    iConnection.ProgressNotification(iProgress, iStatus);
 }
 
 void ConnectionProgressNotifier::StopNotifications()
@@ -1569,10 +1569,10 @@ void ConnectionProgressNotifier::DoCancel()
 void ConnectionProgressNotifier::RunL()
 {
     if (iStatus == KErrNone) {
-        QT_TRYCATCH_LEAVING(iOwner.handleSymbianConnectionStatusChange(iProgress().iStage, iProgress().iError));
-    
         SetActive();
         iConnection.ProgressNotification(iProgress, iStatus);
+        // warning, this object may be deleted in the callback - do nothing after handleSymbianConnectionStatusChange
+        QT_TRYCATCH_LEAVING(iOwner.handleSymbianConnectionStatusChange(iProgress().iStage, iProgress().iError));
     }
 }
 

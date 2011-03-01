@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -94,17 +94,21 @@ public:
     struct AxisData {
         AxisData(QDeclarativeFlickablePrivate *fp, void (QDeclarativeFlickablePrivate::*func)(qreal))
             : move(fp, func), viewSize(-1), smoothVelocity(fp), atEnd(false), atBeginning(true)
+            , fixingUp(false)
         {}
 
         QDeclarativeTimeLineValueProxy<QDeclarativeFlickablePrivate> move;
         qreal viewSize;
         qreal pressPos;
         qreal dragStartOffset;
+        qreal dragMinBound;
+        qreal dragMaxBound;
         qreal velocity;
         qreal flickTarget;
         QDeclarativeFlickablePrivate::Velocity smoothVelocity;
         bool atEnd : 1;
         bool atBeginning : 1;
+        bool fixingUp : 1;
     };
 
     void flickX(qreal velocity);
@@ -118,6 +122,7 @@ public:
 
     void updateBeginningEnd();
 
+    bool isOutermostPressDelay() const;
     void captureDelayedPress(QGraphicsSceneMouseEvent *event);
     void clearDelayedPress();
 
@@ -159,6 +164,9 @@ public:
     QBasicTimer delayedPressTimer;
     int pressDelay;
     int fixupDuration;
+
+    enum FixupMode { Normal, Immediate, ExtentChanged };
+    FixupMode fixupMode;
 
     static void fixupY_callback(void *);
     static void fixupX_callback(void *);

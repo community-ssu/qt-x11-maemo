@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -87,7 +87,7 @@
 #include <hal.h>
 #include <hal_data.h>
 
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#ifdef Q_SYMBIAN_TRANSITION_EFFECTS
 #include <graphics/wstfxconst.h>
 #endif
 
@@ -432,7 +432,7 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
         DrawableWindow()->SetPointerGrab(ETrue);
     }
 
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#ifdef Q_SYMBIAN_TRANSITION_EFFECTS
     if (OwnsWindow()) {
         TTfxWindowPurpose windowPurpose(ETfxPurposeNone);
         switch (qwidget->windowType()) {
@@ -667,9 +667,6 @@ void QSymbianControl::HandleStatusPaneSizeChange()
 {
     QS60MainAppUi *s60AppUi = static_cast<QS60MainAppUi *>(S60->appUi());
     s60AppUi->HandleStatusPaneSizeChange();
-    // Send resize event to trigger desktopwidget workAreaResized signal
-    QResizeEvent e(qt_desktopWidget->size(), qt_desktopWidget->size());
-    QApplication::sendEvent(qt_desktopWidget, &e);
 }
 #endif
 
@@ -1074,6 +1071,14 @@ void QSymbianControl::Draw(const TRect& controlRect) const
     Q_ASSERT(topExtra);
     if (!topExtra->inExpose) {
         topExtra->inExpose = true;
+        if (!qwidget->isWindow()) {
+            // If we get here, then it means we have a native child window
+            // Since no content should ever be painted to these windows, we
+            // erase them with a transparent brush when they get an expose.
+            CWindowGc &gc = SystemGc();
+            gc.SetBrushColor(TRgb(0, 0, 0, 0));
+            gc.Clear(controlRect);
+        }
         QRect exposeRect = qt_TRect2QRect(controlRect);
         qwidget->d_func()->syncBackingStore(exposeRect);
         topExtra->inExpose = false;
@@ -1177,8 +1182,10 @@ void QSymbianControl::SizeChanged()
             if (!slowResize && tlwExtra)
                 tlwExtra->inTopLevelResize = false;
         } else {
-            QResizeEvent *e = new QResizeEvent(newSize, oldSize);
-            QApplication::postEvent(qwidget, e);
+            if (!qwidget->testAttribute(Qt::WA_PendingResizeEvent)) {
+                QResizeEvent *e = new QResizeEvent(newSize, oldSize);
+                QApplication::postEvent(qwidget, e);
+            }
         }
     }
 
@@ -1238,12 +1245,14 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
 #ifdef Q_WS_S60
         // If widget is fullscreen/minimized, hide status pane and button container otherwise show them.
         QWidget *const window = qwidget->window();
-        const bool visible = !(window->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
-        const bool statusPaneVisibility = visible;
-        const bool isFullscreen = window->windowState() & Qt::WindowFullScreen;
-        const bool cbaVisibilityHint = window->windowFlags() & Qt::WindowSoftkeysVisibleHint;
-        const bool buttonGroupVisibility = (visible || (isFullscreen && cbaVisibilityHint));
-        S60->setStatusPaneAndButtonGroupVisibility(statusPaneVisibility, buttonGroupVisibility);
+        if (!window->parentWidget()) { // Only top level native windows have control over cba/status pane
+            const bool decorationsVisible = !(window->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
+            const bool statusPaneVisibility = decorationsVisible;
+            const bool isFullscreen = window->windowState() & Qt::WindowFullScreen;
+            const bool cbaVisibilityHint = window->windowFlags() & Qt::WindowSoftkeysVisibleHint;
+            const bool buttonGroupVisibility = (decorationsVisible || (isFullscreen && cbaVisibilityHint));
+            S60->setStatusPaneAndButtonGroupVisibility(statusPaneVisibility, buttonGroupVisibility);
+        }
 #endif
     } else if (QApplication::activeWindow() == qwidget->window()) {
         bool focusedControlFound = false;
@@ -1310,6 +1319,9 @@ void QSymbianControl::HandleResourceChange(int resourceType)
     case KEikDynamicLayoutVariantSwitch:
     {
         handleClientAreaChange();
+        // Send resize event to trigger desktopwidget workAreaResized signal
+        QResizeEvent e(qt_desktopWidget->size(), qt_desktopWidget->size());
+        QApplication::sendEvent(qt_desktopWidget, &e);
         break;
     }
 #endif
@@ -1421,21 +1433,20 @@ void qt_init(QApplicationPrivate * /* priv */, int)
         // The S60 framework has not been initialized. We need to do it.
         TApaApplicationFactory factory(S60->s60ApplicationFactory ?
                 S60->s60ApplicationFactory : newS60Application);
-        CApaCommandLine* commandLine = 0;
-        TInt err = CApaCommandLine::GetCommandLineFromProcessEnvironment(commandLine);
-        // After this construction, CEikonEnv will be available from CEikonEnv::Static().
-        // (much like our qApp).
-        QtEikonEnv* coe = new QtEikonEnv;
-        //not using QT_TRAP_THROWING, because coe owns the cleanupstack so it can't be pushed there.
-        if(err == KErrNone)
-            TRAP(err, coe->ConstructAppFromCommandLineL(factory,*commandLine));
-        delete commandLine;
-        if(err != KErrNone) {
-            qWarning() << "qt_init: Eikon application construct failed ("
-                       << err
-                       << "), maybe missing resource file on S60 3.1?";
-            delete coe;
-            qt_symbian_throwIfError(err);
+        CApaCommandLine* commandLine = q_check_ptr(QCoreApplicationPrivate::symbianCommandLine());
+        if (commandLine) {
+            // After this construction, CEikonEnv will be available from CEikonEnv::Static().
+            // (much like our qApp).
+            QtEikonEnv* coe = new QtEikonEnv;
+            //not using QT_TRAP_THROWING, because coe owns the cleanupstack so it can't be pushed there.
+            TRAPD(err, coe->ConstructAppFromCommandLineL(factory, *commandLine));
+            if(err != KErrNone) {
+                qWarning() << "qt_init: Eikon application construct failed ("
+                           << err
+                           << "), maybe missing resource file on S60 3.1?";
+                delete coe;
+                qt_symbian_throwIfError(err);
+            }
         }
 
         S60->s60InstalledTrapHandler = User::SetTrapHandler(origTrapHandler);
@@ -1575,7 +1586,7 @@ void qt_init(QApplicationPrivate * /* priv */, int)
     systemFont.setFamily(systemFont.defaultFamily());
     QApplicationPrivate::setSystemFont(systemFont);
 
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#ifdef Q_SYMBIAN_TRANSITION_EFFECTS
     QObject::connect(qApp, SIGNAL(aboutToQuit()), qApp, SLOT(_q_aboutToQuit()));
 #endif
 
@@ -1607,7 +1618,7 @@ void qt_init(QApplicationPrivate * /* priv */, int)
     qRegisterMetaType<WId>("WId");
 }
 
-extern void qt_cleanup_symbianFontDatabaseExtras(); // qfontdatabase_s60.cpp
+extern void qt_cleanup_symbianFontDatabase(); // qfontdatabase_s60.cpp
 
 /*****************************************************************************
   qt_cleanup() - cleans up when the application is finished
@@ -1621,7 +1632,7 @@ void qt_cleanup()
     QFontCache::cleanup(); // Has to happen now, since QFontEngineS60 has FBS handles
     QPixmapCache::clear(); // Has to happen now, since QS60PixmapData has FBS handles
 
-    qt_cleanup_symbianFontDatabaseExtras();
+    qt_cleanup_symbianFontDatabase();
 // S60 structure and window server session are freed in eventdispatcher destructor as they are needed there
 
     // It's important that this happens here, before the event dispatcher gets
@@ -1632,6 +1643,13 @@ void qt_cleanup()
 
     //Change mouse pointer back
     S60->wsSession().SetPointerCursorMode(EPointerCursorNone);
+
+#ifdef Q_WS_S60
+    // Clear CBA
+    CEikonEnv::Static()->AppUiFactory()->SwapButtonGroup(0);
+    delete S60->buttonGroupContainer();
+    S60->setButtonGroupContainer(0);
+#endif
 
     if (S60->qtOwnsS60Environment) {
         // Restore the S60 framework trap handler. See qt_init().
@@ -1668,7 +1686,7 @@ bool QApplicationPrivate::modalState()
 
 void QApplicationPrivate::enterModal_sys(QWidget *widget)
 {
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#ifdef Q_SYMBIAN_TRANSITION_EFFECTS
     S60->wsSession().SendEffectCommand(ETfxCmdAppModalModeEnter);
 #endif
     if (widget) {
@@ -1686,7 +1704,7 @@ void QApplicationPrivate::enterModal_sys(QWidget *widget)
 
 void QApplicationPrivate::leaveModal_sys(QWidget *widget)
 {
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#ifdef Q_SYMBIAN_TRANSITION_EFFECTS
     S60->wsSession().SendEffectCommand(ETfxCmdAppModalModeExit);
 #endif
     if (widget) {
@@ -1999,6 +2017,9 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
 #endif
                 S60->wsSession().SetPointerCursorMode(EPointerCursorNormal);
         }
+#endif
+#ifdef QT_SOFTKEYS_ENABLED
+        QSoftKeyManager::updateSoftKeys();
 #endif
         break;
     case EEventFocusLost:
@@ -2364,7 +2385,7 @@ void QApplication::restoreOverrideCursor()
 
 void QApplicationPrivate::_q_aboutToQuit()
 {
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#ifdef Q_SYMBIAN_TRANSITION_EFFECTS
     // Send the shutdown tfx command
     S60->wsSession().SendEffectCommand(ETfxCmdAppShutDown);
 #endif

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -510,9 +510,14 @@ public:
 
         WA_Maemo5NonComposited = 126,
         WA_Maemo5StackedWindow = 127,
-        WA_Maemo5PortraitOrientation = 128,
-        WA_Maemo5LandscapeOrientation = 129,
-        WA_Maemo5AutoOrientation = 130,
+
+        WA_LockPortraitOrientation = 128,
+        WA_LockLandscapeOrientation = 129,
+        WA_AutoOrientation = 130,
+
+        WA_Maemo5PortraitOrientation = WA_LockPortraitOrientation,
+        WA_Maemo5LandscapeOrientation = WA_LockLandscapeOrientation,
+        WA_Maemo5AutoOrientation = WA_AutoOrientation,
         WA_Maemo5ShowProgressIndicator = 131,
 
 
@@ -533,6 +538,7 @@ public:
         AA_DontUseNativeMenuBar = 6,
         AA_MacDontSwapCtrlAndMeta = 7,
         AA_S60DontConstructApplicationPanes = 8,
+        AA_S60DisablePartialScreenInputMode = 9,
 
         // Add new attributes before this line
         AA_AttributeCount

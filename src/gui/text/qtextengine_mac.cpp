@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -604,8 +604,9 @@ void QTextEngine::shapeTextMac(int item) const
     bool stringToCMapFailed = false;
     if (!fe->stringToCMap(str, len, &g, &num_glyphs, flags, log_clusters, attributes())) {
         ensureSpace(num_glyphs);
-        stringToCMapFailed = fe->stringToCMap(str, len, &g, &num_glyphs, flags, log_clusters,
-                                              attributes());
+        g = availableGlyphs(&si);
+        stringToCMapFailed = !fe->stringToCMap(str, len, &g, &num_glyphs, flags, log_clusters,
+                                               attributes());
     }
 
     if (!stringToCMapFailed) {
