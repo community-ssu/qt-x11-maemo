@@ -1238,7 +1238,7 @@ void QAbstractKineticScroller::ensureVisible(const QPoint &pos, int xmargin, int
     if (posRect.left() < visibleRect.left())
         newPos.setX(posRect.left());
     else if (posRect.right() > visibleRect.right())
-        newPos.setY(posRect.right() - visible.width());
+        newPos.setX(posRect.right() - visible.width());
 
     scrollTo(newPos);
 }
