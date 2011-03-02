@@ -1,3 +1,9 @@
+qt4-experimental (4.7.2~git20110302-0maemo1) unstable; urgency=low
+
+  * Pull latest changes from 4.7 branch
+
+ -- Qt Development Frameworks <qt-info@nokia.com>  Wed, 02 Wed 2011 09:29:01 +0200
+
 qt4-experimental (4.7.0~git20101111-0maemo1) unstable; urgency=low
 
   * Pull latest changes from 4.7.0 release branch
