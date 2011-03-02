@@ -45,6 +45,8 @@
 
 #ifdef QT_HAVE_NEON
 
+#include <arm_neon.h>
+
 QT_BEGIN_NAMESPACE
 
 Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgb32_neon(quint32 *dst, const uchar *src, int len)
