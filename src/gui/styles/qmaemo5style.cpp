@@ -882,9 +882,13 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
         GtkWidget *gtkButton = 0;
         if (isTool)
             gtkButton = d->gtkWidget("GtkToolButton.GtkButton");
-        else if (widget && qobject_cast<QDialogButtonBox *>(widget->parentWidget()))
+	else if (widget && qobject_cast<QDialogButtonBox *>(widget->parentWidget())) {
             gtkButton = d->gtkWidget("HildonDialog.GtkAlignment.GtkHBox.hildon-dialog-action-area.GtkButton-finger");
-        else if (widget && widget->parentWidget() && !qstrcmp(widget->parentWidget()->metaObject()->className(), "QMaemo5EditBar"))
+	    if (!gtkButton)
+		// Maybe application was started in portrait mode so
+		// there is an additional GtkVBox in the layout. Try it.
+		gtkButton = d->gtkWidget("HildonDialog.GtkAlignment.GtkHBox.GtkVBox.hildon-dialog-action-area.GtkButton-finger");
+	} else if (widget && widget->parentWidget() && !qstrcmp(widget->parentWidget()->metaObject()->className(), "QMaemo5EditBar"))
             gtkButton = d->gtkWidget("toolbar-edit-mode.GtkAlignment.GtkHBox.GtkButton");
         else
             gtkButton = d->gtkWidget("HildonButton-finger");
