@@ -1,3 +1,9 @@
+qt4-x11 (4.7.2~git20110302-0maemo2+cssu1) unstable; urgency=low
+
+  * Pulled latest changes from upstream repo.
+
+ -- Mohammad Abu-Garbeyyeh <mohammad7410@gmail.com>  Sun, 10 Apr 2011 02:16:18 +0300
+
 qt4-experimental (4.7.2~git20110302-0maemo1) unstable; urgency=low
 
   * Pull latest changes from 4.7 branch

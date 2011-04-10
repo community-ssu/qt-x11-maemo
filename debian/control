@@ -1,4 +1,4 @@
-Source: qt4-experimental
+Source: qt4-x11
 Section: libs
 Priority: optional
 Maintainer: Qt Development Frameworks <qt-info@nokia.com>
@@ -17,7 +17,7 @@ Build-Depends: cdbs, debhelper (>= 5), sharutils,
  libconnsettings0-dev, libicd-network-wlan-dev
 Standards-Version: 3.7.3
 
-Package: libqt4-experimental-core
+Package: libqt4-core
 Architecture: any
 Section: libs
 Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
@@ -29,11 +29,11 @@ Description: Qt 4 core module
  .
  The QtCore module contains core non-GUI functionality.
 
-Package: libqt4-experimental-core-dbg
+Package: libqt4-core-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-core (= ${binary:Version})
+Depends: libqt4-core (= ${binary:Version})
 Conflicts: libqt4-maemo5-core-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-core-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -42,10 +42,10 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 Core libraries.
 
-Package: libqt4-experimental-translations
+Package: libqt4-translations
 Architecture: any
 Section: libs
-Depends: libqt4-experimental-core (= ${binary:Version})
+Depends: libqt4-core (= ${binary:Version})
 Conflicts: libqt4-maemo5-translations (<< 4.6.99)
 Replaces: libqt4-maemo5-translations (<< 4.6.99)
 Description: Qt 4 translations
@@ -54,35 +54,35 @@ Description: Qt 4 translations
  .
  This package contains the translation files for all Qt modules.
 
-Package: libqt4-experimental-gui
+Package: libqt4-gui
 Architecture: any
 Section: libs
 Conflicts: libqt4-maemo5-gui (<< 4.6.99)
 Replaces: libqt4-maemo5-gui (<< 4.6.99)
-Depends: libc6 (>= 2.5.0-1), libfontconfig1 (>= 2.4.1), libfreetype6 (>= 2.3.5), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libice6 (>= 1:1.0.0), libjpeg62, libpng12-0 (>= 1.2.8rel), libqt4-experimental-core (= ${binary:Version}), libsm6, libstdc++6 (>= 4.2.1), libtiff4, libx11-6, libxext6, libxi6, libxrandr2 (>= 2:1.2.0), libxrender1, zlib1g (>= 1:1.2.1), fontconfig, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
+Depends: libc6 (>= 2.5.0-1), libfontconfig1 (>= 2.4.1), libfreetype6 (>= 2.3.5), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libice6 (>= 1:1.0.0), libjpeg62, libpng12-0 (>= 1.2.8rel), libqt4-core (= ${binary:Version}), libsm6, libstdc++6 (>= 4.2.1), libtiff4, libx11-6, libxext6, libxi6, libxrandr2 (>= 2:1.2.0), libxrender1, zlib1g (>= 1:1.2.1), fontconfig, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
 Description: Qt 4 GUI module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  The QtGui module extends QtCore with GUI functionality.
 
-Package: libqt4-experimental-gui-dbg
+Package: libqt4-gui-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
 Conflicts: libqt4-maemo5-gui-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-gui-dbg (<< 4.6.99)
-Depends: libqt4-experimental-gui (= ${binary:Version})
+Depends: libqt4-gui (= ${binary:Version})
 Description: Qt 4 library debugging symbols
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
  .
  This packages contains the debugging symbols for the Qt 4 GUI libraries.
 
-Package: libqt4-experimental-network
+Package: libqt4-network
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
 Conflicts: libqt4-maemo5-network (<< 4.6.99)
 Replaces: libqt4-maemo5-network (<< 4.6.99)
 Description: Qt 4 network module
@@ -92,11 +92,11 @@ Description: Qt 4 network module
  The QtNetwork module offers classes that allow you to write TCP/IP clients and
  servers. It provides classes to make network programming easier and portable.
 
-Package: libqt4-experimental-network-dbg
+Package: libqt4-network-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-network (= ${binary:Version})
+Depends: libqt4-network (= ${binary:Version})
 Conflicts: libqt4-maemo5-network-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-network-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -105,10 +105,10 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 Network libraries.
 
-Package: libqt4-experimental-script
+Package: libqt4-script
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-dbus (= ${binary:Version}), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
 Conflicts: libqt4-maemo5-script (<< 4.6.99)
 Replaces: libqt4-maemo5-script (<< 4.6.99)
 Description: Qt 4 script module
@@ -117,11 +117,11 @@ Description: Qt 4 script module
  .
  The QtScript module provides classes for making Qt applications scriptable.
 
-Package: libqt4-experimental-script-dbg
+Package: libqt4-script-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-script (= ${binary:Version})
+Depends: libqt4-script (= ${binary:Version})
 Conflicts: libqt4-maemo5-script-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-script-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -130,14 +130,14 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 Script libraries.
 
-Package: libqt4-experimental-sql
+Package: libqt4-sql
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
 Conflicts: libqt4-maemo5-sql (<< 4.6.99)
 Replaces: libqt4-maemo5-sql (<< 4.6.99)
-Recommends: libqt4-experimental-sql-sqlite
-Suggests: libqt4-experimental-dev
+Recommends: libqt4-sql-sqlite
+Suggests: libqt4-dev
 Description: Qt 4 SQL module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -146,13 +146,13 @@ Description: Qt 4 SQL module
  applications.
  .
  If you wish to to use the SQL module for development, you should install the
- libqt4-experimental-dev package.
+ libqt4-dev package.
 
-Package: libqt4-experimental-sql-dbg
+Package: libqt4-sql-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-sql (= ${binary:Version})
+Depends: libqt4-sql (= ${binary:Version})
 Conflicts: libqt4-maemo5-sql-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-sql-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -161,21 +161,21 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 SQL libraries.
 
-Package: libqt4-experimental-sql-sqlite
+Package: libqt4-sql-sqlite
 Architecture: any
 Section: libs
-Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-experimental-sql (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-sql (= ${binary:Version})
 Conflicts: libqt4-maemo5-sql-sqlite (<< 4.6.99)
 Replaces: libqt4-maemo5-sql-sqlite (<< 4.6.99)
 Description: Qt 4 SQLite plugin
  Qt is a cross-platform C++ application framework. Qt's primary feature
   is its rich set of widgets that provide standard GUI functionality.
 
-Package: libqt4-experimental-sql-sqlite-dbg
+Package: libqt4-sql-sqlite-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-sql-sqlite (= ${binary:Version})
+Depends: libqt4-sql-sqlite (= ${binary:Version})
 Conflicts: libqt4-maemo5-sql-sqlite-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-sql-sqlite-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -184,10 +184,10 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 SQL SQLite plugin.
 
-Package: libqt4-experimental-svg
+Package: libqt4-svg
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libqt4-experimental-gui (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libstdc++6 (>= 4.2.1)
 Conflicts: libqt4-maemo5-svg (<< 4.6.99)
 Replaces: libqt4-maemo5-svg (<< 4.6.99)
 Description: Qt 4 SVG module
@@ -199,11 +199,11 @@ Description: Qt 4 SVG module
  Scalable Vector Graphics (SVG) is a language for describing two-dimensional
  graphics and graphical applications in XML.
 
-Package: libqt4-experimental-svg-dbg
+Package: libqt4-svg-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-svg (= ${binary:Version})
+Depends: libqt4-svg (= ${binary:Version})
 Conflicts: libqt4-maemo5-svg-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-svg-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -212,13 +212,13 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 SVG libraries.
 
-Package: libqt4-experimental-webkit
+Package: libqt4-webkit
 Architecture: any
 Section: libs
 Depends:  libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1),
- libqt4-experimental-network (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}),
- libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-phonon (= ${binary:Version}),
- libqt4-experimental-xmlpatterns (= ${binary:Version}), libqt4-experimental-multimedia (= ${binary:Version}), libstdc++6 (>= 4.2.1), libsqlite3-0
+ libqt4-network (= ${binary:Version}), libqt4-core (= ${binary:Version}),
+ libqt4-gui (= ${binary:Version}), libqt4-phonon (= ${binary:Version}),
+ libqt4-xmlpatterns (= ${binary:Version}), libqt4-multimedia (= ${binary:Version}), libstdc++6 (>= 4.2.1), libsqlite3-0
 Conflicts: libqt4-maemo5-webkit (<< 4.6.99)
 Replaces: libqt4-maemo5-webkit (<< 4.6.99)
 Description: Qt 4 WebKit module
@@ -228,11 +228,11 @@ Description: Qt 4 WebKit module
  QtWebKit provides a Web browser engine that makes it easy to embed content
  from the World Wide Web into your Qt application.
 
-Package: libqt4-experimental-webkit-dbg
+Package: libqt4-webkit-dbg
 Priority: extra
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libqt4-experimental-webkit (= ${binary:Version})
+ libqt4-webkit (= ${binary:Version})
 Conflicts: libqt4-maemo5-webkit-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-webkit-dbg (<< 4.6.99)
 Description: Qt 4 WebKit library debugging symbols
@@ -241,10 +241,10 @@ Description: Qt 4 WebKit library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 WebKit library.
 
-Package: libqt4-experimental-xml
+Package: libqt4-xml
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
 Conflicts: libqt4-maemo5-xml (<< 4.6.99)
 Replaces: libqt4-maemo5-xml (<< 4.6.99)
 Description: Qt 4 XML module
@@ -254,11 +254,11 @@ Description: Qt 4 XML module
  The QtXml module provides a stream reader and writer for XML documents,
  and C++ implementations of SAX and DOM.
 
-Package: libqt4-experimental-xml-dbg
+Package: libqt4-xml-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-xml (= ${binary:Version})
+Depends: libqt4-xml (= ${binary:Version})
 Conflicts: libqt4-maemo5-xml-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-xml-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -267,10 +267,10 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 XML libraries.
 
-Package: libqt4-experimental-xmlpatterns
+Package: libqt4-xmlpatterns
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), libqt4-experimental-xml (= ${binary:Version})
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), libqt4-xml (= ${binary:Version})
 Conflicts: libqt4-maemo5-xmlpatterns (<< 4.6.99)
 Replaces: libqt4-maemo5-xmlpatterns (<< 4.6.99)
 Description: Qt 4 XML Patterns module
@@ -279,11 +279,11 @@ Description: Qt 4 XML Patterns module
  .
  The QtXmlPatterns module provides XML Patterns for traversing XML documents
 
-Package: libqt4-experimental-xmlpatterns-dbg
+Package: libqt4-xmlpatterns-dbg
 Priority: extra
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libqt4-experimental-xmlpatterns (= ${binary:Version})
+ libqt4-xmlpatterns (= ${binary:Version})
 Conflicts: libqt4-maemo5-xmlpatterns-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-xmlpatterns-dbg (<< 4.6.99)
 Description: Qt 4 XML patterns library debugging symbols
@@ -293,10 +293,10 @@ Description: Qt 4 XML patterns library debugging symbols
  This packages contains the debugging symbols for the Qt 4 XML patterns
  library.
 
-Package: libqt4-experimental-dbus
+Package: libqt4-dbus
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-xml (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-xml (= ${binary:Version}), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
 Conflicts: libqt4-maemo5-dbus (<< 4.6.99)
 Replaces: libqt4-maemo5-dbus (<< 4.6.99)
 Description: Qt 4 D-Bus module
@@ -310,11 +310,11 @@ Description: Qt 4 D-Bus module
  applications by exporting objects, as well as use services exported by those
  applications by placing calls and accessing properties.
 
-Package: libqt4-experimental-dbus-dbg
+Package: libqt4-dbus-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-dbus (= ${binary:Version})
+Depends: libqt4-dbus (= ${binary:Version})
 Conflicts: libqt4-maemo5-dbus-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-dbus-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -323,10 +323,10 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 DBus libraries.
 
-Package: libqt4-experimental-test
+Package: libqt4-test
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
 Conflicts: libqt4-maemo5-test (<< 4.6.99)
 Replaces: libqt4-maemo5-test (<< 4.6.99)
 Description: Qt 4 test module
@@ -336,11 +336,11 @@ Description: Qt 4 test module
  The QtTest module provides classes for unit testing Qt applications and
  libraries.
 
-Package: libqt4-experimental-test-dbg
+Package: libqt4-test-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-test (= ${binary:Version})
+Depends: libqt4-test (= ${binary:Version})
 Conflicts: libqt4-maemo5-test-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-test-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -349,10 +349,10 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 Test libraries.
 
-Package: libqt4-experimental-dev
+Package: libqt4-dev
 Architecture: any
 Section: libdevel
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-xml (= ${binary:Version}), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-network, libqt4-experimental-gui, libqt4-experimental-svg, libqt4-experimental-webkit, libqt4-experimental-sql, libqt4-experimental-script, libqt4-experimental-test, libqt4-experimental-maemo5, libqt4-experimental-multimedia, libqt4-experimental-phonon, libqt4-experimental-opengl (= ${binary:Version}), libqt4-experimental-xmlpatterns, libqt4-experimental-declarative, libgl-dev [i386], libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libsqlite3-dev
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-dbus (= ${binary:Version}), libqt4-xml (= ${binary:Version}), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-network, libqt4-gui, libqt4-svg, libqt4-webkit, libqt4-sql, libqt4-script, libqt4-test, libqt4-maemo5, libqt4-multimedia, libqt4-phonon, libqt4-opengl (= ${binary:Version}), libqt4-xmlpatterns, libqt4-declarative, libgl-dev [i386], libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libsqlite3-dev
 Conflicts: libqt4-maemo5-dev (<< 4.6.99), libqt4-maemo5-opengl-dev (<< 4.6.99), libqt4-maemo5-declarative-dev (<< 4.6.99)
 Replaces: libqt4-maemo5-dev (<< 4.6.99), libqt4-maemo5-opengl-dev (<< 4.6.99), libqt4-maemo5-declarative-dev (<< 4.6.99)
 Provides: libqt4-maemo5-dev, libqt4-maemo5-opengl-dev, libqt4-maemo5-declarative-dev
@@ -363,30 +363,30 @@ Description: Qt 4 development files
  This package contains the header development files and development programs
  such as qmake used for building Qt4 applications.
 
-Package: libqt4-experimental-opengl-dev
+Package: libqt4-opengl-dev
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-dev
+Depends: libqt4-dev
 Conflicts: libqt4-maemo5-opengl-dev (<< 4.6.99)
 Replaces: libqt4-maemo5-opengl-dev (<< 4.6.99)
 Provides: libqt4-maemo5-opengl-dev
 Description: Qt4 OpenGL development files
- This is a transitional package for libqt4-experimental-opengl-dev, and can be safely removed
+ This is a transitional package for libqt4-opengl-dev, and can be safely removed
  after the installation is complete.
 
-Package: libqt4-experimental-phonon
+Package: libqt4-phonon
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-xml (= ${binary:Version}), libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-opengl (= ${binary:Version})
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-xml (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libqt4-opengl (= ${binary:Version})
 Conflicts: libqt4-maemo5-phonon (<< 4.6.99)
 Replaces: libqt4-maemo5-phonon (<< 4.6.99)
 Description: Qt 4 Phonon Libraries
  Qt 4 media playing libraries
 
-Package: libqt4-experimental-phonon-dbg
+Package: libqt4-phonon-dbg
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-experimental-phonon (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-phonon (= ${binary:Version})
 Conflicts: libqt4-maemo5-phonon-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-phonon-dbg (<< 4.6.99)
 Description: Qt 4 phonon module
@@ -395,20 +395,20 @@ Description: Qt 4 phonon module
  .
  This packages contains the debugging symbol for the Qt phonon library.
 
-Package: libqt4-experimental-multimedia
+Package: libqt4-multimedia
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-gui (= ${binary:Version}), libasound2 (>= 1.0.0), libpulse0 
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-gui (= ${binary:Version}), libasound2 (>= 1.0.0), libpulse0 
 Conflicts: libqt4-maemo5-multimedia (<< 4.6.99)
 Replaces: libqt4-maemo5-multimedia (<< 4.6.99)
 Description: Qt 4 Multimedia Libraries
  Qt 4 media playing libraries
 
-Package: libqt4-experimental-multimedia-dbg
+Package: libqt4-multimedia-dbg
 Priority: extra
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libqt4-experimental-multimedia (= ${binary:Version})
+ libqt4-multimedia (= ${binary:Version})
 Conflicts: libqt4-maemo5-multimedia-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-multimedia-dbg (<< 4.6.99)
 Description: Qt 4 multimedia module
@@ -417,10 +417,10 @@ Description: Qt 4 multimedia module
  .
  This packages contains the debugging symbol for the Qt multimedia library.
 
-Package: libqt4-experimental-opengl
+Package: libqt4-opengl
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-experimental-core (= ${binary:Version}), ${shlibs:Depends}, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), ${shlibs:Depends}, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
 Conflicts: libqt4-maemo5-opengl (<< 4.6.99)
 Replaces: libqt4-maemo5-opengl (<< 4.6.99)
 Description: Qt 4 OpenGL module
@@ -439,11 +439,11 @@ Description: Qt 4 OpenGL module
  This package contains the development files needed to build Qt 4 applications
  using QtOpenGL library.
 
-Package: libqt4-experimental-opengl-dbg
+Package: libqt4-opengl-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-opengl (= ${binary:Version})
+Depends: libqt4-opengl (= ${binary:Version})
 Conflicts: libqt4-maemo5-opengl-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-opengl-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -452,10 +452,10 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 OpenGL libraries.
 
-Package: libqt4-experimental-maemo5
+Package: libqt4-maemo5
 Architecture: any
 Section: libs
-Depends: libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-dbus (= ${binary:Version})
+Depends: libqt4-gui (= ${binary:Version}), libqt4-dbus (= ${binary:Version})
 Conflicts: libqt4-maemo5-maemo5 (<< 4.6.99)
 Replaces: libqt4-maemo5-maemo5 (<< 4.6.99)
 Description: Qt 4 Maemo5 module
@@ -464,11 +464,11 @@ Description: Qt 4 Maemo5 module
  .
  The QtMaemo5 module extends QtGui with Maemo5 specific functionality.
 
-Package: libqt4-experimental-maemo5-dbg
+Package: libqt4-maemo5-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-maemo5 (= ${binary:Version})
+Depends: libqt4-maemo5 (= ${binary:Version})
 Conflicts: libqt4-maemo5-maemo5-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-maemo5-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -477,11 +477,11 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 Maemo5 libraries.
 
-Package: libqt4-experimental-examples
+Package: libqt4-examples
 Priority: optional
 Architecture: any
 Section: libs
-Depends: libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-maemo5 (= ${binary:Version})
+Depends: libqt4-gui (= ${binary:Version}), libqt4-dbus (= ${binary:Version}), libqt4-maemo5 (= ${binary:Version})
 Conflicts: libqt4-maemo5-examples (<< 4.6.99)
 Replaces: libqt4-maemo5-examples (<< 4.6.99)
 Description: Qt 4 Maemo5 example applications
@@ -490,10 +490,10 @@ Description: Qt 4 Maemo5 example applications
  .
  A set of example applications for developers of Qt for Maemo 5 applications
 
-Package: libqt4-experimental-declarative
+Package: libqt4-declarative
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-experimental-core (= ${binary:Version}), libqt4-experimental-gui (= ${binary:Version}), libqt4-experimental-svg (= ${binary:Version}), libqt4-experimental-opengl (= ${binary:Version}), libqt4-experimental-webkit (= ${binary:Version}), libqt4-experimental-script (= ${binary:Version}), libqt4-experimental-network (= ${binary:Version}), libqt4-experimental-xmlpatterns (= ${binary:Version}), libqt4-experimental-dbus (= ${binary:Version}), libqt4-experimental-sql (= ${binary:Version}), libqt4-experimental-sql-sqlite (= ${binary:Version}) 
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-core (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libqt4-svg (= ${binary:Version}), libqt4-opengl (= ${binary:Version}), libqt4-webkit (= ${binary:Version}), libqt4-script (= ${binary:Version}), libqt4-network (= ${binary:Version}), libqt4-xmlpatterns (= ${binary:Version}), libqt4-dbus (= ${binary:Version}), libqt4-sql (= ${binary:Version}), libqt4-sql-sqlite (= ${binary:Version}) 
 Conflicts: libqt4-maemo5-declarative (<< 4.6.99)
 Replaces: libqt4-maemo5-declarative (<< 4.6.99)
 Description: Qt 4 declarative module
@@ -502,11 +502,11 @@ Description: Qt 4 declarative module
  .
  The QtDeclarative module contains declarative UI functionality.
 
-Package: libqt4-experimental-declarative-dbg
+Package: libqt4-declarative-dbg
 Priority: extra
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-declarative (= ${binary:Version})
+Depends: libqt4-declarative (= ${binary:Version})
 Conflicts: libqt4-maemo5-declarative-dbg (<< 4.6.99)
 Replaces: libqt4-maemo5-declarative-dbg (<< 4.6.99)
 Description: Qt 4 library debugging symbols
@@ -515,21 +515,21 @@ Description: Qt 4 library debugging symbols
  .
  This packages contains the debugging symbols for the Qt 4 Declarative libraries.
 
-Package: libqt4-experimental-declarative-dev
+Package: libqt4-declarative-dev
 Architecture: any
 Section: libdevel
-Depends: libqt4-experimental-dev
+Depends: libqt4-dev
 Conflicts: libqt4-maemo5-declarative-dev (<< 4.6.99)
 Replaces: libqt4-maemo5-declarative-dev (<< 4.6.99)
 Provides: libqt4-maemo5-declarative-dev
 Description: Qt4 Declarative development files
- This is a transitional package for libqt4-experimental-declarative-dev, and can be safely removed
+ This is a transitional package for libqt4-declarative-dev, and can be safely removed
  after the installation is complete.
 
-Package: qt4-experimental-declarative-qmlviewer
+Package: qt4-declarative-qmlviewer
 Architecture: any
 Section: devel
-Depends: libqt4-experimental-declarative (=${binary:Version})
+Depends: libqt4-declarative (=${binary:Version})
 Conflicts: qt4-maemo5-declarative-qmlviewer (<< 4.6.99)
 Replaces: qt4-maemo5-declarative-qmlviewer (<< 4.6.99)
 Description: Qt 4 declarative module

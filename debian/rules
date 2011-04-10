@@ -4,7 +4,7 @@ export QTDIR := $(shell pwd)
 export PATH := $(QTDIR)/bin:$(PATH)
 # workaround to use lrelease.
 export LD_LIBRARY_PATH := $(QTDIR)/lib:$(LD_LIBRARY_PATH)
-export DH_VERBOSE=1
+#export DH_VERBOSE=1
 
 # Only present in official source package
 #QTVERSION := $(shell ls changes-* | cut -f2 -d '-')
@@ -28,7 +28,7 @@ DEB_MAKE_INSTALL_TARGET := INSTALL_ROOT=$(DEB_DESTDIR) install
 DEB_DH_INSTALL_SOURCEDIR := debian/tmp
 DEB_DH_ALWAYS_EXCLUDE := .git
 
-# Ensure the *.debug files aren't included in any package other than libqt4-experimental-dbg
+# Ensure the *.debug files aren't included in any package other than libqt4-dbg
 DEB_DH_INSTALL_ARGS := --exclude=.debug
 
 DEB_MAKE_CLEAN_TARGET := confclean distclean
@@ -60,7 +60,7 @@ else
 	HOST_MKSPEC=
 endif
 
-DEB_DH_STRIP_ARGS := --dbg-package=libqt4-experimental-core --dbg-package=libqt4-experimental-gui --dbg-package=libqt4-experimental-network --dbg-package=libqt4-experimental-script --dbg-package=libqt4-experimental-sql --dbg-package=libqt4-experimental-sql-sqlite --dbg-package=libqt4-experimental-svg --dbg-package=libqt4-experimental-xml --dbg-package=libqt4-experimental-dbus --dbg-package=libqt4-experimental-opengl --dbg-package=libqt4-experimental-phonon --dbg-package=libqt4-experimental-multimedia --dbg-package=libqt4-experimental-xmlpatterns --dbg-package=libqt4-experimental-webkit --dbg-package=libqt4-experimental-test --dbg-package=libqt4-experimental-maemo5 --dbg-package=libqt4-experimental-declarative $(EXTRA_STRIP_ARGS)
+DEB_DH_STRIP_ARGS := --dbg-package=libqt4-core --dbg-package=libqt4-gui --dbg-package=libqt4-network --dbg-package=libqt4-script --dbg-package=libqt4-sql --dbg-package=libqt4-sql-sqlite --dbg-package=libqt4-svg --dbg-package=libqt4-xml --dbg-package=libqt4-dbus --dbg-package=libqt4-opengl --dbg-package=libqt4-phonon --dbg-package=libqt4-multimedia --dbg-package=libqt4-xmlpatterns --dbg-package=libqt4-webkit --dbg-package=libqt4-test --dbg-package=libqt4-maemo5 --dbg-package=libqt4-declarative $(EXTRA_STRIP_ARGS)
 
 DEB_DH_SHLIBDEPS_ARGS_ALL := --exclude=.debug $(HOST_EXCLUDES)
 
@@ -73,9 +73,9 @@ config.status:
 	./configure -maemo5 \
 				-opensource \
 				-confirm-license \
-				-prefix "/opt/qt4-maemo5" \
-				-plugindir "/opt/qt4-maemo5/lib/qt4/plugins" \
-				-translationdir "/opt/qt4-maemo5/share/qt4/translations" \
+				-prefix "/usr" \
+				-plugindir "/usr/lib/qt4/plugins" \
+				-translationdir "/usr/share/qt4/translations" \
 				-sysconfdir "/etc/xdg" \
 				-release \
 				--separate-debug-info=nocopy \
