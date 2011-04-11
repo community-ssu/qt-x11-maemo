@@ -7,6 +7,7 @@ export LD_LIBRARY_PATH := $(QTDIR)/lib:$(LD_LIBRARY_PATH)
 #export DH_VERBOSE=1
 
 # Only present in official source package
+QTVERSION := $(shell grep QT_VERSION_STR src/corelib/global/qglobal.h | cut -d'"' -f2)
 #QTVERSION := $(shell ls changes-* | cut -f2 -d '-')
 CURRENTVERSION := $(shell head -1 debian/changelog  | sed 's/[^(]*(\([^)]*\)).*/\1/')
 
@@ -19,7 +20,7 @@ comma := ,
 TMP_BUILD_OPTS = $(subst $(comma), ,$(DEB_BUILD_OPTIONS))
 ifneq (,$(filter parallel=%,$(TMP_BUILD_OPTS)))
 	NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(TMP_BUILD_OPTS)))
-	PARALLEL_MAKEFLAGS += -j$(NUMJOBS)
+	PARALLEL_MAKEFLAGS += -j4
 endif
 
 DEB_MAKE_INVOKE := $(MAKE) $(PARALLEL_MAKEFLAGS)
@@ -75,6 +76,8 @@ config.status:
 				-confirm-license \
 				-prefix "/usr" \
 				-plugindir "/usr/lib/qt4/plugins" \
+				-importdir "/usr/lib/qt4/imports" \
+				-datadir "/usr/share/qt4" \
 				-translationdir "/usr/share/qt4/translations" \
 				-sysconfdir "/etc/xdg" \
 				-release \
@@ -146,7 +149,7 @@ build-uitools:
 	bin/qmake -o tools/designer/src/uitools/Makefile tools/designer/src/uitools/uitools.pro
 	$(MAKE) -C tools/designer/src/uitools
 
-common-install-arch:: install-dbus-tools install-linguist-tools install-maemo5-examples install-uitools install-qml-tool
+common-install-arch:: install-dbus-tools install-linguist-tools install-maemo5-examples install-uitools install-qml-tool optify-libs optify-translations
 
 install-dbus-tools:
 	$(MAKE) -C tools/qdbus/qdbusxml2cpp $(DEB_MAKE_INSTALL_TARGET)
@@ -165,6 +168,60 @@ install-uitools:
 install-qml-tool:
 	$(MAKE) -C debian/qmlviewer-experimental-desktop $(DEB_MAKE_INSTALL_TARGET)
 	$(MAKE) -C tools/qml $(DEB_MAKE_INSTALL_TARGET)
+
+optify-libs:
+	mkdir -p $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtGui.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtWebKit.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtXmlPatterns.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtDeclarative.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtScript.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtScriptTools.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtGui.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtWebKit.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtXmlPatterns.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtDeclarative.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtScript.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtScriptTools.so.$(QTVERSION)
+
+optify-translations:
+	mkdir -p $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_pl.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_sv.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_he.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_ru.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_sk.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_uk.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_es.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_zh_TW.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_ja.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_zh_CN.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_da.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_fr.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_pt.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_de.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_cs.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_hu.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_ar.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	mv $(DEB_DESTDIR)/usr/share/qt4/translations/qt_sl.qm $(DEB_DESTDIR)/opt/share/qt4/translations
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_pl.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_sv.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_he.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_ru.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_sk.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_uk.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_es.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_zh_TW.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_ja.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_zh_CN.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_da.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_fr.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_pt.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_de.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_cs.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_hu.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_ar.qm
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/share/qt4/translations ../../../../opt/share/qt4/translations/qt_sl.qm
 
 clean::
 # Extra stuff missed by confclean/distclean

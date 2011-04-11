@@ -1,3 +1,9 @@
+qt4-x11 (4.7.2~git20110302-0maemo2+cssu2) unstable; urgency=low
+
+  * Optify libs
+
+ -- Mohammad Abu-Garbeyyeh <mohammad7410@gmail.com>  Mon, 11 Apr 2011 19:16:53 +0300
+
 qt4-x11 (4.7.2~git20110302-0maemo2+cssu1) unstable; urgency=low
 
   * Pulled latest changes from upstream repo.
