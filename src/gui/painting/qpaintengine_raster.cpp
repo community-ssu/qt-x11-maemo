@@ -3182,15 +3182,8 @@ void QRasterPaintEngine::drawGlyphsS60(const QPointF &p, const QTextItemInt &ti)
         const TUint8 *glyphBitmapBytes;
         TSize glyphBitmapSize;
         fe->getCharacterData(glyphs[i], tmetrics, glyphBitmapBytes, glyphBitmapSize);
-	#ifdef Q_OS_S60
-		const int x = qFloor(positions[i].x + tmetrics.HorizBearingX() + aliasDelta);
-		const int y = qFloor(positions[i].y - tmetrics.HorizBearingY() + aliasDelta);
-	#else
-		const glyph_metrics_t metrics = ti.fontEngine->boundingBox(glyphs[i]);
-        	const int x = qFloor(positions[i].x + metrics.x + aliasDelta);
-        	const int y = qFloor(positions[i].y + metrics.y + aliasDelta);
-	#endif
-
+        const int x = qFloor(positions[i].x + tmetrics.HorizBearingX() + aliasDelta);
+        const int y = qFloor(positions[i].y - tmetrics.HorizBearingY() + aliasDelta);
         alphaPenBlt(glyphBitmapBytes, glyphBitmapSize.iWidth, 8, x, y, glyphBitmapSize.iWidth, glyphBitmapSize.iHeight);
     }
 
