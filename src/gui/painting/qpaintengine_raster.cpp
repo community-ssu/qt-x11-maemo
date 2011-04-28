@@ -3182,7 +3182,7 @@ void QRasterPaintEngine::drawGlyphsS60(const QPointF &p, const QTextItemInt &ti)
         const TUint8 *glyphBitmapBytes;
         TSize glyphBitmapSize;
         fe->getCharacterData(glyphs[i], tmetrics, glyphBitmapBytes, glyphBitmapSize);
-	#ifdef Q_OS_S60
+	#ifndef Q_WS_MAEMO_5	
 		const int x = qFloor(positions[i].x + tmetrics.HorizBearingX() + aliasDelta);
 		const int y = qFloor(positions[i].y - tmetrics.HorizBearingY() + aliasDelta);
 	#else
