@@ -1549,10 +1549,12 @@ static QMessageBox::StandardButton showNewMessageBox(QWidget *parent,
 /*!
     \since 4.2
 
-    Opens an information message box with the specified \a title and
-    \a text. The standard \a buttons are added to the message box. \a
-    defaultButton specifies the button used when \key Enter is
-    pressed. \a defaultButton must refer to a button that was given in \a buttons.
+    Opens an information message box with the given \a title and
+    \a text in front of the specified \a parent widget.
+
+    The standard \a buttons are added to the message box.
+    \a defaultButton specifies the button used when \key Enter is pressed.
+    \a defaultButton must refer to a button that was given in \a buttons.
     If \a defaultButton is QMessageBox::NoButton, QMessageBox
     chooses a suitable default automatically.
 
@@ -1560,8 +1562,12 @@ static QMessageBox::StandardButton showNewMessageBox(QWidget *parent,
     \key Esc was pressed instead, the \l{Default and Escape Keys}
     {escape button} is returned.
 
-    The message box is an \l{Qt::ApplicationModal} {application modal}
+    The message box is an \l{Qt::ApplicationModal}{application modal}
     dialog box.
+
+    \warning Do not delete \a parent during the execution of the dialog.
+             If you want to do this, you should create the dialog
+             yourself using one of the QMessageBox constructors.
 
     \sa question(), warning(), critical()
 */
@@ -1577,8 +1583,10 @@ QMessageBox::StandardButton QMessageBox::information(QWidget *parent, const QStr
 /*!
     \since 4.2
 
-    Opens a question message box with the specified \a title and \a
-    text. The standard \a buttons are added to the message box. \a
+    Opens a question message box with the given \a title and \a
+    text in front of the specified \a parent widget.
+
+    The standard \a buttons are added to the message box. \a
     defaultButton specifies the button used when \key Enter is
     pressed. \a defaultButton must refer to a button that was given in \a buttons.
     If \a defaultButton is QMessageBox::NoButton, QMessageBox
@@ -1590,6 +1598,10 @@ QMessageBox::StandardButton QMessageBox::information(QWidget *parent, const QStr
 
     The message box is an \l{Qt::ApplicationModal} {application modal}
     dialog box.
+
+    \warning Do not delete \a parent during the execution of the dialog.
+             If you want to do this, you should create the dialog
+             yourself using one of the QMessageBox constructors.
 
     \sa information(), warning(), critical()
 */
@@ -1603,8 +1615,10 @@ QMessageBox::StandardButton QMessageBox::question(QWidget *parent, const QString
 /*!
     \since 4.2
 
-    Opens a warning message box with the specified \a title and \a
-    text. The standard \a buttons are added to the message box. \a
+    Opens a warning message box with the given \a title and \a
+    text in front of the specified \a parent widget.
+
+    The standard \a buttons are added to the message box. \a
     defaultButton specifies the button used when \key Enter is
     pressed. \a defaultButton must refer to a button that was given in \a buttons.
     If \a defaultButton is QMessageBox::NoButton, QMessageBox
@@ -1616,6 +1630,10 @@ QMessageBox::StandardButton QMessageBox::question(QWidget *parent, const QString
 
     The message box is an \l{Qt::ApplicationModal} {application modal}
     dialog box.
+
+    \warning Do not delete \a parent during the execution of the dialog.
+             If you want to do this, you should create the dialog
+             yourself using one of the QMessageBox constructors.
 
     \sa question(), information(), critical()
 */
@@ -1629,8 +1647,10 @@ QMessageBox::StandardButton QMessageBox::warning(QWidget *parent, const QString 
 /*!
     \since 4.2
 
-    Opens a critical message box with the specified \a title and \a
-    text. The standard \a buttons are added to the message box. \a
+    Opens a critical message box with the given \a title and \a
+    text in front of the specified \a parent widget.
+
+    The standard \a buttons are added to the message box. \a
     defaultButton specifies the button used when \key Enter is
     pressed. \a defaultButton must refer to a button that was given in \a buttons.
     If \a defaultButton is QMessageBox::NoButton, QMessageBox
@@ -1643,9 +1663,9 @@ QMessageBox::StandardButton QMessageBox::warning(QWidget *parent, const QString 
     The message box is an \l{Qt::ApplicationModal} {application modal}
     dialog box.
 
-  \warning Do not delete \a parent during the execution of the dialog.
-           If you want to do this, you should create the dialog
-           yourself using one of the QMessageBox constructors.
+    \warning Do not delete \a parent during the execution of the dialog.
+             If you want to do this, you should create the dialog
+             yourself using one of the QMessageBox constructors.
 
     \sa question(), warning(), information()
 */

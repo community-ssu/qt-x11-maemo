@@ -292,6 +292,7 @@ QWidgetPrivate::QWidgetPrivate(int version)
 #ifndef QT_NO_IM
       , inheritsInputMethodHints(0)
 #endif
+      , inSetParent(0)
 #if defined(Q_WS_X11)
       , picture(0)
 #elif defined(Q_WS_WIN)
@@ -304,6 +305,9 @@ QWidgetPrivate::QWidgetPrivate(int version)
       , hasAlienChildren(0)
       , window_event(0)
       , qd_hd(0)
+#elif defined(Q_OS_SYMBIAN)
+      , symbianScreenNumber(0)
+      , fixNativeOrientationCalled(false)
 #endif
 {
     if (!qApp) {
@@ -595,7 +599,6 @@ void QWidget::setAutoFillBackground(bool enabled)
     \brief The QWidget class is the base class of all user interface objects.
 
     \ingroup basicwidgets
-
 
     The widget is the atom of the user interface: it receives mouse, keyboard
     and other events from the window system, and paints a representation of
@@ -1284,6 +1287,10 @@ void QWidgetPrivate::init(QWidget *parentWidget, Qt::WindowFlags f)
         // programmer specified desktop widget
         xinfo = desktopWidget->d_func()->xinfo;
     }
+#elif defined(Q_OS_SYMBIAN)
+    if (desktopWidget) {
+        symbianScreenNumber = qt_widget_private(desktopWidget)->symbianScreenNumber;
+    }
 #else
     Q_UNUSED(desktopWidget);
 #endif
@@ -1320,8 +1327,8 @@ void QWidgetPrivate::init(QWidget *parentWidget, Qt::WindowFlags f)
     //give potential windows a bigger "pre-initial" size; create_sys() will give them a new size later
 #ifdef Q_OS_SYMBIAN
     if (isGLWidget) {
-        // Don't waste GPU mem for unnecessary large egl surface
-        data.crect = QRect(0,0,2,2);
+        // Don't waste GPU mem for unnecessary large egl surface until resized by application
+        data.crect = QRect(0,0,1,1);
     } else {
         data.crect = parentWidget ? QRect(0,0,100,30) : QRect(0,0,360,640);
     }
@@ -2557,6 +2564,22 @@ WId QWidget::effectiveWinId() const
     if (id || !testAttribute(Qt::WA_WState_Created))
         return id;
     QWidget *realParent = nativeParentWidget();
+    if (!realParent && d_func()->inSetParent) {
+        // In transitional state. This is really just a workaround. The real problem
+        // is that QWidgetPrivate::setParent_sys (platform specific code) first sets
+        // the window id to 0 (setWinId(0)) before it sets the Qt::WA_WState_Created
+        // attribute to false. The correct way is to do it the other way around, and
+        // in that case the Qt::WA_WState_Created logic above will kick in and
+        // return 0 whenever the widget is in a transitional state. However, changing
+        // the original logic for all platforms is far more intrusive and might
+        // break existing applications.
+        // Note: The widget can only be in a transitional state when changing its
+        // parent -- everything else is an internal error -- hence explicitly checking
+        // against 'inSetParent' rather than doing an unconditional return whenever
+        // 'realParent' is 0 (which may cause strange artifacts and headache later).
+        return 0;
+    }
+    // This widget *must* have a native parent widget.
     Q_ASSERT(realParent);
     Q_ASSERT(realParent->internalWinId());
     return realParent->internalWinId();
@@ -10038,6 +10061,7 @@ void QWidget::setParent(QWidget *parent)
 void QWidget::setParent(QWidget *parent, Qt::WindowFlags f)
 {
     Q_D(QWidget);
+    d->inSetParent = true;
     bool resized = testAttribute(Qt::WA_Resized);
     bool wasCreated = testAttribute(Qt::WA_WState_Created);
     QWidget *oldtlw = window();
@@ -10192,6 +10216,8 @@ void QWidget::setParent(QWidget *parent, Qt::WindowFlags f)
             ancestorProxy->d_func()->embedSubWindow(this);
     }
 #endif
+
+    d->inSetParent = false;
 }
 
 /*!
@@ -10891,6 +10917,9 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
         }
         QT_TRAP_THROWING(appUi->SetOrientationL(s60orientation));
         S60->orientationSet = true;
+        QSymbianControl *window = static_cast<QSymbianControl *>(internalWinId());
+        if (window)
+            window->ensureFixNativeOrientation();
 #endif
         break;
     }
