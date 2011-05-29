@@ -110,16 +110,25 @@ private slots:
     void persistentSelection();
     void focusOnPress();
     void selection();
+    void isRightToLeft_data();
+    void isRightToLeft();
+    void keySelection();
     void moveCursorSelection_data();
     void moveCursorSelection();
     void moveCursorSelectionSequence_data();
     void moveCursorSelectionSequence();
     void mouseSelection_data();
     void mouseSelection();
+    void deferEnableSelectByMouse_data();
+    void deferEnableSelectByMouse();
+    void deferDisableSelectByMouse_data();
+    void deferDisableSelectByMouse();
     void mouseSelectionMode_data();
     void mouseSelectionMode();
     void dragMouseSelection();
     void inputMethodHints();
+
+    void positionAt();
 
     void cursorDelegate();
     void cursorVisible();
@@ -128,6 +137,8 @@ private slots:
     void navigation();
     void readOnly();
     void copyAndPaste();
+    void canPaste();
+    void canPasteEmpty();
     void textInput();
     void openInputPanelOnClick();
     void openInputPanelOnFocus();
@@ -140,9 +151,11 @@ private slots:
 
     void preeditMicroFocus();
     void inputContextMouseHandler();
+    void inputMethodComposing();
+    void cursorRectangleSize();
 
 private:
-    void simulateKey(QDeclarativeView *, int key);
+    void simulateKey(QDeclarativeView *, int key, Qt::KeyboardModifiers modifiers = 0);
     QDeclarativeView *createView(const QString &filename);
 
     QStringList standard;
@@ -440,21 +453,109 @@ void tst_qdeclarativetextedit::hAlign_RightToLeft()
     QVERIFY(textEdit != 0);
     canvas->show();
 
+    // implicit alignment should follow the reading direction of text
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
     QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
 
-    // "Right" align
-    textEdit->setHAlign(QDeclarativeTextEdit::AlignRight);
-    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
+    // explicitly left aligned
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignLeft);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignLeft);
     QVERIFY(textEdit->positionToRectangle(0).x() < canvas->width()/2);
 
-    // Center align
-    // Note that position 0 is on the right-hand side
-    textEdit->setHAlign(QDeclarativeTextEdit::AlignHCenter);
-    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignHCenter);
-    QVERIFY(textEdit->positionToRectangle(0).x() - textEdit->width() < canvas->width()/2);
+    // explicitly right aligned
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
     QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
 
+    QString textString = textEdit->text();
+    textEdit->setText(QString("<i>") + textString + QString("</i>"));
+    textEdit->resetHAlign();
+
+    // implicitly aligned rich text should follow the reading direction of RTL text
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->effectiveHAlign(), textEdit->hAlign());
+    QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+
+    // explicitly left aligned rich text
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignLeft);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignLeft);
+    QCOMPARE(textEdit->effectiveHAlign(), textEdit->hAlign());
+    QVERIFY(textEdit->positionToRectangle(0).x() < canvas->width()/2);
+
+    // explicitly right aligned rich text
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->effectiveHAlign(), textEdit->hAlign());
+    QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+
+    textEdit->setText(textString);
+
+    // explicitly center aligned
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignHCenter);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignHCenter);
+    QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+
+    // reseted alignment should go back to following the text reading direction
+    textEdit->resetHAlign();
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
+    QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+
+    // mirror the text item
+    QDeclarativeItemPrivate::get(textEdit)->setLayoutMirror(true);
+
+    // mirrored implicit alignment should continue to follow the reading direction of the text
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->effectiveHAlign(), QDeclarativeTextEdit::AlignRight);
+    QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+
+    // mirrored explicitly right aligned behaves as left aligned
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->effectiveHAlign(), QDeclarativeTextEdit::AlignLeft);
+    QVERIFY(textEdit->positionToRectangle(0).x() < canvas->width()/2);
+
+    // mirrored explicitly left aligned behaves as right aligned
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignLeft);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignLeft);
+    QCOMPARE(textEdit->effectiveHAlign(), QDeclarativeTextEdit::AlignRight);
+    QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+
+    // disable mirroring
+    QDeclarativeItemPrivate::get(textEdit)->setLayoutMirror(false);
+    textEdit->resetHAlign();
+
+    // English text should be implicitly left aligned
+    textEdit->setText("Hello world!");
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignLeft);
+    QVERIFY(textEdit->positionToRectangle(0).x() < canvas->width()/2);
+
+#ifndef Q_OS_MAC    // QTBUG-18040
+    // empty text with implicit alignment follows the system locale-based
+    // keyboard input direction from QApplication::keyboardInputDirection
+    textEdit->setText("");
+    QCOMPARE(textEdit->hAlign(), QApplication::keyboardInputDirection() == Qt::LeftToRight ?
+                                  QDeclarativeTextEdit::AlignLeft : QDeclarativeTextEdit::AlignRight);
+    if (QApplication::keyboardInputDirection() == Qt::LeftToRight)
+        QVERIFY(textEdit->positionToRectangle(0).x() < canvas->width()/2);
+    else
+        QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+    textEdit->setHAlign(QDeclarativeTextEdit::AlignRight);
+    QCOMPARE(textEdit->hAlign(), QDeclarativeTextEdit::AlignRight);
+    QVERIFY(textEdit->positionToRectangle(0).x() > canvas->width()/2);
+#endif
+
     delete canvas;
+
+#ifndef Q_OS_MAC    // QTBUG-18040
+    // alignment of TextEdit with no text set to it
+    QString componentStr = "import QtQuick 1.0\nTextEdit {}";
+    QDeclarativeComponent textComponent(&engine);
+    textComponent.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
+    QDeclarativeTextEdit *textObject = qobject_cast<QDeclarativeTextEdit*>(textComponent.create());
+    QCOMPARE(textObject->hAlign(), QApplication::keyboardInputDirection() == Qt::LeftToRight ?
+                                  QDeclarativeTextEdit::AlignLeft : QDeclarativeTextEdit::AlignRight);
+    delete textObject;
+#endif
 }
 
 void tst_qdeclarativetextedit::vAlign()
@@ -691,6 +792,14 @@ void tst_qdeclarativetextedit::selection()
         QCOMPARE(textEditObject->selectionEnd(), i);
         QVERIFY(textEditObject->selectedText().isNull());
     }
+    //Test cursor follows selection
+    for(int i=0; i<= testStr.size(); i++) {
+        textEditObject->select(i,i);
+        QCOMPARE(textEditObject->cursorPosition(), i);
+        QCOMPARE(textEditObject->selectionStart(), i);
+        QCOMPARE(textEditObject->selectionEnd(), i);
+    }
+
 
     textEditObject->setCursorPosition(0);
     QVERIFY(textEditObject->cursorPosition() == 0);
@@ -715,10 +824,12 @@ void tst_qdeclarativetextedit::selection()
     for(int i=0; i<= testStr.size(); i++) {
         textEditObject->select(0,i);
         QCOMPARE(testStr.mid(0,i), textEditObject->selectedText());
+        QCOMPARE(textEditObject->cursorPosition(), i);
     }
     for(int i=0; i<= testStr.size(); i++) {
         textEditObject->select(i,testStr.size());
         QCOMPARE(testStr.mid(i,testStr.size()-i), textEditObject->selectedText());
+        QCOMPARE(textEditObject->cursorPosition(), testStr.size());
     }
 
     textEditObject->setCursorPosition(0);
@@ -755,6 +866,113 @@ void tst_qdeclarativetextedit::selection()
     QVERIFY(textEditObject->selectedText().size() == 10);
     textEditObject->deselect();
     QVERIFY(textEditObject->selectedText().isNull());
+}
+
+void tst_qdeclarativetextedit::isRightToLeft_data()
+{
+    QTest::addColumn<QString>("text");
+    QTest::addColumn<bool>("emptyString");
+    QTest::addColumn<bool>("firstCharacter");
+    QTest::addColumn<bool>("lastCharacter");
+    QTest::addColumn<bool>("middleCharacter");
+    QTest::addColumn<bool>("startString");
+    QTest::addColumn<bool>("midString");
+    QTest::addColumn<bool>("endString");
+
+    const quint16 arabic_str[] = { 0x0638, 0x0643, 0x00646, 0x0647, 0x0633, 0x0638, 0x0643, 0x00646, 0x0647, 0x0633, 0x0647};
+    QTest::newRow("Empty") << "" << false << false << false << false << false << false << false;
+    QTest::newRow("Neutral") << "23244242" << false << false << false << false << false << false << false;
+    QTest::newRow("LTR") << "Hello world" << false << false << false << false << false << false << false;
+    QTest::newRow("RTL") << QString::fromUtf16(arabic_str, 11) << false << true << true << true << true << true << true;
+    QTest::newRow("Bidi RTL + LTR + RTL") << QString::fromUtf16(arabic_str, 11) + QString("Hello world") + QString::fromUtf16(arabic_str, 11) << false << true << true << false << true << true << true;
+    QTest::newRow("Bidi LTR + RTL + LTR") << QString("Hello world") + QString::fromUtf16(arabic_str, 11) + QString("Hello world") << false << false << false << true << false << false << false;
+}
+
+void tst_qdeclarativetextedit::isRightToLeft()
+{
+    QFETCH(QString, text);
+    QFETCH(bool, emptyString);
+    QFETCH(bool, firstCharacter);
+    QFETCH(bool, lastCharacter);
+    QFETCH(bool, middleCharacter);
+    QFETCH(bool, startString);
+    QFETCH(bool, midString);
+    QFETCH(bool, endString);
+
+    QDeclarativeTextEdit textEdit;
+    textEdit.setText(text);
+
+    // first test that the right string is delivered to the QString::isRightToLeft()
+    QCOMPARE(textEdit.isRightToLeft(0,0), text.mid(0,0).isRightToLeft());
+    QCOMPARE(textEdit.isRightToLeft(0,1), text.mid(0,1).isRightToLeft());
+    QCOMPARE(textEdit.isRightToLeft(text.count()-2, text.count()-1), text.mid(text.count()-2, text.count()-1).isRightToLeft());
+    QCOMPARE(textEdit.isRightToLeft(text.count()/2, text.count()/2 + 1), text.mid(text.count()/2, text.count()/2 + 1).isRightToLeft());
+    QCOMPARE(textEdit.isRightToLeft(0,text.count()/4), text.mid(0,text.count()/4).isRightToLeft());
+    QCOMPARE(textEdit.isRightToLeft(text.count()/4,3*text.count()/4), text.mid(text.count()/4,3*text.count()/4).isRightToLeft());
+    if (text.isEmpty())
+        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>: QML TextEdit: isRightToLeft(start, end) called with the end property being smaller than the start.");
+    QCOMPARE(textEdit.isRightToLeft(3*text.count()/4,text.count()-1), text.mid(3*text.count()/4,text.count()-1).isRightToLeft());
+
+    // then test that the feature actually works
+    QCOMPARE(textEdit.isRightToLeft(0,0), emptyString);
+    QCOMPARE(textEdit.isRightToLeft(0,1), firstCharacter);
+    QCOMPARE(textEdit.isRightToLeft(text.count()-2, text.count()-1), lastCharacter);
+    QCOMPARE(textEdit.isRightToLeft(text.count()/2, text.count()/2 + 1), middleCharacter);
+    QCOMPARE(textEdit.isRightToLeft(0,text.count()/4), startString);
+    QCOMPARE(textEdit.isRightToLeft(text.count()/4,3*text.count()/4), midString);
+    if (text.isEmpty())
+        QTest::ignoreMessage(QtWarningMsg, "<Unknown File>: QML TextEdit: isRightToLeft(start, end) called with the end property being smaller than the start.");
+    QCOMPARE(textEdit.isRightToLeft(3*text.count()/4,text.count()-1), endString);
+}
+
+void tst_qdeclarativetextedit::keySelection()
+{
+    QDeclarativeView *canvas = createView(SRCDIR "/data/navigation.qml");
+    canvas->show();
+    QApplication::setActiveWindow(canvas);
+    QTest::qWaitForWindowShown(canvas);
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(canvas));
+    canvas->setFocus();
+
+    QVERIFY(canvas->rootObject() != 0);
+
+    QDeclarativeTextEdit *input = qobject_cast<QDeclarativeTextEdit *>(qvariant_cast<QObject *>(canvas->rootObject()->property("myInput")));
+
+    QVERIFY(input != 0);
+    QTRY_VERIFY(input->hasActiveFocus() == true);
+
+    QSignalSpy spy(input, SIGNAL(selectionChanged()));
+
+    simulateKey(canvas, Qt::Key_Right, Qt::ShiftModifier);
+    QVERIFY(input->hasActiveFocus() == true);
+    QCOMPARE(input->selectedText(), QString("a"));
+    QCOMPARE(spy.count(), 1);
+    simulateKey(canvas, Qt::Key_Right);
+    QVERIFY(input->hasActiveFocus() == true);
+    QCOMPARE(input->selectedText(), QString());
+    QCOMPARE(spy.count(), 2);
+    simulateKey(canvas, Qt::Key_Right);
+    QVERIFY(input->hasActiveFocus() == false);
+    QCOMPARE(input->selectedText(), QString());
+    QCOMPARE(spy.count(), 2);
+
+    simulateKey(canvas, Qt::Key_Left);
+    QVERIFY(input->hasActiveFocus() == true);
+    QCOMPARE(spy.count(), 2);
+    simulateKey(canvas, Qt::Key_Left, Qt::ShiftModifier);
+    QVERIFY(input->hasActiveFocus() == true);
+    QCOMPARE(input->selectedText(), QString("a"));
+    QCOMPARE(spy.count(), 3);
+    simulateKey(canvas, Qt::Key_Left);
+    QVERIFY(input->hasActiveFocus() == true);
+    QCOMPARE(input->selectedText(), QString());
+    QCOMPARE(spy.count(), 4);
+    simulateKey(canvas, Qt::Key_Left);
+    QVERIFY(input->hasActiveFocus() == false);
+    QCOMPARE(input->selectedText(), QString());
+    QCOMPARE(spy.count(), 4);
+
+    delete canvas;
 }
 
 void tst_qdeclarativetextedit::moveCursorSelection_data()
@@ -1102,6 +1320,8 @@ void tst_qdeclarativetextedit::mouseSelection_data()
     QTest::newRow("on") << SRCDIR "/data/mouseselection_true.qml" << true;
     QTest::newRow("off") << SRCDIR "/data/mouseselection_false.qml" << false;
     QTest::newRow("default") << SRCDIR "/data/mouseselection_default.qml" << false;
+    QTest::newRow("on word selection") << SRCDIR "/data/mouseselection_true_words.qml" << true;
+    QTest::newRow("off word selection") << SRCDIR "/data/mouseselection_false_words.qml" << false;
 }
 
 void tst_qdeclarativetextedit::mouseSelection()
@@ -1134,6 +1354,92 @@ void tst_qdeclarativetextedit::mouseSelection()
         QVERIFY(str.length() > 3); // don't reallly care *what* was selected (and it's too sensitive to platform)
     else
         QVERIFY(str.isEmpty());
+
+    // Clicking and shift to clicking between the same points should select the same text.
+    textEditObject->setCursorPosition(0);
+    QTest::mouseClick(canvas->viewport(), Qt::LeftButton, Qt::NoModifier, canvas->mapFromScene(QPoint(x1,y)));
+    QTest::mouseClick(canvas->viewport(), Qt::LeftButton, Qt::ShiftModifier, canvas->mapFromScene(QPoint(x2,y)));
+    QCOMPARE(textEditObject->selectedText(), str);
+
+    delete canvas;
+}
+
+void tst_qdeclarativetextedit::deferEnableSelectByMouse_data()
+{
+    QTest::addColumn<QString>("qmlfile");
+
+    QTest::newRow("writable") << SRCDIR "/data/mouseselection_false.qml";
+    QTest::newRow("read only") << SRCDIR "/data/mouseselection_false_readonly.qml";
+}
+
+void tst_qdeclarativetextedit::deferEnableSelectByMouse()
+{
+    // Verify text isn't selected if selectByMouse is enabled after the mouse button has been pressed.
+    QFETCH(QString, qmlfile);
+
+    QDeclarativeView *canvas = createView(qmlfile);
+
+    canvas->show();
+    QApplication::setActiveWindow(canvas);
+    QTest::qWaitForWindowShown(canvas);
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(canvas));
+
+    QVERIFY(canvas->rootObject() != 0);
+    QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit *>(canvas->rootObject());
+    QVERIFY(textEditObject != 0);
+
+    // press-and-drag-and-release from x1 to x2
+    int x1 = 10;
+    int x2 = 70;
+    int y = textEditObject->height()/2;
+
+    QTest::mousePress(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(QPoint(x1,y)));
+    textEditObject->setSelectByMouse(true);
+    //QTest::mouseMove(canvas->viewport(), canvas->mapFromScene(QPoint(x2,y))); // doesn't work
+    QMouseEvent mv(QEvent::MouseMove, canvas->mapFromScene(QPoint(x2,y)), Qt::LeftButton, Qt::LeftButton,Qt::NoModifier);
+    QApplication::sendEvent(canvas->viewport(), &mv);
+    QTest::mouseRelease(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(QPoint(x2,y)));
+    QVERIFY(textEditObject->selectedText().isEmpty());
+
+    delete canvas;
+}
+
+void tst_qdeclarativetextedit::deferDisableSelectByMouse_data()
+{
+    QTest::addColumn<QString>("qmlfile");
+
+    QTest::newRow("writable") << SRCDIR "/data/mouseselection_true.qml";
+    QTest::newRow("read only") << SRCDIR "/data/mouseselection_true_readonly.qml";
+}
+
+void tst_qdeclarativetextedit::deferDisableSelectByMouse()
+{
+    // Verify text isn't selected if selectByMouse is enabled after the mouse button has been pressed.
+    QFETCH(QString, qmlfile);
+
+    QDeclarativeView *canvas = createView(qmlfile);
+
+    canvas->show();
+    QApplication::setActiveWindow(canvas);
+    QTest::qWaitForWindowShown(canvas);
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(canvas));
+
+    QVERIFY(canvas->rootObject() != 0);
+    QDeclarativeTextEdit *textEditObject = qobject_cast<QDeclarativeTextEdit *>(canvas->rootObject());
+    QVERIFY(textEditObject != 0);
+
+    // press-and-drag-and-release from x1 to x2
+    int x1 = 10;
+    int x2 = 70;
+    int y = textEditObject->height()/2;
+
+    QTest::mousePress(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(QPoint(x1,y)));
+    textEditObject->setSelectByMouse(false);
+    //QTest::mouseMove(canvas->viewport(), canvas->mapFromScene(QPoint(x2,y))); // doesn't work
+    QMouseEvent mv(QEvent::MouseMove, canvas->mapFromScene(QPoint(x2,y)), Qt::LeftButton, Qt::LeftButton,Qt::NoModifier);
+    QApplication::sendEvent(canvas->viewport(), &mv);
+    QTest::mouseRelease(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(QPoint(x2,y)));
+    QVERIFY(textEditObject->selectedText().length() > 3);
 
     delete canvas;
 }
@@ -1231,6 +1537,12 @@ void tst_qdeclarativetextedit::mouseSelectionMode()
         QVERIFY(str != text);
     }
 
+    // Clicking and shift to clicking between the same points should select the same text.
+    textEditObject->setCursorPosition(0);
+    QTest::mouseClick(canvas->viewport(), Qt::LeftButton, Qt::NoModifier, canvas->mapFromScene(QPoint(x1,y)));
+    QTest::mouseClick(canvas->viewport(), Qt::LeftButton, Qt::ShiftModifier, canvas->mapFromScene(QPoint(x2,y)));
+    QCOMPARE(textEditObject->selectedText(), str);
+
     delete canvas;
 }
 
@@ -1246,6 +1558,56 @@ void tst_qdeclarativetextedit::inputMethodHints()
     QVERIFY(textEditObject->inputMethodHints() & Qt::ImhNoPredictiveText);
     textEditObject->setInputMethodHints(Qt::ImhUppercaseOnly);
     QVERIFY(textEditObject->inputMethodHints() & Qt::ImhUppercaseOnly);
+
+    delete canvas;
+}
+
+void tst_qdeclarativetextedit::positionAt()
+{
+    QDeclarativeView *canvas = createView(SRCDIR "/data/positionAt.qml");
+    QVERIFY(canvas->rootObject() != 0);
+    canvas->show();
+    canvas->setFocus();
+    QApplication::setActiveWindow(canvas);
+    QTest::qWaitForWindowShown(canvas);
+
+    QDeclarativeTextEdit *texteditObject = qobject_cast<QDeclarativeTextEdit *>(canvas->rootObject());
+    QVERIFY(texteditObject != 0);
+
+    QFontMetrics fm(texteditObject->font());
+    const int y0 = fm.height() / 2;
+    const int y1 = fm.height() * 3 / 2;
+
+    int pos = texteditObject->positionAt(texteditObject->width()/2, y0);
+    int diff = abs(int(fm.width(texteditObject->text().left(pos))-texteditObject->width()/2));
+
+    // some tollerance for different fonts.
+#ifdef Q_OS_LINUX
+    QVERIFY(diff < 2);
+#else
+    QVERIFY(diff < 5);
+#endif
+
+    const qreal x0 = texteditObject->positionToRectangle(pos).x();
+    const qreal x1 = texteditObject->positionToRectangle(pos + 1).x();
+
+    QString preeditText = texteditObject->text().mid(0, pos);
+    texteditObject->setText(texteditObject->text().mid(pos));
+    texteditObject->setCursorPosition(0);
+
+    QInputMethodEvent inputEvent(preeditText, QList<QInputMethodEvent::Attribute>());
+    QApplication::sendEvent(canvas, &inputEvent);
+
+    // Check all points within the preedit text return the same position.
+    QCOMPARE(texteditObject->positionAt(0, y0), 0);
+    QCOMPARE(texteditObject->positionAt(x0 / 2, y0), 0);
+    QCOMPARE(texteditObject->positionAt(x0, y0), 0);
+
+    // Verify positioning returns to normal after the preedit text.
+    QCOMPARE(texteditObject->positionAt(x1, y0), 1);
+    QCOMPARE(texteditObject->positionToRectangle(1).x(), x1);
+
+    QVERIFY(texteditObject->positionAt(x0 / 2, y1) > 0);
 
     delete canvas;
 }
@@ -1268,9 +1630,31 @@ void tst_qdeclarativetextedit::cursorDelegate()
         QCOMPARE(textEditObject->cursorRectangle().x(), qRound(delegateObject->x()));
         QCOMPARE(textEditObject->cursorRectangle().y(), qRound(delegateObject->y()));
     }
+    const QString preedit = "preedit";
+    for (int i = 0; i <= preedit.length(); i++) {
+        QInputMethodEvent event(preedit, QList<QInputMethodEvent::Attribute>()
+                << QInputMethodEvent::Attribute(QInputMethodEvent::Cursor, i, 1, QVariant()));
+        QApplication::sendEvent(view, &event);
+
+        QCOMPARE(textEditObject->cursorRectangle().x(), qRound(delegateObject->x()));
+        QCOMPARE(textEditObject->cursorRectangle().y(), qRound(delegateObject->y()));
+    }
     textEditObject->setCursorPosition(0);
     QCOMPARE(textEditObject->cursorRectangle().x(), qRound(delegateObject->x()));
     QCOMPARE(textEditObject->cursorRectangle().y(), qRound(delegateObject->y()));
+    QVERIFY(textEditObject->cursorRectangle().y() >= 0);
+    QVERIFY(textEditObject->cursorRectangle().y() < textEditObject->cursorRectangle().height());
+    textEditObject->setVAlign(QDeclarativeTextEdit::AlignVCenter);
+    QCOMPARE(textEditObject->cursorRectangle().x(), qRound(delegateObject->x()));
+    QCOMPARE(textEditObject->cursorRectangle().y(), qRound(delegateObject->y()));
+    QVERIFY(textEditObject->cursorRectangle().y() > (textEditObject->height() / 2) - textEditObject->cursorRectangle().height());
+    QVERIFY(textEditObject->cursorRectangle().y() < (textEditObject->height() / 2) + textEditObject->cursorRectangle().height());
+    textEditObject->setVAlign(QDeclarativeTextEdit::AlignBottom);
+    QCOMPARE(textEditObject->cursorRectangle().x(), qRound(delegateObject->x()));
+    QCOMPARE(textEditObject->cursorRectangle().y(), qRound(delegateObject->y()));
+    QVERIFY(textEditObject->cursorRectangle().y() > textEditObject->height() - (textEditObject->cursorRectangle().height() * 2));
+    QVERIFY(textEditObject->cursorRectangle().y() < textEditObject->height());
+
     //Test Delegate gets deleted
     textEditObject->setCursorDelegate(0);
     QVERIFY(!textEditObject->findChild<QDeclarativeItem*>("cursorInstance"));
@@ -1425,6 +1809,8 @@ void tst_qdeclarativetextedit::navigation()
     simulateKey(canvas, Qt::Key_Right);
     QVERIFY(input->hasActiveFocus() == true);
     simulateKey(canvas, Qt::Key_Right);
+    QVERIFY(input->hasActiveFocus() == true);
+    simulateKey(canvas, Qt::Key_Right);
     QVERIFY(input->hasActiveFocus() == false);
     simulateKey(canvas, Qt::Key_Left);
     QVERIFY(input->hasActiveFocus() == true);
@@ -1492,6 +1878,42 @@ void tst_qdeclarativetextedit::copyAndPaste() {
 #endif
 }
 
+void tst_qdeclarativetextedit::canPaste() {
+#ifndef QT_NO_CLIPBOARD
+
+    QApplication::clipboard()->setText("Some text");
+
+    QString componentStr = "import QtQuick 1.0\nTextEdit { text: \"Hello world!\" }";
+    QDeclarativeComponent textEditComponent(&engine);
+    textEditComponent.setData(componentStr.toLatin1(), QUrl());
+    QDeclarativeTextEdit *textEdit = qobject_cast<QDeclarativeTextEdit*>(textEditComponent.create());
+    QVERIFY(textEdit != 0);
+
+    // check initial value - QTBUG-17765
+    QTextControl tc;
+    QCOMPARE(textEdit->canPaste(), tc.canPaste());
+
+#endif
+}
+
+void tst_qdeclarativetextedit::canPasteEmpty() {
+#ifndef QT_NO_CLIPBOARD
+
+    QApplication::clipboard()->clear();
+
+    QString componentStr = "import QtQuick 1.0\nTextEdit { text: \"Hello world!\" }";
+    QDeclarativeComponent textEditComponent(&engine);
+    textEditComponent.setData(componentStr.toLatin1(), QUrl());
+    QDeclarativeTextEdit *textEdit = qobject_cast<QDeclarativeTextEdit*>(textEditComponent.create());
+    QVERIFY(textEdit != 0);
+
+    // check initial value - QTBUG-17765
+    QTextControl tc;
+    QCOMPARE(textEdit->canPaste(), tc.canPaste());
+
+#endif
+}
+
 void tst_qdeclarativetextedit::readOnly()
 {
     QDeclarativeView *canvas = createView(SRCDIR "/data/readOnly.qml");
@@ -1516,10 +1938,10 @@ void tst_qdeclarativetextedit::readOnly()
     delete canvas;
 }
 
-void tst_qdeclarativetextedit::simulateKey(QDeclarativeView *view, int key)
+void tst_qdeclarativetextedit::simulateKey(QDeclarativeView *view, int key, Qt::KeyboardModifiers modifiers)
 {
-    QKeyEvent press(QKeyEvent::KeyPress, key, 0);
-    QKeyEvent release(QKeyEvent::KeyRelease, key, 0);
+    QKeyEvent press(QKeyEvent::KeyPress, key, modifiers);
+    QKeyEvent release(QKeyEvent::KeyRelease, key, modifiers);
 
     QApplication::sendEvent(view, &press);
     QApplication::sendEvent(view, &release);
@@ -1921,6 +2343,8 @@ void tst_qdeclarativetextedit::preeditMicroFocus()
     QTest::qWaitForWindowShown(&view);
     QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(&view));
 
+    QSignalSpy cursorRectangleSpy(&edit, SIGNAL(cursorRectangleChanged()));
+
     QRect currentRect;
     QRect previousRect = edit.inputMethodQuery(Qt::ImMicroFocus).toRect();
 
@@ -1931,8 +2355,9 @@ void tst_qdeclarativetextedit::preeditMicroFocus()
     currentRect = edit.inputMethodQuery(Qt::ImMicroFocus).toRect();
     QCOMPARE(currentRect, previousRect);
 #if defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_OS_SYMBIAN)
-    QCOMPARE(ic.updateReceived, true);
+    QCOMPARE(ic.updateReceived, false); // The cursor position hasn't changed.
 #endif
+    QCOMPARE(cursorRectangleSpy.count(), 0);
 
     // Verify that the micro focus rect moves to the left as the cursor position
     // is incremented.
@@ -1944,6 +2369,8 @@ void tst_qdeclarativetextedit::preeditMicroFocus()
 #if defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_OS_SYMBIAN)
         QCOMPARE(ic.updateReceived, true);
 #endif
+        QVERIFY(cursorRectangleSpy.count() > 0);
+        cursorRectangleSpy.clear();
         previousRect = currentRect;
     }
 
@@ -1957,6 +2384,7 @@ void tst_qdeclarativetextedit::preeditMicroFocus()
 #if defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_OS_SYMBIAN)
     QCOMPARE(ic.updateReceived, true);
 #endif
+    QVERIFY(cursorRectangleSpy.count() > 0);
 }
 
 void tst_qdeclarativetextedit::inputContextMouseHandler()
@@ -2079,6 +2507,62 @@ void tst_qdeclarativetextedit::inputContextMouseHandler()
     ic.eventType = QEvent::None;
 }
 
+void tst_qdeclarativetextedit::inputMethodComposing()
+{
+    QString text = "supercalifragisiticexpialidocious!";
+
+    QGraphicsScene scene;
+    QGraphicsView view(&scene);
+    MyInputContext ic;
+    view.setInputContext(&ic);
+    QDeclarativeTextEdit edit;
+    edit.setWidth(200);
+    edit.setText(text.mid(0, 12));
+    edit.setCursorPosition(12);
+    edit.setPos(0, 0);
+    edit.setFocus(true);
+    scene.addItem(&edit);
+    view.show();
+    QApplication::setActiveWindow(&view);
+    QTest::qWaitForWindowShown(&view);
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(&view));
+
+    QSignalSpy spy(&edit, SIGNAL(inputMethodComposingChanged()));
+
+    QCOMPARE(edit.isInputMethodComposing(), false);
+
+    ic.sendEvent(QInputMethodEvent(text.mid(3), QList<QInputMethodEvent::Attribute>()));
+    QCOMPARE(edit.isInputMethodComposing(), true);
+    QCOMPARE(spy.count(), 1);
+
+    ic.sendEvent(QInputMethodEvent(text.mid(12), QList<QInputMethodEvent::Attribute>()));
+    QCOMPARE(edit.isInputMethodComposing(), true);
+    QCOMPARE(spy.count(), 1);
+
+    ic.sendEvent(QInputMethodEvent());
+    QCOMPARE(edit.isInputMethodComposing(), false);
+    QCOMPARE(spy.count(), 2);
+}
+
+void tst_qdeclarativetextedit::cursorRectangleSize()
+{
+    QDeclarativeView *canvas = createView(SRCDIR "/data/CursorRect.qml");
+    QVERIFY(canvas->rootObject() != 0);
+    canvas->show();
+    canvas->setFocus();
+    QApplication::setActiveWindow(canvas);
+    QTest::qWaitForWindowShown(canvas);
+
+    QDeclarativeTextEdit *textEdit = qobject_cast<QDeclarativeTextEdit *>(canvas->rootObject());
+    QVERIFY(textEdit != 0);
+    textEdit->setFocus(Qt::OtherFocusReason);
+    QRectF cursorRect = textEdit->positionToRectangle(textEdit->cursorPosition());
+    QRectF microFocusFromScene = canvas->scene()->inputMethodQuery(Qt::ImMicroFocus).toRectF();
+    QRectF microFocusFromApp= QApplication::focusWidget()->inputMethodQuery(Qt::ImMicroFocus).toRectF();
+
+    QCOMPARE(microFocusFromScene.size(), cursorRect.size());
+    QCOMPARE(microFocusFromApp.size(), cursorRect.size());
+}
 QTEST_MAIN(tst_qdeclarativetextedit)
 
 #include "tst_qdeclarativetextedit.moc"

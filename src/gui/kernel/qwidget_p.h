@@ -315,6 +315,11 @@ struct QWExtra {
          */
         ZeroFill,
 
+        /**
+         * Blit backing store, propagating alpha channel into the framebuffer.
+         */
+        BlitWriteAlpha,
+
         Default = Blit
     };
 
@@ -754,6 +759,7 @@ public:
 #ifndef QT_NO_IM
     uint inheritsInputMethodHints : 1;
 #endif
+    uint inSetParent : 1;
 
     // *************************** Platform specific ************************************
 #if defined(Q_WS_X11) // <----------------------------------------------------------- X11
@@ -880,6 +886,8 @@ public:
 #elif defined(Q_OS_SYMBIAN) // <--------------------------------------------------------- SYMBIAN
     static QWidget *mouseGrabber;
     static QWidget *keyboardGrabber;
+    int symbianScreenNumber; // only valid for desktop widget and top-levels
+    bool fixNativeOrientationCalled;
     void s60UpdateIsOpaque();
     void reparentChildren();
     void registerTouchWindow();
