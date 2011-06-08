@@ -25,7 +25,7 @@ unix:!symbian:SOURCES += kernel/qhostinfo_unix.cpp kernel/qnetworkinterface_unix
 win32:SOURCES += kernel/qhostinfo_win.cpp kernel/qnetworkinterface_win.cpp
 
 mac:LIBS_PRIVATE += -framework SystemConfiguration -framework CoreFoundation
-mac:SOURCES += kernel/qnetworkproxy_mac.cpp
+mac:contains(QT_CONFIG, coreservices) SOURCES += kernel/qnetworkproxy_mac.cpp
 else:win32:SOURCES += kernel/qnetworkproxy_win.cpp
 else:symbian:SOURCES += kernel/qnetworkproxy_symbian.cpp
 else:SOURCES += kernel/qnetworkproxy_generic.cpp
