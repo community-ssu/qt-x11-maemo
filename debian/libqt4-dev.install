@@ -61,4 +61,4 @@ usr/lib/pkgconfig/QtMaemo5.pc
 usr/lib/pkgconfig/QtOpenGL.pc
 usr/lib/pkgconfig/QtDeclarative.pc
 usr/lib/pkgconfig/QtUiTools.pc
-usr/mkspecs
+usr/share/qt4/mkspecs
