@@ -117,6 +117,11 @@ public:
     virtual void initGtkWidgets() const;
     virtual void applyCustomPaletteHash();
 
+    static QString getGtkNameFromQtName(const QWidget *widget);
+    static GtkWidget * getGtkButtonForWidget(const QWidget *widget);
+    static GtkWidget * addGtkButtonWithName(const QString & widgetName);
+    static GtkWidget * addGtkCheckButtonWithName(const QString & widgetName);
+
     static void setupGtkFileChooser(GtkWidget* gtkFileChooser, QWidget *parent,
             const QString &dir, const QString &filter, QString *selectedFilter,
             QFileDialog::Options options, bool isSaveDialog = false,

@@ -259,13 +259,59 @@ void QMaemo5StylePrivate::applyCustomPaletteHash()
 
     qApp->setPalette(gtkWidgetPalette("HildonPannableArea.GtkTreeView"), "QScrollBar");
     qApp->setPalette(gtkWidgetPalette("HildonPannableArea.GtkTreeView"), "QAbstractScrollArea");
-    if (qApp->desktop()->screenGeometry().width() < qApp->desktop()->screenGeometry().height()) {
+    if (gtkWidget("HildonNote-information-theme-portrait.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme")) {
         qApp->setPalette(gtkWidgetPalette("HildonNote-information-theme-portrait.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme"),
             "QMaemo5InformationBox");
     } else {
         qApp->setPalette(gtkWidgetPalette("HildonNote-information-theme.GtkAlignment.GtkHBox.GtkVBox.GtkEventBox.GtkAlignment.GtkVBox.HildonNoteLabel-information-theme"),
             "QMaemo5InformationBox");
     }
+}
+#define HILDON_WIDGET_ID "HILDON-WIDGET-"
+const QLatin1String HILDON_MAGIC_NAME = QLS(HILDON_WIDGET_ID);
+
+QString QMaemo5StylePrivate::getGtkNameFromQtName(const QWidget *widget)
+{
+    int index;
+    if((index = widget->objectName().indexOf(HILDON_MAGIC_NAME)) != -1)
+        return widget->objectName().mid(index+sizeof(HILDON_WIDGET_ID)-1);
+    else
+        return QString();
+}
+
+GtkWidget * QMaemo5StylePrivate::getGtkButtonForWidget(const QWidget *widget)
+{
+    GtkWidget *gtkButton;
+    QString gtkWidgetName = getGtkNameFromQtName(widget);
+    if(gtkWidgetName.isEmpty())
+        gtkButton = gtkWidget("HildonButton-finger");
+    else if(!(gtkButton = gtkWidget(QHashableLatin1Literal::fromData(gtkWidgetName.toLatin1().constData()))))
+        gtkButton = addGtkButtonWithName(gtkWidgetName);
+
+    return gtkButton;
+}
+
+GtkWidget * QMaemo5StylePrivate::addGtkButtonWithName(const QString & widgetName)
+{
+    // Gtk bug - a GtkButton without a label won't even create it's child widgets
+    GtkWidget *button = hildon_button_new(HILDON_SIZE_FINGER_HEIGHT, HILDON_BUTTON_ARRANGEMENT_VERTICAL);
+    gtk_button_set_label(reinterpret_cast<GtkButton *>(button), "");
+    if(!widgetName.isEmpty())
+        gtk_widget_set_name(button, widgetName.toLatin1());
+    addWidget(button);
+
+    return button;
+}
+
+GtkWidget * QMaemo5StylePrivate::addGtkCheckButtonWithName(const QString & widgetName)
+{
+    GtkWidget *button = hildon_check_button_new(HILDON_SIZE_FINGER_HEIGHT);
+    gtk_button_set_label(reinterpret_cast<GtkButton *>(button), "");
+    if(!widgetName.isEmpty())
+        gtk_widget_set_name(button, widgetName.toLatin1());
+    addWidget(button);
+
+    return button;
 }
 
 void QMaemo5StylePrivate::initGtkWidgets() const
@@ -294,13 +340,8 @@ void QMaemo5StylePrivate::initGtkWidgets() const
         QGtkStylePrivate::gtk_container_add((GtkContainer*)hildonPan, gtkTreeView);
         addWidget(gtkTreeView);
 
-        // Gtk bug - a GtkButton without a label won't even create it's child widgets
-        GtkWidget *button = hildon_button_new(HILDON_SIZE_FINGER_HEIGHT, HILDON_BUTTON_ARRANGEMENT_VERTICAL);
-        gtk_button_set_label(reinterpret_cast<GtkButton *>(button), "");
-        addWidget(button);
-        button = hildon_check_button_new(HILDON_SIZE_FINGER_HEIGHT);
-        gtk_button_set_label(reinterpret_cast<GtkButton*>(button), "");
-        addWidget(button);
+        addGtkButtonWithName(QString());
+        addGtkCheckButtonWithName(QString());
 
         addWidget(hildon_edit_toolbar_new_with_text("", ""));
 
@@ -743,13 +784,13 @@ int QMaemo5Style::pixelMetric(QStyle::PixelMetric metric,
         return 48;
     case PM_ButtonShiftHorizontal: {
         guint horizontal_shift = 1;
-        if (GtkWidget *gtkButton = d->gtkWidget("HildonButton-finger"))
+        if (GtkWidget *gtkButton = d->getGtkButtonForWidget(widget))
             d->gtk_widget_style_get(gtkButton, "child-displacement-x", &horizontal_shift, NULL);
         return horizontal_shift;
     }
     case PM_ButtonShiftVertical: {
         guint vertical_shift = 1;
-        if (GtkWidget *gtkButton = d->gtkWidget("HildonButton-finger"))
+        if (GtkWidget *gtkButton = d->getGtkButtonForWidget(widget))
             d->gtk_widget_style_get(gtkButton, "child-displacement-y", &vertical_shift, NULL);
         return vertical_shift;
     }
@@ -891,7 +932,7 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
         } else if (widget && widget->parentWidget() && !qstrcmp(widget->parentWidget()->metaObject()->className(), "QMaemo5EditBar")) {
             gtkButton = d->gtkWidget("toolbar-edit-mode.GtkAlignment.GtkHBox.GtkButton");
         } else {
-            gtkButton = d->gtkWidget("HildonButton-finger");
+            gtkButton = d->getGtkButtonForWidget(widget);
         }
 
         if (gtkButton) {
@@ -1084,7 +1125,12 @@ void QMaemo5Style::drawPrimitive(QStyle::PrimitiveElement element,
         break;
     }
     case PE_Maemo5InformationBox: {
-        if (GtkWidget *hildonInformation = d->gtkWidget("HildonNote-information-theme"))
+
+        GtkWidget *hildonInformation;
+        hildonInformation = d->gtkWidget("HildonNote-information-theme");
+        if(!hildonInformation)
+            hildonInformation = d->gtkWidget("HildonNote-information-theme-portrait");
+        if (hildonInformation)
             gtkPainter.paintFlatBox(hildonInformation, NULL, option->rect, GTK_STATE_NORMAL, GTK_SHADOW_NONE, hildonInformation->style, QString());
         break;
     }
@@ -2032,13 +2078,13 @@ QSize QMaemo5Style::sizeFromContents(ContentsType type, const QStyleOption *opti
     case CT_PushButton: {
         if (widget && qobject_cast<QDialogButtonBox *>(widget->parentWidget()))
             newSize.setWidth(qMax(newSize.width(), 174)); // hardcoded value in gtkdialog.c
-        gtkWidget = d->gtkWidget("HildonButton-finger");
+        gtkWidget = d->getGtkButtonForWidget(widget);
         break;
     }
 
     case CT_RadioButton:
     case CT_CheckBox: {
-        gtkWidget = d->gtkWidget("HildonButton-finger");
+        gtkWidget = d->getGtkButtonForWidget(widget);
         if (gtkWidget)
         {
             gint w = -1, h = -1;
