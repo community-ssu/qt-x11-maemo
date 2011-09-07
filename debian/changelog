@@ -1,3 +1,10 @@
+qt4-x11 (1:4.7.4~git20110505+cssu3) unstable; urgency=low
+
+  * Upgraded Qt back to 4.7.4
+  * Fixed a bug in the notification system.
+
+ -- Mohammad Abu-Garbeyyeh <mohammad7410@gmail.com>  Sun, 07 Aug 2011 15:30:00 +0300
+
 qt4-x11 (4.7.2~git20110302-0maemo2+cssu2) unstable; urgency=low
 
   * Optify libs
