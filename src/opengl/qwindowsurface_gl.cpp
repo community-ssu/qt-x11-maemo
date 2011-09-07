@@ -471,8 +471,7 @@ void QGLWindowSurface::hijackWindow(QWidget *widget)
         if (haveNOKSwapRegion)
             qDebug() << "Found EGL_NOK_swap_region2 extension. Using partial updates.";
     }
-
-    bool swapBehaviourPreserved = ctx->d_func()->eglContext->configAttrib(EGL_SWAP_BEHAVIOR);
+    bool swapBehaviourPreserved = (ctx->d_func()->eglContext->configAttrib(EGL_SWAP_BEHAVIOR) == EGL_TRUE);
     if (ctx->d_func()->eglContext->configAttrib(EGL_SURFACE_TYPE)&EGL_SWAP_BEHAVIOR_PRESERVED_BIT) {
         EGLint swapBehavior;
         if (eglQuerySurface(ctx->d_func()->eglContext->display(), ctx->d_func()->eglSurface
