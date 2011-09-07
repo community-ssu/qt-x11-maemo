@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu4) unstable; urgency=low
+
+  * Included fix for an upstream bug (Merge request 5), fixes OpenGL issue.
+
+ -- Mohammad Abu-Garbeyyeh <mohammad7410@gmail.com>  Wed, 07 Sep 2011 23:57:28 +0300
+
 qt4-x11 (1:4.7.4~git20110505+cssu3) unstable; urgency=low
 
   * Upgraded Qt back to 4.7.4
