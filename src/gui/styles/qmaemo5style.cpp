@@ -273,7 +273,7 @@ const QLatin1String HILDON_MAGIC_NAME = QLS(HILDON_WIDGET_ID);
 QString QMaemo5StylePrivate::getGtkNameFromQtName(const QWidget *widget)
 {
     int index;
-    if((index = widget->objectName().indexOf(HILDON_MAGIC_NAME)) != -1)
+    if(widget && ((index = widget->objectName().indexOf(HILDON_MAGIC_NAME)) != -1))
         return widget->objectName().mid(index+sizeof(HILDON_WIDGET_ID)-1);
     else
         return QString();
