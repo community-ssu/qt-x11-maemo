@@ -264,8 +264,11 @@ void QMaemo5OrientationManager::applyOrientation(QWidget *w)
     }
 
     if (orientation == Qt::WA_Maemo5AutoOrientation) {
-        if (!lastSlideOut && (lastOrientation == Qt::Vertical))
-            orientation = Qt::WA_Maemo5PortraitOrientation;
+        if (!lastSlideOut && (lastOrientation == Qt::Vertical)) {
+            long on = 1;
+            XChangeProperty(X11->display, w->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT), XA_CARDINAL, 32,
+                            PropModeReplace, (unsigned char *) &on, 1);
+        }
         else
             orientation = Qt::WA_Maemo5LandscapeOrientation;
     }
