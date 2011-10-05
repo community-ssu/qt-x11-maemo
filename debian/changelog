@@ -1,3 +1,15 @@
+qt4-x11 (1:4.7.4~git20110505+cssu6) unstable; urgency=low
+
+  * DigiNotar certificates blacklisted (backport by freemangordon).
+
+ -- Mohammad Abu-Garbeyyeh <mohammad7410@gmail.com>  Wed, 05 Oct 2011 15:06:36 +0200
+
+qt4-x11 (1:4.7.4~git20110505+cssu5) unstable; urgency=low
+
+  * Fixed segfault when QMaemo5Style::sizeFromContents is called with null widget
+
+ -- Mohammad Abu-Garbeyyeh <mohammad7410@gmail.com>  Fri, 09 Sep 2011 20:15:07 +0300
+
 qt4-x11 (1:4.7.4~git20110505+cssu4) unstable; urgency=low
 
   * Included fix for an upstream bug (Merge request 5), fixes OpenGL issue.
