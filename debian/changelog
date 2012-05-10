@@ -1,3 +1,10 @@
+qt4-x11 (1:4.7.4~git20110505+cssu6-thumb0) unstable; urgency=low
+
+  * Maemo5 mkspec updated to use thumb, made compatible with gcc 4.6.2.
+  * Added missing thumb IT instructions.
+
+ -- Ivaylo Dimtrov <freemangordon@abv.bg>  Thu, 10 May 2012 20:36:43 +0300
+
 qt4-x11 (1:4.7.4~git20110505+cssu6) unstable; urgency=low
 
   * DigiNotar certificates blacklisted (backport by freemangordon).
