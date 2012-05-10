@@ -4,6 +4,8 @@ HEADERS = examplewidget.h fullscreenexitbutton.h
 
 QT += dbus
 
+LIBS += -lX11
+
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/maemo5/windowstates
 sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS windowstates.pro

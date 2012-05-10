@@ -2,6 +2,8 @@ TEMPLATE = app
 SOURCES = main.cpp
 TARGET = qtpanel
 
+LIBS += -lX11
+
 # dummy 'install'
 target.path = $$[QT_INSTALL_EXAMPLES]/maemo5/controlpanel/qtpanel
 sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS qtpanel.pro
