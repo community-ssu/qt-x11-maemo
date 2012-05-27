@@ -20,7 +20,7 @@ Standards-Version: 3.7.3
 Package: libqt4-core
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-core (<< 4.6.99)
 Replaces: libqt4-maemo5-core (<< 4.6.99)
 Description: Qt 4 core module
@@ -59,7 +59,7 @@ Architecture: any
 Section: libs
 Conflicts: libqt4-maemo5-gui (<< 4.6.99)
 Replaces: libqt4-maemo5-gui (<< 4.6.99)
-Depends: libc6 (>= 2.5.0-1), libfontconfig1 (>= 2.4.1), libfreetype6 (>= 2.3.5), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libice6 (>= 1:1.0.0), libjpeg62, libpng12-0 (>= 1.2.8rel), libqt4-core (= ${binary:Version}), libsm6, libstdc++6 (>= 4.2.1), libtiff4, libx11-6, libxext6, libxi6, libxrandr2 (>= 2:1.2.0), libxrender1, zlib1g (>= 1:1.2.1), fontconfig, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
+Depends: libc6 (>= 2.5.0-1), libfontconfig1 (>= 2.4.1), libfreetype6 (>= 2.3.5), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libice6 (>= 1:1.0.0), libjpeg62, libpng12-0 (>= 1.2.8rel), libqt4-core (= ${binary:Version}), libsm6, libstdc++6 (>= 4.2.1), libtiff4, libx11-6, libxext6, libxi6, libxrandr2 (>= 2:1.2.0), libxrender1, zlib1g (>= 1:1.2.1), fontconfig, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel], kernel-feature-errata-430973-workaround
 Description: Qt 4 GUI module
  Qt is a cross-platform C++ application framework. Qt's primary feature
  is its rich set of widgets that provide standard GUI functionality.
@@ -82,7 +82,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-network
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-network (<< 4.6.99)
 Replaces: libqt4-maemo5-network (<< 4.6.99)
 Description: Qt 4 network module
@@ -108,7 +108,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-script
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-dbus (= ${binary:Version}), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-dbus (= ${binary:Version}), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-script (<< 4.6.99)
 Replaces: libqt4-maemo5-script (<< 4.6.99)
 Description: Qt 4 script module
@@ -133,7 +133,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-sql
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-sql (<< 4.6.99)
 Replaces: libqt4-maemo5-sql (<< 4.6.99)
 Recommends: libqt4-sql-sqlite
@@ -164,7 +164,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-sql-sqlite
 Architecture: any
 Section: libs
-Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-sql (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-sql (= ${binary:Version}), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-sql-sqlite (<< 4.6.99)
 Replaces: libqt4-maemo5-sql-sqlite (<< 4.6.99)
 Description: Qt 4 SQLite plugin
@@ -187,7 +187,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-svg
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libstdc++6 (>= 4.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-svg (<< 4.6.99)
 Replaces: libqt4-maemo5-svg (<< 4.6.99)
 Description: Qt 4 SVG module
@@ -218,7 +218,8 @@ Section: libs
 Depends:  libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1),
  libqt4-network (= ${binary:Version}), libqt4-core (= ${binary:Version}),
  libqt4-gui (= ${binary:Version}), libqt4-phonon (= ${binary:Version}),
- libqt4-xmlpatterns (= ${binary:Version}), libqt4-multimedia (= ${binary:Version}), libstdc++6 (>= 4.2.1), libsqlite3-0
+ libqt4-xmlpatterns (= ${binary:Version}), libqt4-multimedia (= ${binary:Version}), libstdc++6 (>= 4.2.1), libsqlite3-0,
+ kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-webkit (<< 4.6.99)
 Replaces: libqt4-maemo5-webkit (<< 4.6.99)
 Description: Qt 4 WebKit module
@@ -244,7 +245,7 @@ Description: Qt 4 WebKit library debugging symbols
 Package: libqt4-xml
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-xml (<< 4.6.99)
 Replaces: libqt4-maemo5-xml (<< 4.6.99)
 Description: Qt 4 XML module
@@ -270,7 +271,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-xmlpatterns
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), libqt4-xml (= ${binary:Version})
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), libqt4-xml (= ${binary:Version}), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-xmlpatterns (<< 4.6.99)
 Replaces: libqt4-maemo5-xmlpatterns (<< 4.6.99)
 Description: Qt 4 XML Patterns module
@@ -296,7 +297,7 @@ Description: Qt 4 XML patterns library debugging symbols
 Package: libqt4-dbus
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-xml (= ${binary:Version}), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-xml (= ${binary:Version}), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-dbus (<< 4.6.99)
 Replaces: libqt4-maemo5-dbus (<< 4.6.99)
 Description: Qt 4 D-Bus module
@@ -326,7 +327,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-test
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1)
+Depends: libc6 (>= 2.5.0-1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-test (<< 4.6.99)
 Replaces: libqt4-maemo5-test (<< 4.6.99)
 Description: Qt 4 test module
@@ -377,7 +378,7 @@ Description: Qt4 OpenGL development files
 Package: libqt4-phonon
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-xml (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libqt4-opengl (= ${binary:Version})
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-xml (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libqt4-opengl (= ${binary:Version}), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-phonon (<< 4.6.99)
 Replaces: libqt4-maemo5-phonon (<< 4.6.99)
 Description: Qt 4 Phonon Libraries
@@ -398,7 +399,7 @@ Description: Qt 4 phonon module
 Package: libqt4-multimedia
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-gui (= ${binary:Version}), libasound2 (>= 1.0.0), libpulse0 
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-gui (= ${binary:Version}), libasound2 (>= 1.0.0), libpulse0, kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-multimedia (<< 4.6.99)
 Replaces: libqt4-maemo5-multimedia (<< 4.6.99)
 Description: Qt 4 Multimedia Libraries
@@ -420,7 +421,7 @@ Description: Qt 4 multimedia module
 Package: libqt4-opengl
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), ${shlibs:Depends}, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel]
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libqt4-core (= ${binary:Version}), ${shlibs:Depends}, opengles-sgx-img-common [arm armel], libgles2-sgx-img [arm armel], kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-opengl (<< 4.6.99)
 Replaces: libqt4-maemo5-opengl (<< 4.6.99)
 Description: Qt 4 OpenGL module
@@ -455,7 +456,7 @@ Description: Qt 4 library debugging symbols
 Package: libqt4-maemo5
 Architecture: any
 Section: libs
-Depends: libqt4-gui (= ${binary:Version}), libqt4-dbus (= ${binary:Version})
+Depends: libqt4-gui (= ${binary:Version}), libqt4-dbus (= ${binary:Version}), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-maemo5 (<< 4.6.99)
 Replaces: libqt4-maemo5-maemo5 (<< 4.6.99)
 Description: Qt 4 Maemo5 module
@@ -481,7 +482,7 @@ Package: libqt4-examples
 Priority: optional
 Architecture: any
 Section: libs
-Depends: libqt4-gui (= ${binary:Version}), libqt4-dbus (= ${binary:Version}), libqt4-maemo5 (= ${binary:Version})
+Depends: libqt4-gui (= ${binary:Version}), libqt4-dbus (= ${binary:Version}), libqt4-maemo5 (= ${binary:Version}), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-examples (<< 4.6.99)
 Replaces: libqt4-maemo5-examples (<< 4.6.99)
 Description: Qt 4 Maemo5 example applications
@@ -493,7 +494,7 @@ Description: Qt 4 Maemo5 example applications
 Package: libqt4-declarative
 Architecture: any
 Section: libs
-Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-core (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libqt4-svg (= ${binary:Version}), libqt4-opengl (= ${binary:Version}), libqt4-webkit (= ${binary:Version}), libqt4-script (= ${binary:Version}), libqt4-network (= ${binary:Version}), libqt4-xmlpatterns (= ${binary:Version}), libqt4-dbus (= ${binary:Version}), libqt4-sql (= ${binary:Version}), libqt4-sql-sqlite (= ${binary:Version}) 
+Depends: libc6 (>= 2.5.0-1), libgcc1 (>= 1:4.2.1), libglib2.0-0 (>= 2.14.6-1osso1), libstdc++6 (>= 4.2.1), zlib1g (>= 1:1.2.1), libqt4-core (= ${binary:Version}), libqt4-gui (= ${binary:Version}), libqt4-svg (= ${binary:Version}), libqt4-opengl (= ${binary:Version}), libqt4-webkit (= ${binary:Version}), libqt4-script (= ${binary:Version}), libqt4-network (= ${binary:Version}), libqt4-xmlpatterns (= ${binary:Version}), libqt4-dbus (= ${binary:Version}), libqt4-sql (= ${binary:Version}), libqt4-sql-sqlite (= ${binary:Version}), kernel-feature-errata-430973-workaround
 Conflicts: libqt4-maemo5-declarative (<< 4.6.99)
 Replaces: libqt4-maemo5-declarative (<< 4.6.99)
 Description: Qt 4 declarative module
@@ -529,7 +530,7 @@ Description: Qt4 Declarative development files
 Package: qt4-declarative-qmlviewer
 Architecture: any
 Section: devel
-Depends: libqt4-declarative (=${binary:Version})
+Depends: libqt4-declarative (=${binary:Version}), kernel-feature-errata-430973-workaround
 Conflicts: qt4-maemo5-declarative-qmlviewer (<< 4.6.99)
 Replaces: qt4-maemo5-declarative-qmlviewer (<< 4.6.99)
 Description: Qt 4 declarative module
