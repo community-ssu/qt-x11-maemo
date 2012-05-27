@@ -1,5 +1,4 @@
 usr/lib/libQtGui.so.*
-opt/lib/libQtGui.so.*
 usr/lib/qt4/plugins/imageformats/libqgif.so
 usr/lib/qt4/plugins/imageformats/libqico.so
 usr/lib/qt4/plugins/imageformats/libqjpeg.so
