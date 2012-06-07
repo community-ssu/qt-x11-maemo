@@ -1,3 +1,16 @@
+qt4-x11 (1:4.7.4~git20110505+cssu6-thumb2) unstable; urgency=low
+
+  * Workaround "the mangling of 'va_list' has changed in GCC 4.4"
+    - add symbol aliases for:
+
+      QString& QString::vsprintf(const char *format, va_list ap)
+      int qvsnprintf(char *str, size_t n, const char *fmt, va_list ap)
+
+      to keep ABI compatibility for GCC < 4.4
+  * depend on libstdc++6 >= 4.6.2+cssu0
+
+ -- Ivaylo Dimtrov <freemangordon@abv.bg>  Thu, 07 Jun 2012 17:32:21 +0300
+
 qt4-x11 (1:4.7.4~git20110505+cssu6-thumb1) unstable; urgency=low
 
   * Add kernel-feature-errata-430973-workaround dependency
