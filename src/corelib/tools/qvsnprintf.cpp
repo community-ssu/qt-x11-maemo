@@ -72,6 +72,10 @@ QT_BEGIN_NAMESPACE
     \sa qsnprintf(), QString::sprintf()
 */
 
+#if defined(__ARM_EABI__) && defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 4)
+__asm__(".symver _Z10qvsnprintfPcjPKcSt9__va_list, _Z10qvsnprintfPcjPKcPv@@");
+#endif
+
 int qvsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 {
     if (!str || !fmt)

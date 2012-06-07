@@ -96,6 +96,10 @@
 #define ULLONG_MAX quint64_C(18446744073709551615)
 #endif
 
+#if defined(__ARM_EABI__) && defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 4)
+__asm__(".symver _ZN7QString8vsprintfEPKcSt9__va_list, _ZN7QString8vsprintfEPKcPv@@");
+#endif
+
 QT_BEGIN_NAMESPACE
 
 #ifndef QT_NO_TEXTCODEC
@@ -703,7 +707,7 @@ const QString::Null QString::null = { };
     formats, the \e precision represents the maximum number of
     significant digits (trailing zeroes are omitted).
 
-    \section1 More Efficient String Construction 
+    \section1 More Efficient String Construction
 
     Using the QString \c{'+'} operator, it is easy to construct a
     complex string from multiple substrings. You will often write code
@@ -913,7 +917,7 @@ int QString::grow(int size)
 /*!
     \since 4.2
 
-    Returns a copy of the \a string, where the encoding of \a string depends on 
+    Returns a copy of the \a string, where the encoding of \a string depends on
     the size of wchar. If wchar is 4 bytes, the \a string is interpreted as ucs-4,
     if wchar is 2 bytes it is interpreted as ucs-2.
 
