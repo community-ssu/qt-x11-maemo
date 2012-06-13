@@ -1,3 +1,5 @@
 usr/lib/libQtScript.so.*
+opt/lib/libQtScript.so.*
 usr/lib/libQtScriptTools.so.*
+opt/lib/libQtScriptTools.so.*
 usr/lib/qt4/plugins/script/libqtscriptdbus.so

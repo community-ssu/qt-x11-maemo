@@ -171,18 +171,18 @@ install-qml-tool:
 
 optify-libs:
 	mkdir -p $(DEB_DESTDIR)/opt/lib
-#	mv $(DEB_DESTDIR)/usr/lib/libQtGui.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
-#	mv $(DEB_DESTDIR)/usr/lib/libQtWebKit.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
-#	mv $(DEB_DESTDIR)/usr/lib/libQtXmlPatterns.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
-#	mv $(DEB_DESTDIR)/usr/lib/libQtDeclarative.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
-#	mv $(DEB_DESTDIR)/usr/lib/libQtScript.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
-#	mv $(DEB_DESTDIR)/usr/lib/libQtScriptTools.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
-#	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtGui.so.$(QTVERSION)
-#	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtWebKit.so.$(QTVERSION)
-#	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtXmlPatterns.so.$(QTVERSION)
-#	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtDeclarative.so.$(QTVERSION)
-#	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtScript.so.$(QTVERSION)
-#	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtScriptTools.so.$(QTVERSION)
+	mv $(DEB_DESTDIR)/usr/lib/libQtGui.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtWebKit.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtXmlPatterns.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtDeclarative.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtScript.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	mv $(DEB_DESTDIR)/usr/lib/libQtScriptTools.so.$(QTVERSION) $(DEB_DESTDIR)/opt/lib
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtGui.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtWebKit.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtXmlPatterns.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtDeclarative.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtScript.so.$(QTVERSION)
+	ln -s --target-directory=$(DEB_DESTDIR)/usr/lib/ ../../opt/lib/libQtScriptTools.so.$(QTVERSION)
 
 optify-translations:
 	mkdir -p $(DEB_DESTDIR)/opt/share/qt4/translations
