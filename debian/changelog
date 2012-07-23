@@ -1,3 +1,14 @@
+qt4-x11 (1:4.7.4~git20110505+cssu6+arm_tools) unstable; urgency=low
+
+  * qmake etc were built for the host, build for arm to install on arm
+  * Note as qmake is run in qemu the scratchbox Qt build time is greatly
+    increased.
+  * If anyone is interested it would be nice to generate two packages, one
+    with the host native, and another with arm native, then install the
+    appropriate package for sdk or N900.
+
+ -- David Fries <David@Fries.net>  Sun, 22 Jul 2012 19:02:45 -0500
+
 qt4-x11 (1:4.7.4~git20110505+cssu6) unstable; urgency=low
 
   * DigiNotar certificates blacklisted (backport by freemangordon).
