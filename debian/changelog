@@ -1,3 +1,18 @@
+qt4-x11 (1:4.7.4~git20110505+cssu6-thumb4) unstable; urgency=low
+
+  * fix gcc 4.7.2 incompatibility
+  * compile with gcc 4.7.2 with neon,tree-vectorize and LTO
+  * Improve performance of partial updates in raster window surface on X11.
+
+ -- Ivaylo Dimtrov <freemangordon@abv.bg>  Wed, 25 Jul 2012 11:50:43 +0300
+
+qt4-x11 (1:4.7.4~git20110505+cssu6-thumb3) unstable; urgency=low
+
+  * revert "Move libs from /opt to /usr/lib"
+  * add gcc 4.6.2 compatibility options to QMAKE_CFLAGS_DEBUG
+
+ -- Ivaylo Dimtrov <freemangordon@abv.bg>  Thu, 13 Jun 2012 19:01:13 +0300
+
 qt4-x11 (1:4.7.4~git20110505+cssu6-thumb2) unstable; urgency=low
 
   * Workaround "the mangling of 'va_list' has changed in GCC 4.4"
