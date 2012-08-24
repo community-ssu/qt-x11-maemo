@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu7) unstable; urgency=low
+
+  * Improve performance of partial updates in raster window surface on X11 (backport by freemangordon).
+
+ -- Christian Ratzenhofer <christian_ratzenhofer@yahoo.de>  Fri, 24 Aug 2012 19:22:37 +0200
+
 qt4-x11 (1:4.7.4~git20110505+cssu6) unstable; urgency=low
 
   * DigiNotar certificates blacklisted (backport by freemangordon).
