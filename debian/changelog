@@ -1,3 +1,15 @@
+qt4-x11 (1:4.7.4~git20110505+cssu7+thumb0) unstable; urgency=low
+
+  * version bump
+
+ -- Ivaylo Dimtrov <freemangordon@abv.bg>  Fri, 14 Sep 2012 17:42:23 +0300
+
+qt4-x11 (1:4.7.4~git20110505+cssu7) unstable; urgency=low
+
+  * Improve performance of partial updates in raster window surface on X11 (backport by freemangordon).
+
+ -- Christian Ratzenhofer <christian_ratzenhofer@yahoo.de>  Fri, 24 Aug 2012 19:22:37 +0200
+
 qt4-x11 (1:4.7.4~git20110505+cssu6-thumb4) unstable; urgency=low
 
   * fix gcc 4.7.2 incompatibility
