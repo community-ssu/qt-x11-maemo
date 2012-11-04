@@ -61,7 +61,7 @@ else
 	HOST_MKSPEC=
 endif
 
-DEB_DH_STRIP_ARGS := --dbg-package=libqt4-core --dbg-package=libqt4-gui --dbg-package=libqt4-network --dbg-package=libqt4-script --dbg-package=libqt4-sql --dbg-package=libqt4-sql-sqlite --dbg-package=libqt4-svg --dbg-package=libqt4-xml --dbg-package=libqt4-dbus --dbg-package=libqt4-opengl --dbg-package=libqt4-phonon --dbg-package=libqt4-multimedia --dbg-package=libqt4-xmlpatterns --dbg-package=libqt4-webkit --dbg-package=libqt4-test --dbg-package=libqt4-maemo5 --dbg-package=libqt4-declarative $(EXTRA_STRIP_ARGS)
+DEB_DH_STRIP_ARGS := --dbg-package=libqt4-core --dbg-package=libqt4-gui --dbg-package=libqt4-network --dbg-package=libqt4-script --dbg-package=libqt4-sql --dbg-package=libqt4-sql-sqlite --dbg-package=libqt4-svg --dbg-package=libqt4-xml --dbg-package=libqt4-dbus --dbg-package=libqt4-opengl --dbg-package=libqt4-phonon --dbg-package=libqt4-multimedia --dbg-package=libqt4-xmlpatterns --dbg-package=libqt4-webkit --dbg-package=libqt4-test --dbg-package=libqt4-maemo5 --dbg-package=libqt4-declarative --dbg-package=libqt4-meegographicssystem --dbg-package=libqt4-meegographicssystemhelper $(EXTRA_STRIP_ARGS)
 
 DEB_DH_SHLIBDEPS_ARGS_ALL := --exclude=.debug $(HOST_EXCLUDES)
 
