@@ -23,7 +23,7 @@ TEMPLATE        = subdirs
         unix:!mac:!embedded:contains(QT_CONFIG, qt3support):SUBDIRS += qtconfig
         win32:!wince*:SUBDIRS += activeqt
     }
-    contains(QT_CONFIG, declarative):SUBDIRS += qml
+    contains(QT_CONFIG, declarative):SUBDIRS += qml qmeegographicssystemhelper
 }
 
 !wince*:!symbian:SUBDIRS += linguist
@@ -46,5 +46,3 @@ QTDIR_build:REQUIRES = "contains(QT_CONFIG, full-config)"
 
 !win32:!embedded:!mac:!symbian:CONFIG += x11
 
-# we're building from Maemo only, so we disable this checking
-SUBDIRS += qmeegographicssystemhelper
