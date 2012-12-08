@@ -241,6 +241,7 @@ clean::
 
 	# QMeeGoGraphicsSystemHelper
 
+	qmake tools/qmeegographicssystemhelper/ -o tools/qmeegographicssystemhelper/Makefile
 	$(MAKE) -C tools/qmeegographicssystemhelper clean
 	rm -f tools/qmeegographicssystemhelper/Makefile
 	
