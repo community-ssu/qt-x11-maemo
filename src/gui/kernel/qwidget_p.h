@@ -1024,7 +1024,7 @@ class QMaemo5OrientationManager : public QObject
 public:
     static QMaemo5OrientationManager *instance();
     ~QMaemo5OrientationManager();
-Q_WS_MAEMO_5
+
     bool manageWindow(QWidget *w, bool add);
     void applyOrientation(QWidget *w);
 
