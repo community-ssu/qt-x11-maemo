@@ -327,6 +327,7 @@ void QWidgetPrivate::applyOrientation()
 
     if (orientation == Qt::WA_Maemo5AutoOrientation) {
         long on = 1;
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST));
         XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT), XA_CARDINAL, 32,
                         PropModeReplace, (unsigned char *) &on, 1);
     } else if (orientation == Qt::WA_Maemo5PortraitOrientation) {
