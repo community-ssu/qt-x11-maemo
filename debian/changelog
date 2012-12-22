@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu8) unstable; urgency=low
+
+  * Disable QMaemo5OrientationManager and realy on hildon-desktop.
+
+ -- Tomasz Pieniążek <t.pieniazek@gazeta.pl>  Sat, 22 Dec 2012 12:32:00 +0200
+
 qt4-x11 (1:4.7.4~git20110505+cssu7) unstable; urgency=low
 
   * Improve performance of partial updates in raster window surface on X11 (backport by freemangordon).
