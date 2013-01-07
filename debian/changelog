@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu9) unstable; urgency=low
+
+  * Blacklist a couple of mis-issued certificates (incl. Turktrust). Backported from upstream.
+
+ -- Tomasz Pieniążek <t.pieniazek@gazeta.pl>  Mon, 07 Jan 2013 17:54:00 +0200
+
 qt4-x11 (1:4.7.4~git20110505+cssu8) unstable; urgency=low
 
   * Disable QMaemo5OrientationManager and rely on hildon-desktop.
