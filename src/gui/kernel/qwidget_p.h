@@ -776,6 +776,9 @@ public:
     void updateX11AcceptFocus();
 #  if defined(Q_WS_MAEMO_5)
     void maemo5ShowProgressIndicator(bool on);
+#ifndef Q_WS_MAEMO_5_OLD_ROTATION
+    void applyOrientation();
+#endif // NOT Q_WS_MAEMO_5_OLD_ROTATION
 #  endif
     QPoint mapToGlobal(const QPoint &pos) const;
     QPoint mapFromGlobal(const QPoint &pos) const;
@@ -1009,7 +1012,7 @@ inline QWidgetBackingStore *QWidgetPrivate::maybeBackingStore() const
     return x ? x->backingStore.data() : 0;
 }
 
-#ifdef Q_WS_MAEMO_5
+#ifdef Q_WS_MAEMO_5_OLD_ROTATION
 
 extern void maemo5CheckOrientation(QWidget *);
 
@@ -1045,7 +1048,7 @@ private:
 
     friend void maemo5CheckOrientation(QWidget *);
 };
-#endif // Q_WS_MAEMO_5
+#endif // Q_WS_MAEMO_5_OLD_ROTATION
 
 QT_END_NAMESPACE
 

@@ -105,7 +105,7 @@ int qt_x11_create_desktop_on_screen = -1;
 
 extern void qt_net_update_user_time(QWidget *tlw, unsigned long timestamp);
 
-#ifdef Q_WS_MAEMO_5
+#ifdef Q_WS_MAEMO_5_OLD_ROTATION
 
 bool QMaemo5OrientationManager::manageWindow(QWidget *w, bool add)
 {
@@ -292,6 +292,58 @@ QMaemo5OrientationManager *QMaemo5OrientationManager::instance()
 
 QMaemo5OrientationManager *QMaemo5OrientationManager::inst = 0;
 
+void maemo5CheckOrientation(QWidget *q)
+{
+    QMaemo5OrientationManager::instance()->applyOrientation(q);
+}
+
+#endif // Q_WS_MAEMO_5_OLD_ROTATION
+
+#ifdef Q_WS_MAEMO_5
+
+#ifndef Q_WS_MAEMO_5_OLD_ROTATION
+void QWidgetPrivate::applyOrientation()
+{
+    // Apps linked against 4.5.0 will run with the platform defaults
+    if (QApplicationPrivate::app_compile_version < QT_VERSION_CHECK(4, 6, 0))
+        return;
+
+    Q_Q(QWidget);
+
+    if (!q->isWindow())
+        return;
+
+    const Qt::WidgetAttribute maemo5Orientations[] = { Qt::WA_Maemo5LandscapeOrientation,
+                                                       Qt::WA_Maemo5PortraitOrientation,
+                                                       Qt::WA_Maemo5AutoOrientation };
+    Qt::WidgetAttribute orientation = maemo5Orientations[0];
+
+    for (int i = 0; i < 3; ++i) {
+        if (q->testAttribute(maemo5Orientations[i])) {
+            orientation = maemo5Orientations[i];
+            break;
+        }
+    }
+
+    if (orientation == Qt::WA_Maemo5AutoOrientation) {
+        long on = 1;
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST));
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+    } else if (orientation == Qt::WA_Maemo5PortraitOrientation) {
+        long on = 1;
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+        XChangeProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT), XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char *) &on, 1);
+    } else {
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_REQUEST));
+        XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_PORTRAIT_MODE_SUPPORT));
+    }
+}
+
+#endif // NOT Q_WS_MAEMO_5_OLD_ROTATION
+
 static void maemo5CheckStackedWindow(QWidget *q)
 {
     if (!q->isWindow())
@@ -325,11 +377,6 @@ static void maemo5CheckNonComposited(QWidget *q)
     } else {
         XDeleteProperty(X11->display, q->winId(), ATOM(_HILDON_NON_COMPOSITED_WINDOW));
     }
-}
-
-void maemo5CheckOrientation(QWidget *q)
-{
-    QMaemo5OrientationManager::instance()->applyOrientation(q);
 }
 
 #endif // Q_WS_MAEMO_5
@@ -2459,10 +2506,14 @@ void QWidgetPrivate::setNetWmWindowTypes()
         windowTypes.append(ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE));
     }
 
-#ifdef Q_WS_MAEMO_5
+#ifdef Q_WS_MAEMO_5_OLD_ROTATION
     // this is not really netwm stuff, but it still makes sense
     // to fiddle with all those X atoms at a central location.
+
     maemo5CheckOrientation(q);
+#endif // Q_WS_MAEMO_5_OLD_ROTATION
+
+#ifdef Q_WS_MAEMO_5
     maemo5CheckNonComposited(q);
     maemo5CheckStackedWindow(q);
 #endif // Q_WS_MAEMO_5
