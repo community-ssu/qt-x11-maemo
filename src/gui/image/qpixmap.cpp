@@ -102,7 +102,7 @@ static bool qt_pixmap_thread_test()
     if (qApp->thread() != QThread::currentThread()) {
         bool fail = false;
 #if defined (Q_WS_X11)
-        if (!QApplication::testAttribute(/*Qt::AA_X11InitThreads)*/ static_cast<Qt::ApplicationAttribute>(10))
+        if (!QApplication::testAttribute(/*Qt::AA_X11InitThreads)*/ static_cast<Qt::ApplicationAttribute>(10)))
             fail = true;
 #else
         if (QApplicationPrivate::graphics_system_name != QLatin1String("raster"))
