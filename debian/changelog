@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu10+thumb0) unstable; urgency=low
+
+  * Thumb2 compile
+
+ -- Ivaylo Dimitrov <freemangordon@abv.bg>  Wed, 16 Jan 2013 11:04:13 +0200
+
 qt4-x11 (1:4.7.4~git20110505+cssu10) unstable; urgency=low
 
   * Allow using QPixmap outside GUI thread when using raster. Backported from 4.8
