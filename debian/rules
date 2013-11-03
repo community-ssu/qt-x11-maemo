@@ -170,7 +170,7 @@ install-qml-tool:
 	$(MAKE) -C tools/qml $(DEB_MAKE_INSTALL_TARGET)
 
 qmeegogsh:
-	qmake tools/qmeegographicssystemhelper/ -o tools/qmeegographicssystemhelper/Makefile
+	bin/qmake tools/qmeegographicssystemhelper/ -o tools/qmeegographicssystemhelper/Makefile
 	$(MAKE) -C tools/qmeegographicssystemhelper $(DEB_MAKE_INSTALL_TARGET)
 
 optify-libs:
@@ -239,12 +239,6 @@ clean::
 	  src/corelib/global/qconfig.* \
 	;
 
-	# QMeeGoGraphicsSystemHelper
-
-	qmake tools/qmeegographicssystemhelper/ -o tools/qmeegographicssystemhelper/Makefile
-	$(MAKE) -C tools/qmeegographicssystemhelper clean
-	rm -f tools/qmeegographicssystemhelper/Makefile
-	
 	# Misc. directories
 	rm -rf \
 	  examples/tools/plugandpaint/plugins/ \
