@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu11) unstable; urgency=low
+
+  * Added MeeGo libs.
+
+ -- Christian Ratzenhofer <christian.ratzenhofer@cdnm.at>  Sun,  3 Nov 2013 18:17:56 +0100
+
 qt4-x11 (1:4.7.4~git20110505+cssu10) unstable; urgency=low
 
   * Allow using QPixmap outside GUI thread when using raster. Backported from 4.8
