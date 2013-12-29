@@ -1,3 +1,10 @@
+qt4-x11 (1:4.7.4~git20110505+cssu11+thumb0) unstable; urgency=low
+
+  * Turn graphite and tree vectorizer off in mkspecs
+  * Thumb2 compile
+
+ -- Ivaylo Dimitrov <freemangordon@abv.bg>  Sun, 29 Dec 2013 19:51:56 +0200
+
 qt4-x11 (1:4.7.4~git20110505+cssu11) unstable; urgency=low
 
   * Added MeeGo libs.
