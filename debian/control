@@ -597,3 +597,108 @@ XB-Maemo-Icon-26:
  Bc8XAAAAAElFTkSuQmCC
 XSBC-Bugtracker: http://bugreports.qt.nokia.com/
 XB-Maemo-Display-Name: QML Viewer (experimental)
+
+Package: libqt4
+Architecture: any
+Section: libs
+Depends: libqt4-core, ${misc:Depends}
+Description: Qt 4 dummy package
+ This is a dummy alias-package.
+
+Package: libqt4-meegographicssystem
+Architecture: arm armel
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-meegographicssystemhelper
+Conflicts: libqt4-meego (<< 4.7.2~git20110119)
+Replaces: libqt4-meego (<< 4.7.2~git20110119)
+Description: Qt 4 MeeGo graphics system plugin
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package contains the MeeGo graphics system plugin.
+
+Package: libqt4-meegographicssystemhelper
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt4-meegographicssystem [arm armel]
+Conflicts: libqt4-meego (<< 4.7.2~git20110119)
+Replaces: libqt4-meego (<< 4.7.2~git20110119)
+Provides: libqt4-meego
+Description: Qt 4 MeeGo graphics system helper
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package contains the MeeGo graphics system helper library.
+
+Package: libqt4-meegographicssystemhelper-dev
+Architecture: any
+Section: libdevel
+Depends: libqt4-meegographicssystemhelper (= ${binary:Version}), libqt4-dev (>= 4.7.4), ${misc:Depends}
+Conflicts: libqt4-meego-dev (<< 4.7.2~git20110119)
+Replaces: libqt4-meego-dev (<< 4.7.2~git20110119)
+Provides: libqt4-meego-dev
+Description: Qt 4 MeeGo graphics system development libraries and headers
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package contains the MeeGo graphics system header files and
+ development libraries.
+
+Package: libqt4-meegographicssystemhelper-dbg
+Priority: extra
+Architecture: any
+Section: debug
+Depends: libqt4-meegographicssystemhelper (= ${binary:Version}), ${misc:Depends}
+Conflicts: libqt4-meego-dbg (<< 4.7.2~git20110119)
+Replaces: libqt4-meego-dbg (<< 4.7.2~git20110119)
+Description: Qt 4 library debugging symbols
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package provides the debugging symbols for the MeeGo support
+ libraries.
+
+Package: libqt4-meegographicssystem-dbg
+Priority: extra
+Architecture: arm armel
+Section: debug
+Depends: libqt4-meegographicssystem (= ${binary:Version}), ${misc:Depends}
+Conflicts: libqt4-meego-dbg (<< 4.7.2~git20110119)
+Replaces: libqt4-meego-dbg (<< 4.7.2~git20110119)
+Description: Qt 4 library debugging symbols
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package provides the debugging symbols for the MeeGo graphics
+ system plugin.
+
+Package: libqt4-meego
+Architecture: all
+Section: oldlibs
+Depends: libqt4-meegographicssystemhelper, libqt4-meegographicssystem [arm armel]
+Description: Qt 4 MeeGo support libraries transitional package
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package is for transitioning purposes only and can be removed.
+
+Package: libqt4-meego-dev
+Architecture: all
+Section: oldlibs
+Depends: libqt4-meegographicssystemhelper-dev
+Description: Qt 4 MeeGo support libraries transitional package
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package is for transitioning purposes only and can be removed.
+
+Package: libqt4-meego-dbg
+Priority: extra
+Architecture: all
+Section: debug
+Depends: libqt4-meegographicssystemhelper-dbg, libqt4-meegographicssystem-dbg [arm armel]
+Description: Qt 4 MeeGo support libraries transitional package
+ Qt is a cross-platform C++ application framework. Qt's primary feature
+ is its rich set of widgets that provide standard GUI functionality.
+ .
+ This package is for transitioning purposes only and can be removed.

@@ -23,7 +23,7 @@ TEMPLATE        = subdirs
         unix:!mac:!embedded:contains(QT_CONFIG, qt3support):SUBDIRS += qtconfig
         win32:!wince*:SUBDIRS += activeqt
     }
-    contains(QT_CONFIG, declarative):SUBDIRS += qml
+    contains(QT_CONFIG, declarative):SUBDIRS += qml qmeegographicssystemhelper
 }
 
 !wince*:!symbian:SUBDIRS += linguist
@@ -46,4 +46,3 @@ QTDIR_build:REQUIRES = "contains(QT_CONFIG, full-config)"
 
 !win32:!embedded:!mac:!symbian:CONFIG += x11
 
-x11:contains(QT_CONFIG, opengles2):contains(QT_CONFIG, egl):SUBDIRS += qmeegographicssystemhelper

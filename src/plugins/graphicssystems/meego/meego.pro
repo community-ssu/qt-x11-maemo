@@ -9,5 +9,7 @@ HEADERS = qmeegographicssystem.h qmeegopixmapdata.h qmeegoextensions.h qmeegoras
 SOURCES = qmeegographicssystem.cpp qmeegographicssystem.h qmeegographicssystemplugin.h qmeegographicssystemplugin.cpp qmeegopixmapdata.h qmeegopixmapdata.cpp qmeegoextensions.h qmeegoextensions.cpp qmeegorasterpixmapdata.h qmeegorasterpixmapdata.cpp qmeegolivepixmapdata.cpp qmeegolivepixmapdata.h dithering.cpp
 
 target.path += $$[QT_INSTALL_PLUGINS]/graphicssystems
-INSTALLS += target
+devfiles.files = HEADERS
+devfiles.path = /usr/include/qt4/QtMeeGoGraphicsSystemHelper
+INSTALLS += target devfiles
 
