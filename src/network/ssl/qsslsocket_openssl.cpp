@@ -240,23 +240,15 @@ bool QSslSocketBackendPrivate::initSslContext()
 {
     Q_Q(QSslSocket);
 
-    // Create and initialize SSL context. Accept SSLv2, SSLv3 and TLSv1.
+    // Create and initialize SSL context. Accept only TLSv1.
     bool client = (mode == QSslSocket::SslClientMode);
 
     bool reinitialized = false;
 init_context:
     switch (configuration.protocol) {
-    case QSsl::SslV2:
-        ctx = q_SSL_CTX_new(client ? q_SSLv2_client_method() : q_SSLv2_server_method());
-        break;
-    case QSsl::SslV3:
-        ctx = q_SSL_CTX_new(client ? q_SSLv3_client_method() : q_SSLv3_server_method());
-        break;
     case QSsl::AnyProtocol:
-    default:
-        ctx = q_SSL_CTX_new(client ? q_SSLv23_client_method() : q_SSLv23_server_method());
-        break;
     case QSsl::TlsV1:
+    default:
         ctx = q_SSL_CTX_new(client ? q_TLSv1_client_method() : q_TLSv1_server_method());
         break;
     }
