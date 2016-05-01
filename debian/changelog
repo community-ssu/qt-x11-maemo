@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu12) unstable; urgency=low
+
+  * Disable SSLv2, SSLv3; leaving only TLSv1
+
+ -- Pali Rohár <pali.rohar@gmail.com>  Sun, 01 May 2016 20:49:07 +0200
+
 qt4-x11 (1:4.7.4~git20110505+cssu11) unstable; urgency=low
 
   * Added MeeGo libs.
