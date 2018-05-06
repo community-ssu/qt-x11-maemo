@@ -2,7 +2,7 @@ qt4-x11 (1:4.7.4~git20110505+cssu13) unstable; urgency=low
 
   * Backport SNI support from newer QT (see https://bugreports.qt.io/browse/QTBUG-1352 for the details)
 
- -- Jonathan Wilsonr jfwfreo@tpgi.com.au>  Sun,  6 May 2018 16:44:38 -0400
+ -- Jonathan Wilson <jfwfreo@tpgi.com.au>  Sun,  6 May 2018 16:44:38 -0400
 
 qt4-x11 (1:4.7.4~git20110505+cssu12) unstable; urgency=low
 
