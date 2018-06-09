@@ -106,9 +106,6 @@ public:
     int peerVerifyDepth() const;
     void setPeerVerifyDepth(int depth);
 
-    QString peerVerifyName() const;
-    void setPeerVerifyName(const QString &hostName);
-
     // From QIODevice
     qint64 bytesAvailable() const;
     qint64 bytesToWrite() const;
