@@ -1,3 +1,9 @@
+qt4-x11 (1:4.7.4~git20110505+cssu14) unstable; urgency=low
+
+  * Remove some backports from QT 4.8.x that will get properly added again when I port various changes from 4.8.7 to 4.7.4 as part of supporting TLS 1.2
+
+ -- Jonathan Wilson <jfwfreo@tpgi.com.au>  Mon, 11 Jun 2018 08:14:34 -0400
+
 qt4-x11 (1:4.7.4~git20110505+cssu13) unstable; urgency=low
 
   * Backport SNI support from newer QT (see https://bugreports.qt.io/browse/QTBUG-1352 for the details)
