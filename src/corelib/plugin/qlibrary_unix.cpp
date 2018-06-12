@@ -56,13 +56,9 @@
 #include <string.h>
 #endif
 
-#if defined(Q_OS_VXWORKS) || defined (Q_OS_NACL)
-#define QT_NO_DYNAMIC_LIBRARY
-#endif
-
 QT_BEGIN_NAMESPACE
 
-#if !defined(QT_HPUX_LD) && !defined(QT_NO_DYNAMIC_LIBRARY)
+#if !defined(QT_HPUX_LD) && !defined(Q_OS_VXWORKS)
 QT_BEGIN_INCLUDE_NAMESPACE
 #include <dlfcn.h>
 QT_END_INCLUDE_NAMESPACE
@@ -70,8 +66,8 @@ QT_END_INCLUDE_NAMESPACE
 
 static QString qdlerror()
 {
-#if defined(QT_NO_DYNAMIC_LIBRARY)
-    const char *err = "This platform does not support dynamic libraries.";
+#if defined(Q_OS_VXWORKS)
+    const char *err = "VxWorks does not support dynamic libraries.";
 #elif !defined(QT_HPUX_LD)
     const char *err = dlerror();
 #else
@@ -83,7 +79,7 @@ static QString qdlerror()
 bool QLibraryPrivate::load_sys()
 {
     QString attempt;
-#if !defined(QT_NO_DYNAMIC_LIBRARY)
+#if !defined(Q_OS_VXWORKS)
     QFileInfo fi(fileName);
 
 #if defined(Q_OS_SYMBIAN)
@@ -252,7 +248,7 @@ bool QLibraryPrivate::load_sys()
         }
     }
 #endif
-#endif // QT_NO_DYNAMIC_LIBRARY
+#endif // Q_OS_VXWORKS
     if (!pHnd) {
         errorString = QLibrary::tr("Cannot load library %1: %2").arg(fileName).arg(qdlerror());
     }
@@ -265,7 +261,7 @@ bool QLibraryPrivate::load_sys()
 
 bool QLibraryPrivate::unload_sys()
 {
-#if !defined(QT_NO_DYNAMIC_LIBRARY)
+#if !defined(Q_OS_VXWORKS)
 #  if defined(QT_HPUX_LD)
     if (shl_unload((shl_t)pHnd)) {
 #  else
@@ -299,7 +295,7 @@ void* QLibraryPrivate::resolve_sys(const char* symbol)
     void* address = 0;
     if (shl_findsym((shl_t*)&pHnd, symbol, TYPE_UNDEFINED, &address) < 0)
         address = 0;
-#elif defined (QT_NO_DYNAMIC_LIBRARY)
+#elif defined(Q_OS_VXWORKS)
     void *address = 0;
 #else
     void* address = dlsym(pHnd, symbol);
