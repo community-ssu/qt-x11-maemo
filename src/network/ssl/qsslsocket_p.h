@@ -104,6 +104,7 @@ public:
     QSslSocket::SslMode mode;
     bool autoStartHandshake;
     bool connectionEncrypted;
+    bool shutdown;
     bool ignoreAllSslErrors;
     QList<QSslError> ignoreErrorsList;
     bool* readyReadEmittedPointer;
