@@ -69,8 +69,7 @@ public:
     enum LoadHint {
         ResolveAllSymbolsHint = 0x01,
         ExportExternalSymbolsHint = 0x02,
-        LoadArchiveMemberHint = 0x04,
-        ImprovedSearchHeuristics = 0x08
+        LoadArchiveMemberHint = 0x04
     };
     Q_DECLARE_FLAGS(LoadHints, LoadHint)
 
