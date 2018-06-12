@@ -1,3 +1,10 @@
+qt4-x11 (1:4.7.4~git20110505+cssu15) unstable; urgency=low
+
+  * Backport a bunch of SSL stuff (and some dependencies) from QT 4.8.7
+  * Backport/apply the Debian patches for OpenSSL 1.1
+
+ -- Jonathan Wilson <jfwfreo@tpgi.com.au>  Wed, 13 Jun 2018 09:20:40 +1000
+
 qt4-x11 (1:4.7.4~git20110505+cssu14) unstable; urgency=low
 
   * Remove some backports from QT 4.8.x that will get properly added again when I port various changes from 4.8.7 to 4.7.4 as part of supporting TLS 1.2
